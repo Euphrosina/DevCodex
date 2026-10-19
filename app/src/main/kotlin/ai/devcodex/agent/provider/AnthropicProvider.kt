@@ -84,6 +84,17 @@ object AnthropicProvider {
                     listOf(StreamEvent.ToolCallDelta(0, cb["id"]?.jsonPrimitive?.contentOrNull, cb["name"]?.jsonPrimitive?.contentOrNull, ""))
                 } else emptyList()
             }
+            "message_start" -> {
+                val u = obj["message"]?.jsonObject?.get("usage")?.jsonObject
+                if (u != null) listOf(StreamEvent.Usage(
+                    u["input_tokens"]?.jsonPrimitive?.longOrNull ?: 0, 0,
+                    u["cache_read_input_tokens"]?.jsonPrimitive?.longOrNull ?: 0,
+                )) else emptyList()
+            }
+            "message_delta" -> {
+                val u = obj["usage"]?.jsonObject
+                if (u != null) listOf(StreamEvent.Usage(0, u["output_tokens"]?.jsonPrimitive?.longOrNull ?: 0, 0)) else emptyList()
+            }
             "message_stop" -> listOf(StreamEvent.Done("stop"))
             else -> emptyList()
         }

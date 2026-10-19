@@ -17,6 +17,7 @@ object BuiltinTools {
 
     private lateinit var appContext: Context
     fun init(ctx: Context) { appContext = ctx.applicationContext }
+    fun appContext(): Context = appContext
 
     private fun obj(block: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): kotlinx.serialization.json.JsonObject = buildJsonObject(block)
 
@@ -274,10 +275,38 @@ object BuiltinTools {
         return java.io.File(ws, path.removePrefix("./")).canonicalPath
     }
 
+    // ============ 技能读取 ============
+    val skillRead = ToolDef(
+        name = "skill_read",
+        description = "读取已安装技能（Skill）的完整说明文档。先用 skill_list 看有哪些技能，需要某技能的详细用法时调用此工具",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("name", obj { put("type", "string"); put("description", "技能名") }) })
+            put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("name")) })
+        },
+    ) { args ->
+        val name = ai.devcodex.agent.util.JsonArg.string(args, "name") ?: return@ToolDef "ERROR: 缺少 name"
+        val repo = ai.devcodex.agent.data.SkillRepo(appContext)
+        val sk = repo.list().find { it.name.equals(name, true) && it.enabled }
+            ?: return@ToolDef "ERROR: 未安装或未启用的技能: $name（用 skill_list 查看）"
+        "技能 ${sk.name}：\n${sk.content.take(20000)}"
+    }
+
+    val skillList = ToolDef(
+        name = "skill_list",
+        description = "列出已安装的技能（名称+简介）",
+        parameters = obj { put("type", "object"); put("properties", obj {}) },
+    ) { _ ->
+        val repo = ai.devcodex.agent.data.SkillRepo(appContext)
+        val all = repo.list().filter { it.enabled }
+        if (all.isEmpty()) "(无已安装技能)" else all.joinToString("\n") { "${it.name}: ${it.description.take(100)}" }
+    }
+
     val all: List<ToolDef> = listOf(
         fsRead, fsWrite, fsList, fsDelete, shellExec, httpRequest,
         memorySave, memoryRead, appList, deviceInfo,
         uiSnapshot, uiTap, uiBack, uiHome, uiScroll, notify,
+        skillRead, skillList,
     )
 
     /** 装配插件工具 */

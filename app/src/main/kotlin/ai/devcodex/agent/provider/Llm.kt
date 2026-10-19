@@ -34,6 +34,7 @@ data class ChatTurn(
 )
 
 sealed interface StreamEvent {
+    data class Usage(val inputTokens: Long, val outputTokens: Long, val cachedTokens: Long) : StreamEvent
     data class Delta(val text: String) : StreamEvent
     data class Reasoning(val text: String) : StreamEvent
     data class ToolCallDelta(val index: Int, val id: String?, val name: String?, val argsFragment: String) : StreamEvent

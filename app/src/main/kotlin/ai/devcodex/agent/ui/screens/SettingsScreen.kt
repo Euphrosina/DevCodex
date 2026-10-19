@@ -1,5 +1,8 @@
 package ai.devcodex.agent.ui.screens
 
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.LaunchedEffect
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
@@ -72,6 +76,7 @@ fun SettingsScreen(vm: AppViewModel) {
                 "theme" -> "主题与字体"
                 "tools" -> "工具与权限"
                 "stats" -> "使用统计"
+                "skills" -> "技能"
                 else -> "设置"
             })
         }, navigationIcon = {
@@ -82,9 +87,16 @@ fun SettingsScreen(vm: AppViewModel) {
             "theme" -> ThemePage(vm, settings, Modifier.padding(padding))
             "tools" -> ToolsPermPage(vm, settings, Modifier.padding(padding))
             "stats" -> ai.devcodex.agent.ui.screens.StatsScreen(vm) { page = "root" }
+            "skills" -> SkillsPage(vm) { page = "root" }
             else -> Column(
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             ) {
+                ListItem(
+                    headlineContent = { Text("技能 Skills") },
+                    supportingContent = { Text("SKILL.md 技能包 · 安装/开关/删除") },
+                    leadingContent = { Icon(Icons.Filled.School, null) },
+                    modifier = Modifier.clickable { page = "skills" },
+                )
                 ListItem(
                     headlineContent = { Text("使用统计") },
                     supportingContent = { Text("消息热力图 · 今日/累计数据") },
@@ -336,5 +348,73 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             }
         }
         Spacer(Modifier.padding(32.dp))
+    }
+}
+
+/** 技能管理页：列表/开关/删除/从文件安装 */
+@Composable
+private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var skills by remember { mutableStateOf(listOf<ai.devcodex.agent.data.SkillRepo.Skill>()) }
+    var msg by remember { mutableStateOf<String?>(null) }
+    fun reload() {
+        skills = ai.devcodex.agent.data.SkillRepo(context).list()
+    }
+    LaunchedEffect(Unit) { reload() }
+
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+            }.getOrNull()?.let { text ->
+                ai.devcodex.agent.data.SkillRepo(context).install(text)
+                    .onSuccess { reload(); msg = "已安装技能：${it.name}" }
+                    .onFailure { msg = "安装失败：${it.message}" }
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("技能（Skills）", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "SKILL.md 格式技能包：简介常驻提示词，正文由 AI 按需读取。兼容 agentskills.io 标准（Claude Code / android-skills 生态）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = { picker.launch("*/*") }) { Text("从文件安装") }
+        }
+        msg?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        if (skills.isEmpty()) {
+            Text(
+                "暂无技能。可从 Claude Code 生态的 SKILL.md 文件安装（GitHub 上搜 agentskills 或 android/skills）",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        skills.forEach { sk ->
+            ListItem(
+                overlineContent = { Text(if (sk.enabled) "已启用" else "已停用", style = MaterialTheme.typography.labelSmall) },
+                headlineContent = { Text(sk.name) },
+                supportingContent = { Text(sk.description, maxLines = 2, style = MaterialTheme.typography.bodySmall) },
+                trailingContent = {
+                    Row {
+                        Switch(checked = sk.enabled, onCheckedChange = {
+                            ai.devcodex.agent.data.SkillRepo(context).toggle(sk.name); reload()
+                        })
+                        IconButton(onClick = {
+                            ai.devcodex.agent.data.SkillRepo(context).delete(sk.name); reload()
+                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                    }
+                },
+            )
+        }
     }
 }

@@ -239,6 +239,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                 toolName = tc.name, toolStatus = ToolStatus.RUNNING,
                                             ))
                                         }
+                                        MessageStats(msg)
                                     }
                                 }
                             }
@@ -471,13 +472,40 @@ private fun ThinkingBlockInline(text: String) {
     ) {
         Column(Modifier.clickable { expanded = !expanded }.padding(horizontal = 10.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(
-                    Icons.Filled.Psychology, null,
-                    Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary,
-                )
+                Text("✻", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
                 Text(if (expanded) "思考过程" else "已深度思考", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (expanded) Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+
+/** 消息统计行：模型 · 首包 · 速度 · 上下文 · 缓存命中 */
+@Composable
+private fun MessageStats(msg: Message) {
+    if (msg.totalMs <= 0) return
+    val speed = if (msg.totalMs > 0 && msg.outputTokens > 0) msg.outputTokens * 1000 / msg.totalMs else 0
+    val ctx = msg.inputTokens + msg.outputTokens
+    val cachePct = if (msg.inputTokens > 0) msg.cachedTokens * 100 / msg.inputTokens else 0
+    val parts = buildList {
+        add(msg.model ?: "")
+        if (msg.firstTokenMs > 0) add("首 ${"%.1f".format(msg.firstTokenMs / 1000.0)}s")
+        if (msg.totalMs > 0) add("${"%.1f".format(msg.totalMs / 1000.0)}s")
+        if (speed > 0) add("$speed tok/s")
+        if (ctx > 0) add("${formatTok(ctx)}")
+        if (msg.inputTokens > 0) add("缓存 $cachePct%")
+    }.filter { it.isNotBlank() }
+    Text(
+        parts.joinToString(" · "),
+        style = MaterialTheme.typography.labelSmall,
+        fontFamily = Mono,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+        modifier = Modifier.padding(top = 4.dp),
+    )
+}
+
+private fun formatTok(n: Long): String = when {
+    n >= 1000 -> "%.1fk".format(n / 1000.0)
+    else -> n.toString()
 }

@@ -64,6 +64,14 @@ object OpenAiCompatProvider {
         if (data == "[DONE]") return listOf(StreamEvent.Done("stop"))
         val obj = runCatching { LlmJson.parseToJsonElement(data).jsonObject }.getOrNull() ?: return emptyList()
         val events = mutableListOf<StreamEvent>()
+        // usage（部分服务在最后一个 chunk 带）
+        obj["usage"]?.jsonObject?.let { u ->
+            val it2 = u["prompt_tokens"]?.jsonPrimitive?.longOrNull ?: 0
+            val ot = u["completion_tokens"]?.jsonPrimitive?.longOrNull ?: 0
+            val ct = (u["prompt_tokens_details"]?.jsonObject?.get("cached_tokens")?.jsonPrimitive?.longOrNull
+                ?: u["cached_tokens"]?.jsonPrimitive?.longOrNull ?: 0)
+            events.add(StreamEvent.Usage(it2, ot, ct))
+        }
         val choices = obj["choices"]?.jsonArray ?: return emptyList()
         if (choices.isEmpty()) return emptyList()
         val delta = choices[0].jsonObject["delta"]?.jsonObject ?: return emptyList()

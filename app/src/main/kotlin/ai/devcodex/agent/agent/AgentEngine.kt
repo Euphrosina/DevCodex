@@ -46,11 +46,15 @@ class AgentEngine(
         assistantId: String,
         currentRef: ChatSession,
         onUpdate: (ChatSession) -> Unit,
+        onUsage: (Long, Long, Long) -> Unit = { _, _, _ -> },
+        onFirstDelta: () -> Unit = {},
     ): ChatSession {
         var current = currentRef
         ProviderGateway.parseSseLine(provider, line).forEach { ev ->
             when (ev) {
+                is StreamEvent.Usage -> onUsage(ev.inputTokens, ev.outputTokens, ev.cachedTokens)
                 is StreamEvent.Delta -> {
+                    onFirstDelta()
                     text.append(ev.text)
                     current = current.patch(assistantId) { it.copy(content = text.toString()) }
                     onUpdate(current)
@@ -93,7 +97,16 @@ class AgentEngine(
                 put("parameters", t.parameters)
             }
         }
-        val systemPrompt = session.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
+        val basePrompt = session.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
+        val skillSection = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                val repo = ai.devcodex.agent.data.SkillRepo(ai.devcodex.agent.tools.BuiltinTools.appContext())
+                val list = repo.list().filter { it.enabled }
+                if (list.isEmpty()) "" else "\n\n已安装技能（调用 skill_read 工具获取某个技能的详细用法）：\n" +
+                    list.joinToString("\n") { "- ${it.name}: ${it.description.take(120)}" }
+            }.getOrDefault("")
+        }
+        val systemPrompt = basePrompt + skillSection
 
         var current = session
         try {
@@ -129,11 +142,19 @@ class AgentEngine(
                 val text = StringBuilder()
                 val think = StringBuilder()
                 val toolAgg = LinkedHashMap<Int, Triple<String, String, StringBuilder>>()
+                var inTok = 0L; var outTok = 0L; var cacheTok = 0L
+                var firstTokMs = 0L
+                val t0 = System.currentTimeMillis()
 
                 var request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, effectiveSchemas, stream = true)
 
-                fun consume(line: String): ChatSession =
-                    onLine(provider, line, text, think, toolAgg, assistantId, current, onUpdate)
+                fun consume(line: String): ChatSession {
+                    val t = System.currentTimeMillis()
+                    if (firstTokMs == 0L && text.isNotEmpty()) firstTokMs = t - t0
+                    return onLine(provider, line, text, think, toolAgg, assistantId, current, onUpdate,
+                        onUsage = { i, o, c -> inTok += i; outTok += o; cacheTok += c },
+                        onFirstDelta = { if (firstTokMs == 0L) firstTokMs = System.currentTimeMillis() - t0 })
+                }
 
                 try {
                     streamPost(LlmClient, request) { line -> current = consume(line) }
@@ -154,13 +175,21 @@ class AgentEngine(
 
                 if (toolCalls.isEmpty()) {
                     // 最终回答
-                    current = current.patch(assistantId) { it.copy(content = text.toString().ifBlank { "(空回复)" }) }
+                    current = current.patch(assistantId) { it.copy(
+                        content = text.toString().ifBlank { "(空回复)" },
+                        inputTokens = inTok, outputTokens = outTok, cachedTokens = cacheTok,
+                        firstTokenMs = firstTokMs, totalMs = System.currentTimeMillis() - t0,
+                    ) }
                     onUpdate(current)
                     events.emit(UiEvent.Finished(current.id))
                     return
                 }
 
-                current = current.patch(assistantId) { it.copy(content = text.toString(), toolCalls = toolCalls) }
+                current = current.patch(assistantId) { it.copy(
+                    content = text.toString(), toolCalls = toolCalls,
+                    inputTokens = inTok, outputTokens = outTok, cachedTokens = cacheTok,
+                    firstTokenMs = firstTokMs, totalMs = System.currentTimeMillis() - t0,
+                ) }
                 onUpdate(current)
 
                 // ---- 2. 执行工具 ----

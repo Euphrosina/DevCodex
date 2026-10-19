@@ -46,6 +46,12 @@ data class Message(
     val role: String,                       // user | assistant | tool | system
     val content: String = "",
     val llmContent: String? = null,         // 发给 LLM 的内容（含附件展开）
+    // 消息统计（流式结束时填充）
+    val inputTokens: Long = 0,
+    val outputTokens: Long = 0,
+    val cachedTokens: Long = 0,
+    val firstTokenMs: Long = 0,             // 首包耗时
+    val totalMs: Long = 0,                  // 总耗时
     val toolCalls: List<ToolCall> = emptyList(),
     val toolCallId: String? = null,         // tool 消息对应
     val toolName: String? = null,
@@ -90,6 +96,7 @@ data class AppSettings(
             "fs_read", "fs_write", "fs_list", "fs_delete",
             "shell_exec", "http_request", "memory_save", "memory_read",
             "app_list", "device_info", "ui_snapshot", "ui_tap", "ui_back", "ui_home", "ui_scroll", "notify",
+            "skill_read", "skill_list",
         )
     }
 }
