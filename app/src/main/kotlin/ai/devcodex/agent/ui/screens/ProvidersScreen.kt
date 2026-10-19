@@ -1,0 +1,262 @@
+package ai.devcodex.agent.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import ai.devcodex.agent.AppViewModel
+import ai.devcodex.agent.data.ModelTestResult
+import ai.devcodex.agent.data.ProviderConfig
+import ai.devcodex.agent.data.ProviderType
+import ai.devcodex.agent.provider.ProviderGateway
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProvidersScreen(vm: AppViewModel) {
+    val settings by vm.settings.collectAsState(initial = ai.devcodex.agent.data.AppSettings())
+    var editing by remember { mutableStateOf<ProviderConfig?>(null) }
+    var creating by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("API 提供商") }) },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { creating = true }) {
+                Icon(Icons.Filled.Add, "添加提供商")
+            }
+        },
+    ) { padding ->
+        if (settings.providers.isEmpty()) {
+            Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
+                Text("还没有配置提供商", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.padding(8.dp))
+                Text(
+                    "支持 OpenAI 兼容协议（GLM/DeepSeek/Kimi/OpenAI/OpenRouter）、Anthropic、Ollama。\n点击右下角 + 添加，填入 Base URL 和 API Key 后可自动识别模型。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(settings.providers, key = { it.id }) { p ->
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (p.isDefault) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { editing = p },
+                    ) {
+                        ListItem(
+                            overlineContent = { Text(typeName(p.type)) },
+                            headlineContent = { Text(p.name.ifBlank { "未命名" }) },
+                            supportingContent = {
+                                Text(
+                                    "${p.baseUrl}\n已启用模型 ${p.enabledModels.size}/${p.models.size}",
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            leadingContent = { if (p.isDefault) Icon(Icons.Filled.CheckCircle, "默认") else null },
+                            trailingContent = {
+                                Row {
+                                    if (busy) CircularProgressIndicator(Modifier.padding(8.dp))
+                                    IconButton(onClick = { vm.setDefaultProvider(p.id) }) {
+                                        Icon(Icons.Filled.CheckCircle, "设为默认")
+                                    }
+                                    IconButton(onClick = { vm.deleteProvider(p.id) }) {
+                                        Icon(Icons.Filled.Delete, "删除")
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (creating) {
+        ProviderEditDialog(
+            initial = ProviderConfig(id = java.util.UUID.randomUUID().toString()),
+            onDismiss = { creating = false },
+            onSave = { vm.upsertProvider(it); creating = false },
+        )
+    }
+    editing?.let { p ->
+        ProviderEditDialog(
+            initial = p,
+            onDismiss = { editing = null },
+            onSave = { vm.upsertProvider(it); editing = null },
+        )
+    }
+}
+
+@Composable
+private fun ProviderEditDialog(
+    initial: ProviderConfig,
+    onDismiss: () -> Unit,
+    onSave: (ProviderConfig) -> Unit,
+) {
+    var name by remember { mutableStateOf(initial.name) }
+    var type by remember { mutableStateOf(initial.type) }
+    var baseUrl by remember { mutableStateOf(initial.baseUrl) }
+    var apiKey by remember { mutableStateOf(initial.apiKey) }
+    var models by remember { mutableStateOf(initial.models) }
+    var enabledModels by remember { mutableStateOf(initial.enabledModels) }
+    var fetching by remember { mutableStateOf(false) }
+    var fetchError by remember { mutableStateOf<String?>(null) }
+    var testing by remember { mutableStateOf<String?>(null) }
+    var testResult by remember { mutableStateOf<Pair<String, ModelTestResult>?>(null) }
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initial.name.isBlank()) "添加提供商" else "编辑提供商") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = type == ProviderType.OPENAI_COMPAT, onClick = { type = ProviderType.OPENAI_COMPAT; baseUrl = baseUrl.ifBlank { "https://api.openai.com/v1" } }, label = { Text("OpenAI 兼容") })
+                    FilterChip(selected = type == ProviderType.ANTHROPIC, onClick = { type = ProviderType.ANTHROPIC; baseUrl = baseUrl.ifBlank { "https://api.anthropic.com" } }, label = { Text("Anthropic") })
+                    FilterChip(selected = type == ProviderType.OLLAMA, onClick = { type = ProviderType.OLLAMA; baseUrl = baseUrl.ifBlank { "http://127.0.0.1:11434" } }, label = { Text("Ollama") })
+                }
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true)
+                OutlinedTextField(value = baseUrl, onValueChange = { baseUrl = it }, label = { Text("Base URL") }, singleLine = true)
+                OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text("API Key") }, singleLine = true)
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            fetching = true; fetchError = null
+                            scope.launch {
+                                try {
+                                    val list = ProviderGateway.listModels(initial.copy(name = name, type = type, baseUrl = baseUrl, apiKey = apiKey))
+                                    models = list
+                                    enabledModels = list.take(5).toSet().let { list.intersect(it) }.toList().ifEmpty { list.take(5) }
+                                    if (list.isEmpty()) fetchError = "接口返回空模型列表"
+                                } catch (e: Exception) {
+                                    fetchError = "识别失败: ${e.message?.take(120)}"
+                                }
+                                fetching = false
+                            }
+                        },
+                        enabled = !fetching && baseUrl.isNotBlank(),
+                    ) {
+                        if (fetching) CircularProgressIndicator(Modifier.padding(end = 6.dp))
+                        Icon(Icons.Filled.Refresh, null, Modifier.padding(end = 6.dp))
+                        Text("自动识别模型")
+                    }
+                }
+                fetchError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+
+                if (models.isNotEmpty()) {
+                    Text("模型（勾选启用）：", style = MaterialTheme.typography.labelLarge)
+                    LazyColumn(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                        items(models) { m ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Checkbox(
+                                    checked = enabledModels.contains(m),
+                                    onCheckedChange = { on ->
+                                        enabledModels = if (on) enabledModels + m else enabledModels - m
+                                    },
+                                )
+                                Text(m, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                IconButton(onClick = {
+                                    testing = m
+                                    scope.launch {
+                                        val r = runCatching { ProviderGateway.testModel(initial.copy(type = type, baseUrl = baseUrl, apiKey = apiKey), m) }
+                                            .getOrElse { ModelTestResult(error = it.message) }
+                                        testResult = m to r
+                                        testing = null
+                                    }
+                                }) {
+                                    if (testing == m) CircularProgressIndicator(Modifier.padding(4.dp))
+                                    else Icon(Icons.Filled.Speed, "测试")
+                                }
+                            }
+                        }
+                    }
+                }
+                testResult?.let { (m, r) ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                        Column(Modifier.padding(8.dp)) {
+                            Text(m, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                            Text(
+                                buildString {
+                                    append(if (r.latencyMs >= 0) "延迟 ${r.latencyMs}ms " else "未连通 ")
+                                    append(if (r.streamOk) "· 流式✓ " else "· 流式✗ ")
+                                    append(if (r.toolsOk) "· 工具✓" else "· 工具✗")
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            r.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, maxLines = 2) }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(initial.copy(
+                    name = name.ifBlank { "提供商" }, type = type, baseUrl = baseUrl.trim().trimEnd('/'),
+                    apiKey = apiKey, models = models, enabledModels = enabledModels,
+                    enabled = true,
+                ))
+            }) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
+}
+
+private fun typeName(t: ProviderType): String = when (t) {
+    ProviderType.OPENAI_COMPAT -> "OpenAI 兼容"
+    ProviderType.ANTHROPIC -> "Anthropic"
+    ProviderType.OLLAMA -> "Ollama"
+}

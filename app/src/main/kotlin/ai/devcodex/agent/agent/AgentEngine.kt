@@ -1,0 +1,196 @@
+package ai.devcodex.agent.agent
+
+import ai.devcodex.agent.data.AppSettings
+import ai.devcodex.agent.data.ChatSession
+import ai.devcodex.agent.data.Message
+import ai.devcodex.agent.data.ToolCall
+import ai.devcodex.agent.data.ToolStatus
+import ai.devcodex.agent.provider.ChatTurn
+import ai.devcodex.agent.provider.LlmClient
+import ai.devcodex.agent.provider.ProviderGateway
+import ai.devcodex.agent.provider.StreamEvent
+import ai.devcodex.agent.provider.streamPost
+import ai.devcodex.agent.tools.BuiltinTools
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+/** Agent 引擎：LLM → 工具调用 → 结果回填 → 循环，直到最终回答（Claude Code 式） */
+class AgentEngine(
+    private val settings: () -> AppSettings,
+    private val plugins: () -> List<ai.devcodex.agent.data.PluginManifest>,
+    /** 审批回调：UI 弹出卡片，用户决定后回调（挂起等待） */
+    private val requestApproval: suspend (ApprovalRequest) -> Boolean,
+) {
+    sealed interface UiEvent {
+        data class Error(val message: String) : UiEvent
+        data class Finished(val sessionId: String) : UiEvent
+    }
+
+    val events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    private fun ChatSession.patch(id: String, transform: (Message) -> Message): ChatSession =
+        copy(messages = messages.map { if (it.id == id) transform(it) else it }, updatedAt = System.currentTimeMillis())
+
+    suspend fun run(session: ChatSession, onUpdate: (ChatSession) -> Unit) {
+        val s = settings()
+        val provider = s.providers.find { it.id == session.providerId && it.enabled }
+            ?: s.providers.firstOrNull { it.enabled && it.enabledModels.isNotEmpty() }
+            ?: run { events.emit(UiEvent.Error("未配置 API 提供商，请到「提供商」页添加并拉取模型")); return }
+        val model = session.modelId?.takeIf { provider.enabledModels.contains(it) }
+            ?: provider.enabledModels.firstOrNull()
+            ?: run { events.emit(UiEvent.Error("该提供商没有启用的模型")); return }
+
+        val toolDefs = BuiltinTools.all.filter { s.enabledTools.contains(it.name) } +
+            BuiltinTools.pluginTools(plugins())
+        val toolSchemas: List<JsonObject> = toolDefs.map { t ->
+            buildJsonObject {
+                put("name", t.name)
+                put("description", t.description)
+                put("parameters", t.parameters)
+            }
+        }
+        val systemPrompt = session.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
+
+        var current = session
+        try {
+            var steps = 0
+            while (steps < s.maxAgentSteps) {
+                steps++
+
+                // ---- 1. 流式调 LLM ----
+                val turns = buildList {
+                    add(ChatTurn("system", systemPrompt))
+                    current.messages.forEach { m ->
+                        when (m.role) {
+                            "user" -> if (m.content.isNotBlank()) add(ChatTurn("user", m.content))
+                            "assistant" -> if (m.content.isNotBlank() || m.toolCalls.isNotEmpty()) add(ChatTurn("assistant", m.content, m.toolCalls))
+                            "tool" -> if (m.toolCallId != null) add(ChatTurn("tool", m.toolResult ?: "(空)", toolCallId = m.toolCallId, name = m.toolName))
+                        }
+                    }
+                }
+                val request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, toolSchemas, stream = true)
+
+                val assistantId = java.util.UUID.randomUUID().toString()
+                current = current.copy(messages = current.messages + Message(
+                    id = assistantId, role = "assistant", model = model, timestamp = System.currentTimeMillis(),
+                ))
+                onUpdate(current)
+
+                val text = StringBuilder()
+                val toolAgg = LinkedHashMap<Int, Triple<String, String, StringBuilder>>()
+
+                streamPost(LlmClient, request) { line ->
+                    ProviderGateway.parseSseLine(provider, line).forEach { ev ->
+                        when (ev) {
+                            is StreamEvent.Delta -> {
+                                text.append(ev.text)
+                                current = current.patch(assistantId) { it.copy(content = text.toString()) }
+                                onUpdate(current)
+                            }
+                            is StreamEvent.Reasoning -> Unit
+                            is StreamEvent.ToolCallDelta -> {
+                                val ex = toolAgg[ev.index]
+                                toolAgg[ev.index] = Triple(
+                                    ev.id ?: ex?.first ?: "call_${ev.index}",
+                                    ev.name ?: ex?.second ?: "",
+                                    StringBuilder(ex?.third ?: "").append(ev.argsFragment),
+                                )
+                            }
+                            is StreamEvent.Done -> Unit
+                            is StreamEvent.Error -> throw RuntimeException(ev.throwable.message ?: "stream error")
+                        }
+                    }
+                }
+
+                val toolCalls = toolAgg.values.filter { it.second.isNotBlank() }.map {
+                    ToolCall(id = it.first, name = it.second, argsJson = it.third.toString().ifBlank { "{}" })
+                }
+
+                if (toolCalls.isEmpty()) {
+                    // 最终回答
+                    current = current.patch(assistantId) { it.copy(content = text.toString().ifBlank { "(空回复)" }) }
+                    onUpdate(current)
+                    events.emit(UiEvent.Finished(current.id))
+                    return
+                }
+
+                current = current.patch(assistantId) { it.copy(content = text.toString(), toolCalls = toolCalls) }
+                onUpdate(current)
+
+                // ---- 2. 执行工具 ----
+                for (tc in toolCalls) {
+                    val def = toolDefs.find { it.name == tc.name }
+                    val toolMsgId = java.util.UUID.randomUUID().toString()
+                    if (def == null) {
+                        current = current.copy(messages = current.messages + Message(
+                            id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
+                            toolResult = "ERROR: 未知工具 ${tc.name}", toolStatus = ToolStatus.ERROR,
+                            timestamp = System.currentTimeMillis(),
+                        ))
+                        onUpdate(current)
+                        continue
+                    }
+                    // 审批判定：高危必审；fs_write 沙箱外必审
+                    val needApproval = def.risk == ToolDef.Risk.HIGH ||
+                        (tc.name == "fs_write" && !tc.argsJson.contains(SANDBOX_MARK))
+                    if (needApproval) {
+                        val reason = when (def.risk) {
+                            ToolDef.Risk.HIGH -> "高危操作，需确认：${def.description.take(50)}"
+                            else -> "沙箱外写入，需确认"
+                        }
+                        val granted = requestApproval(ApprovalRequest(tc, reason) { true })
+                        if (!granted) {
+                            current = current.copy(messages = current.messages + Message(
+                                id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
+                                toolResult = "用户拒绝执行该操作", toolStatus = ToolStatus.DENIED,
+                                timestamp = System.currentTimeMillis(),
+                            ))
+                            onUpdate(current)
+                            continue
+                        }
+                    }
+                    // RUNNING → 执行 → DONE
+                    current = current.copy(messages = current.messages + Message(
+                        id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
+                        toolStatus = ToolStatus.RUNNING, timestamp = System.currentTimeMillis(),
+                    ))
+                    onUpdate(current)
+                    val result = runCatching { def.execute(tc.argsJson) }
+                        .getOrElse { "ERROR: ${it.message}" }
+                    current = current.patch(toolMsgId) {
+                        it.copy(toolResult = result, toolStatus = if (result.startsWith("ERROR")) ToolStatus.ERROR else ToolStatus.DONE)
+                    }
+                    onUpdate(current)
+                }
+                // ---- 3. 循环：工具结果已在消息里，下一轮带给 LLM ----
+            }
+            events.emit(UiEvent.Error("已达最大步数（${s.maxAgentSteps}），停止执行"))
+        } catch (e: CancellationException) {
+            current = current.copy(messages = current.messages.map { m ->
+                if (m.toolStatus == ToolStatus.RUNNING) m.copy(toolStatus = ToolStatus.ERROR, toolResult = "已中断") else m
+            })
+            onUpdate(current)
+        } catch (e: Exception) {
+            events.emit(UiEvent.Error(e.message ?: "未知错误"))
+            onUpdate(current)
+        }
+    }
+
+    companion object {
+        private const val SANDBOX_MARK = "/data/user/0/ai.devcodex.agent"
+    }
+}
+
+val DEFAULT_SYSTEM_PROMPT = """你是 DevCodex，一个运行在 Android 手机上的 AI 智能体（Agent）。
+你可以通过工具读写手机本地文件、执行 shell 命令、发 HTTP 请求、读取屏幕内容、做界面自动化。
+
+行为准则：
+1. 需要信息时主动调用工具获取，不要凭空编造手机上的内容。
+2. 文件操作给出明确路径；危险操作前先说明意图。
+3. 工具返回 ERROR 时分析原因，换路径或方案重试，同一方案不要重试超过 2 次。
+4. 回答简洁、直接、面向行动。用中文交流。
+5. 超出工具能力的请求如实说明，不要假装已执行。"""

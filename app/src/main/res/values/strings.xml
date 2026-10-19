@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">DevCodex</string>
+    <string name="a11y_service_label">DevCodex 智能体无障碍服务</string>
+    <string name="a11y_service_desc">允许 DevCodex 智能体读取屏幕内容并执行点击、滑动等自动化操作。仅在你主动启用后生效，用于 AI 工具的界面自动化能力。</string>
+</resources>

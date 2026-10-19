@@ -1,0 +1,76 @@
+name: Android Cloud Build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Assemble Debug (CI check)
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Assemble Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          DC_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          DC_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          DC_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          DC_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$DC_KEYSTORE_PATH"
+          ./gradlew :app:assembleRelease --stacktrace --no-daemon
+
+      - name: Upload debug artifact
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcodex-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Sign check & Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*arm64*.apk | head -1)
+          echo "APK: $APK"
+          sha256sum "$APK" > "$APK.sha256"
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release create "$TAG" "$APK" "$APK.sha256" \
+            --title "DevCodex $TAG" \
+            --notes "自动云端构建版本。APK 为 arm64 签名包，sha256 校验文件随附。" \
+            --draft=false --prerelease=false
+
+      - name: Upload release artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcodex-outputs
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/outputs/apk/**/*.sha256
+          if-no-files-found: warn

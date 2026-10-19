@@ -1,0 +1,69 @@
+package ai.devcodex.agent.theme
+
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+
+enum class ColorMode { SYSTEM, LIGHT, DARK }
+
+data class ThemePrefs(
+    val presetId: String = "sakura",
+    val colorMode: ColorMode = ColorMode.SYSTEM,
+    val dynamicColor: Boolean = false,
+    val amoled: Boolean = false,
+    val appFont: String = "gsf",      // gsf | system
+    val chatFont: String = "gsf",     // gsf | mono | system
+)
+
+private val AMOLED_BG = Color(0xFF000000)
+
+@Composable
+fun DcTheme(
+    prefs: ThemePrefs,
+    content: @Composable () -> Unit,
+) {
+    val darkTheme = when (prefs.colorMode) {
+        ColorMode.SYSTEM -> isSystemInDarkTheme()
+        ColorMode.LIGHT -> false
+        ColorMode.DARK -> true
+    }
+    val base: ColorScheme = if (prefs.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val ctx = LocalContext.current
+        if (darkTheme) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
+    } else {
+        findPresetTheme(prefs.presetId).scheme(darkTheme)
+    }
+    val scheme = if (darkTheme && prefs.amoled) {
+        base.copy(
+            background = AMOLED_BG,
+            surface = AMOLED_BG,
+            surfaceContainerLowest = AMOLED_BG,
+            surfaceContainerLow = Color(0xFF0A0A0A),
+        )
+    } else base
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !darkTheme
+            controller.isAppearanceLightNavigationBars = !darkTheme
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = scheme,
+        typography = dcTypography(monoChat = prefs.chatFont == "mono"),
+        content = content,
+    )
+}
