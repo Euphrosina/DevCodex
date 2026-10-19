@@ -95,7 +95,7 @@ data class AppSettings(
 
 @Serializable
 data class ThemePrefsData(
-    val presetId: String = "sakura",
+    val presetId: String = "claude",
     val colorMode: String = "SYSTEM",    // SYSTEM LIGHT DARK
     val dynamicColor: Boolean = false,
     val amoled: Boolean = false,

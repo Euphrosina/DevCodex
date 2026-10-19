@@ -30,4 +30,4 @@ val PresetThemes = listOf(
 )
 
 fun findPresetTheme(id: String): PresetTheme =
-    PresetThemes.find { it.id == id } ?: SakuraThemePreset
+    PresetThemes.find { it.id == id } ?: ClaudeThemePreset

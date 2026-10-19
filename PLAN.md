@@ -100,7 +100,8 @@ C. **权限升级**（学 Operit）：审批卡三键（拒绝/允许一次/总�
 D. **全局崩溃捕获**：UncaughtExceptionHandler → filesDir/crash/*.txt，下次启动弹卡片可复制上报
 
 ## 进度（v3.1）
-- [ ] 调研完成（本节）
-- [ ] 代码改造
-- [ ] 构建验证
-- [ ] tag v3.1.0 发布
+- [x] 调研完成：Operit（Cursor 布局/内联工具行/三级权限/思考块）+ 搜索比对（droidrun/artemis/skales/shiyi-agent）
+- [x] 代码改造全部落地（终端风 UI/6 项 bug 修复/权限升级/崩溃捕获）
+- [x] 本地构建通过（1 轮修 EmptyHint 作用域）
+- [x] tag v3.1.0 → CI 全绿 → Release 4.2MB 签名包（同证书可覆盖装）→ 已 send_file（2026-10-19 19:35）
+- 待用户装机反馈：具体 bug 症状/崩溃堆栈（崩了会自动弹复制卡）

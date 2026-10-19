@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -26,6 +28,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -41,180 +45,174 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.devcodex.agent.data.Message
 import ai.devcodex.agent.data.ToolStatus
-import ai.devcodex.agent.theme.FlexFonts
 
 private val Mono = FontFamily.Monospace
 
-// ============ 用户消息：终端风全宽 "❯ " 行 ============
+// ============ 用户消息：rikkahub 式右侧主色气泡 ============
 @Composable
-fun UserLine(msg: Message) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(10.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Text("❯ ", style = MaterialTheme.typography.labelLarge, fontFamily = Mono, color = MaterialTheme.colorScheme.primary)
+fun UserBubble(msg: Message) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            // rikkahub 风格：右下角小圆角形成指向
+            shape = RoundedCornerShape(18.dp, 18.dp, 6.dp, 18.dp),
+            modifier = Modifier.widthIn(max = 310.dp),
+        ) {
             Text(
                 msg.content,
-                Modifier.weight(1f),
+                Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
     }
 }
 
-// ============ 助手消息：全宽流式 + 光标 ============
+// ============ AI 消息：全宽 + 头像 + 流式光标（rikkahub 布局） ============
 @Composable
-fun AssistantStream(msg: Message, thinkingExpandedDefault: Boolean = false) {
-    Column {
-        // 思考块（折叠）
-        if (!msg.thinking.isNullOrBlank()) {
-            ThinkingBlock(msg.thinking!!, thinkingExpandedDefault)
-        }
-        if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
-            // 等待首包：呼吸点
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)))
-                Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), RoundedCornerShape(4.dp)))
-                Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), RoundedCornerShape(4.dp)))
-                Text("正在思考…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+fun AssistantMessage(msg: Message, showAvatar: Boolean = true) {
+    Row(Modifier.fillMaxWidth()) {
+        if (showAvatar) {
+            // AI 头像：圆角方块 + 闪电符号
+            Box(
+                Modifier
+                    .padding(end = 10.dp, top = 2.dp)
+                    .size(30.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("⚡", style = MaterialTheme.typography.labelLarge)
             }
-        } else if (msg.content.isNotBlank()) {
-            Text(
-                msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
-                Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.bodyLarge,
-            )
         }
-    }
-}
-
-@Composable
-private fun ThinkingBlock(text: String, expandedDefault: Boolean) {
-    var expanded by remember { mutableStateOf(expandedDefault) }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .animateContentSize()
-            .clickable { expanded = !expanded }
-            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("✻", color = MaterialTheme.colorScheme.tertiary)
-            Text(
-                if (expanded) "思考过程" else "已深度思考",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Icon(
-                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null,
-                Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (expanded) {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-// ============ 工具行（Claude Code 符号语言：⏺ 与 ⎿） ============
-@Composable
-fun ToolLine(msg: Message) {
-    var expanded by remember { mutableStateOf(false) }
-    val result = msg.toolResult
-    val status = msg.toolStatus
-    val hasResult = !result.isNullOrBlank()
-    Column(Modifier.fillMaxWidth().animateContentSize()) {
-        // ⏺ 主行
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded },
-        ) {
-            Text("⏺", color = when (status) {
-                ToolStatus.ERROR -> MaterialTheme.colorScheme.error
-                ToolStatus.DENIED -> MaterialTheme.colorScheme.onSurfaceVariant
-                else -> MaterialTheme.colorScheme.primary
-            })
-            Spacer(Modifier.width(8.dp))
-            Text(
-                msg.toolName ?: "tool",
-                style = MaterialTheme.typography.labelLarge,
-                fontFamily = Mono,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            when (status) {
-                ToolStatus.RUNNING, ToolStatus.PENDING ->
-                    CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.5.dp, color = MaterialTheme.colorScheme.primary)
-                ToolStatus.AWAITING_APPROVAL ->
-                    Icon(Icons.Filled.HourglassTop, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.tertiary)
-                ToolStatus.DONE ->
-                    Icon(Icons.Filled.CheckCircle, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
-                ToolStatus.ERROR ->
-                    Icon(Icons.Filled.ErrorOutline, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.error)
-                ToolStatus.DENIED ->
-                    Icon(Icons.Filled.Close, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (hasResult) {
-                Spacer(Modifier.width(6.dp))
+        Column(Modifier.weight(1f)) {
+            if (!msg.thinking.isNullOrBlank()) ThinkingBlock(msg.thinking!!)
+            if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                    Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), CircleShape))
+                    Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape))
+                    Text("思考中…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else if (msg.content.isNotBlank()) {
                 Text(
-                    formatSize(result!!.length),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontFamily = Mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
+                    Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.bodyLarge,
                 )
             }
-            Icon(
-                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, "展开",
-                Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
-        // ⎿ 结果行
-        if (hasResult && !expanded) {
-            Text(
-                "⎿ " + result!!.lineSequence().firstOrNull { it.isNotBlank() }?.take(64)?.plus(if ((result.length) > 64) "…" else ""),
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = Mono,
-                color = if (status == ToolStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp),
-            )
-        }
-        if (expanded) {
-            result?.let {
+    }
+}
+
+// ============ 思考块（rikkahub 式细边框折叠） ============
+@Composable
+fun ThinkingBlock(text: String) {
+    var expanded by remember { mutableStateOf(false) }
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 6.dp),
+    ) {
+        Column(Modifier.clickable { expanded = !expanded }.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("✻", color = MaterialTheme.colorScheme.tertiary)
                 Text(
-                    "⎿ 结果：\n$it",
+                    if (expanded) "思考过程" else "已深度思考",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Icon(
+                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null,
+                    Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (expanded) {
+                Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+// ============ 工具卡片（rikkahub 式：图标 + 名称 + 状态 + 参数摘要） ============
+@Composable
+fun ToolCard(msg: Message) {
+    var expanded by remember { mutableStateOf(false) }
+    val status = msg.toolStatus
+    val result = msg.toolResult
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = when (status) {
+                ToolStatus.ERROR -> MaterialTheme.colorScheme.errorContainer
+                ToolStatus.DENIED, ToolStatus.AWAITING_APPROVAL -> MaterialTheme.colorScheme.surfaceVariant
+                else -> MaterialTheme.colorScheme.surfaceContainerHigh
+            }
+        ),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().animateContentSize().padding(vertical = 2.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+            ) {
+                Icon(
+                    Icons.Filled.Terminal, null,
+                    Modifier.size(16.dp),
+                    tint = when (status) {
+                        ToolStatus.ERROR -> MaterialTheme.colorScheme.error
+                        ToolStatus.DENIED -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> MaterialTheme.colorScheme.primary
+                    },
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    msg.toolName ?: "tool",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontFamily = Mono,
+                    modifier = Modifier.weight(1f),
+                )
+                when (status) {
+                    ToolStatus.RUNNING, ToolStatus.PENDING ->
+                        CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.5.dp)
+                    ToolStatus.DONE -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
+                    ToolStatus.ERROR -> Icon(Icons.Filled.ErrorOutline, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.error)
+                    else -> Icon(Icons.Filled.Close, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (expanded) Icon(Icons.Filled.ExpandLess, null, Modifier.size(14.dp))
+                else Icon(Icons.Filled.ExpandMore, null, Modifier.size(14.dp))
+            }
+            // 未展开时结果首行摘要
+            if (!expanded && !result.isNullOrBlank()) {
+                Text(
+                    result.lineSequence().firstOrNull { it.isNotBlank() }?.take(56)?.plus("…") ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = Mono,
                     color = if (status == ToolStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp).background(
-                        MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(6.dp),
-                    ).padding(8.dp),
+                    maxLines = 1,
                 )
+            }
+            if (expanded) {
+                result?.let {
+                    Text(
+                        it.take(3000),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = Mono,
+                        fontSize = 11.sp,
+                        color = if (status == ToolStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
 }
 
-private fun formatSize(chars: Int): String = when {
-    chars < 1024 -> "${chars}B"
-    chars < 1024 * 1024 -> "%.1fKB".format(chars / 1024.0)
-    else -> "%.1fMB".format(chars / 1024.0 / 1024.0)
-}
-
-// ============ 审批卡片（拒绝/允许一次/总是允许） ============
+// ============ 审批卡片 ============
 @Composable
 fun ApprovalCard(
     reason: String,
@@ -223,24 +221,17 @@ fun ApprovalCard(
     onAlwaysAllow: () -> Unit,
     onDeny: () -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        shape = RoundedCornerShape(10.dp),
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⚠", color = MaterialTheme.colorScheme.onTertiaryContainer)
-                Spacer(Modifier.width(6.dp))
-                Text("权限确认 · $toolName", style = MaterialTheme.typography.titleSmall)
-            }
-            Spacer(Modifier.padding(4.dp))
+            Text("⚠ 权限确认 · $toolName", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.padding(3.dp))
             Text(reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
-            Spacer(Modifier.padding(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.align(Alignment.End),
-            ) {
+            Spacer(Modifier.padding(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.align(Alignment.End)) {
                 TextButton(onClick = onDeny) { Text("拒绝") }
                 TextButton(onClick = onAlwaysAllow) { Text("总是允许") }
                 FilledIconButton(onClick = onAllow, modifier = Modifier.heightIn(min = 36.dp)) {
@@ -251,7 +242,7 @@ fun ApprovalCard(
     }
 }
 
-// ============ 输入栏（❯ 终端前缀 + IME 适配） ============
+// ============ 输入栏（rikkahub 式：大圆角顶部容器 + 模型 chip + 圆形发送） ============
 @Composable
 fun InputBar(
     value: String,
@@ -262,13 +253,39 @@ fun InputBar(
     modelLabel: String?,
     onPickModel: () -> Unit,
 ) {
+    // rikkahub 视觉：顶部大圆角浮层容器
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+        shadowElevation = 6.dp,
         modifier = Modifier.fillMaxWidth().imePadding(),
     ) {
         Column(Modifier.fillMaxWidth()) {
+            // 模型选择 chip 行
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onPickModel() }
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(50),
+                ) {
+                    Text(
+                        modelLabel ?: "＋ 选择模型",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+                if (running) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("● 运行中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).padding(bottom = 8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 OutlinedTextField(
@@ -278,26 +295,17 @@ fun InputBar(
                     placeholder = { Text("给 DevCodex 下指令…") },
                     maxLines = 6,
                     shape = RoundedCornerShape(24.dp),
-                    leadingIcon = { Text("❯", fontFamily = Mono, color = MaterialTheme.colorScheme.primary) },
                 )
                 Spacer(Modifier.width(8.dp))
                 FilledIconButton(
                     onClick = { if (running) onStop() else onSend() },
                     modifier = Modifier.size(52.dp),
+                    shape = CircleShape,
                 ) {
                     if (running) Icon(Icons.Filled.Stop, "停止")
                     else Icon(Icons.AutoMirrored.Filled.Send, "发送")
                 }
             }
-            Text(
-                modelLabel ?: "未选择模型，点击设置 →",
-                style = MaterialTheme.typography.labelSmall,
-                fontFamily = Mono,
-                color = if (modelLabel != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(start = 16.dp, bottom = 6.dp)
-                    .clickable { onPickModel() },
-            )
         }
     }
 }

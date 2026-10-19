@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
@@ -151,6 +154,7 @@ private fun ProviderEditDialog(
     var fetching by remember { mutableStateOf(false) }
     var fetchError by remember { mutableStateOf<String?>(null) }
     var testing by remember { mutableStateOf<String?>(null) }
+    var manualModel by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf<Pair<String, ModelTestResult>?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -174,12 +178,17 @@ private fun ProviderEditDialog(
                             fetching = true; fetchError = null
                             scope.launch {
                                 try {
-                                    val list = ProviderGateway.listModels(initial.copy(name = name, type = type, baseUrl = baseUrl, apiKey = apiKey))
-                                    models = list
-                                    enabledModels = list.take(5).toSet().let { list.intersect(it) }.toList().ifEmpty { list.take(5) }
-                                    if (list.isEmpty()) fetchError = "接口返回空模型列表"
+                                    val cleaned = normalizeBaseUrl(baseUrl)
+                                    baseUrl = cleaned
+                                    val list = ProviderGateway.listModels(initial.copy(name = name, type = type, baseUrl = cleaned, apiKey = apiKey))
+                                    if (list.isEmpty()) {
+                                        fetchError = "接口返回空列表，可手动添加模型"
+                                    } else {
+                                        models = list
+                                        enabledModels = list  // 全选，用户自行取消
+                                    }
                                 } catch (e: Exception) {
-                                    fetchError = "识别失败: ${e.message?.take(120)}"
+                                    fetchError = "识别失败: ${e.message?.take(160)}，可手动在下方添加模型"
                                 }
                                 fetching = false
                             }
@@ -193,34 +202,62 @@ private fun ProviderEditDialog(
                 }
                 fetchError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
-                if (models.isNotEmpty()) {
-                    Text("模型（勾选启用）：", style = MaterialTheme.typography.labelLarge)
-                    LazyColumn(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-                        items(models) { m ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Checkbox(
-                                    checked = enabledModels.contains(m),
-                                    onCheckedChange = { on ->
-                                        enabledModels = if (on) enabledModels + m else enabledModels - m
-                                    },
-                                )
-                                Text(m, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                IconButton(onClick = {
-                                    testing = m
-                                    scope.launch {
-                                        val r = runCatching { ProviderGateway.testModel(initial.copy(type = type, baseUrl = baseUrl, apiKey = apiKey), m) }
-                                            .getOrElse { ModelTestResult(error = it.message) }
-                                        testResult = m to r
-                                        testing = null
-                                    }
-                                }) {
-                                    if (testing == m) CircularProgressIndicator(Modifier.padding(4.dp))
-                                    else Icon(Icons.Filled.Speed, "测试")
+                Text("模型（勾选启用，可手动添加）：", style = MaterialTheme.typography.labelLarge)
+                // 手动添加模型行
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = manualModel, onValueChange = { manualModel = it },
+                        label = { Text("手动输入模型名") }, singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                    )
+                    IconButton(onClick = {
+                        val m = manualModel.trim()
+                        if (m.isNotBlank() && models.none { it.equals(m, ignoreCase = true) }) {
+                            models = models + m
+                            enabledModels = enabledModels + m
+                        }
+                        manualModel = ""
+                    }) { Icon(Icons.Filled.Add, "添加") }
+                }
+                if (models.isEmpty()) {
+                    Text(
+                        "尚未识别到模型 —— 点上方「自动识别」拉取，或直接手动输入模型名添加",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).padding(bottom = 4.dp),
+                ) {
+                    items(models) { m ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Checkbox(
+                                checked = enabledModels.contains(m),
+                                onCheckedChange = { on ->
+                                    enabledModels = if (on) enabledModels + m else enabledModels - m
+                                },
+                            )
+                            Text(m, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            IconButton(onClick = {
+                                testing = m
+                                scope.launch {
+                                    val r = runCatching { ProviderGateway.testModel(initial.copy(type = type, baseUrl = baseUrl, apiKey = apiKey), m) }
+                                        .getOrElse { ModelTestResult(error = it.message) }
+                                    testResult = m to r
+                                    testing = null
                                 }
+                            }) {
+                                if (testing == m) CircularProgressIndicator(Modifier.padding(4.dp))
+                                else Icon(Icons.Filled.Speed, "测试")
                             }
+                            IconButton(onClick = {
+                                models = models - m
+                                enabledModels = enabledModels - m
+                            }) { Icon(Icons.Filled.Close, "移除", Modifier.size(16.dp)) }
                         }
                     }
                 }
@@ -259,4 +296,15 @@ private fun typeName(t: ProviderType): String = when (t) {
     ProviderType.OPENAI_COMPAT -> "OpenAI 兼容"
     ProviderType.ANTHROPIC -> "Anthropic"
     ProviderType.OLLAMA -> "Ollama"
+}
+
+
+/** URL 清洗：补协议、去尾斜杠、去掉误粘贴的端点后缀 */
+private fun normalizeBaseUrl(raw: String): String {
+    var u = raw.trim()
+    if (u.isBlank()) return u
+    if (!u.startsWith("http://") && !u.startsWith("https://")) u = "https://$u"
+    u = u.trimEnd('/')
+    u = u.removeSuffix("/chat/completions").removeSuffix("/messages").removeSuffix("/models")
+    return u
 }

@@ -1,5 +1,6 @@
 package ai.devcodex.agent.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -33,6 +35,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -59,10 +62,10 @@ import ai.devcodex.agent.data.AppSettings
 import ai.devcodex.agent.data.Message
 import ai.devcodex.agent.data.ToolStatus
 import ai.devcodex.agent.ui.components.ApprovalCard
-import ai.devcodex.agent.ui.components.AssistantStream
+import ai.devcodex.agent.ui.components.AssistantMessage
 import ai.devcodex.agent.ui.components.InputBar
-import ai.devcodex.agent.ui.components.ToolLine
-import ai.devcodex.agent.ui.components.UserLine
+import ai.devcodex.agent.ui.components.ToolCard
+import ai.devcodex.agent.ui.components.UserBubble
 import ai.devcodex.agent.util.CrashHandler
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -186,19 +189,37 @@ fun ChatScreen(vm: AppViewModel) {
                     items(messages.size, key = { messages[it].id }) { idx ->
                         val msg = messages[idx]
                         when {
-                            msg.role == "user" -> UserLine(msg)
-                            // tool 消息不单独渲染，结果内联到对应 assistant 的工具行
+                            msg.role == "user" -> UserBubble(msg)
+                            // tool 消息内联渲染进 assistant 块
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
-                                Column {
-                                    AssistantStream(msg)
-                                    // 工具行内联：⏺ + ⎿
-                                    msg.toolCalls.forEach { tc ->
-                                        val toolMsg = toolResults[tc.id]
-                                        ToolLine(toolMsg ?: Message(
-                                            id = tc.id, role = "tool", toolCallId = tc.id,
-                                            toolName = tc.name, toolStatus = ToolStatus.RUNNING,
-                                        ))
+                                Row(Modifier.fillMaxWidth()) {
+                                    // AI 头像
+                                    Box(
+                                        Modifier
+                                            .padding(end = 10.dp, top = 2.dp)
+                                            .size(30.dp)
+                                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
+                                        contentAlignment = Alignment.Center,
+                                    ) { Text("⚡", style = MaterialTheme.typography.labelLarge) }
+                                    Column(Modifier.weight(1f)) {
+                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!)
+                                        if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
+                                            TypingDots()
+                                        } else if (msg.content.isNotBlank()) {
+                                            Text(
+                                                msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
+                                                Modifier.fillMaxWidth(),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                            )
+                                        }
+                                        msg.toolCalls.forEach { tc ->
+                                            val toolMsg = toolResults[tc.id]
+                                            ToolCard(toolMsg ?: Message(
+                                                id = tc.id, role = "tool", toolCallId = tc.id,
+                                                toolName = tc.name, toolStatus = ToolStatus.RUNNING,
+                                            ))
+                                        }
                                     }
                                 }
                             }
@@ -321,4 +342,33 @@ private fun typeName(n: String): String = when (n) {
     "ANTHROPIC" -> "Anthropic"
     "OLLAMA" -> "Ollama"
     else -> n
+}
+
+
+@Composable
+private fun TypingDots() {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)))
+        Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), RoundedCornerShape(4.dp)))
+        Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), RoundedCornerShape(4.dp)))
+        Text("思考中…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ThinkingBlockInline(text: String) {
+    var expanded by remember { mutableStateOf(false) }
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 6.dp),
+    ) {
+        Column(Modifier.clickable { expanded = !expanded }.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("✻", color = MaterialTheme.colorScheme.tertiary)
+                Text(if (expanded) "思考过程" else "已深度思考", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (expanded) Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }

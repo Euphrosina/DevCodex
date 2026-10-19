@@ -16,7 +16,7 @@ import androidx.core.view.WindowCompat
 enum class ColorMode { SYSTEM, LIGHT, DARK }
 
 data class ThemePrefs(
-    val presetId: String = "sakura",
+    val presetId: String = "claude",
     val colorMode: ColorMode = ColorMode.SYSTEM,
     val dynamicColor: Boolean = false,
     val amoled: Boolean = false,
