@@ -242,7 +242,24 @@ private fun ProviderEditDialog(
                                     enabledModels = if (on) enabledModels + m else enabledModels - m
                                 },
                             )
-                            Text(m, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Column(Modifier.weight(1f)) {
+                                Text(m, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                // 能力标签（内置知识库推断）
+                                val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
+                                val tags = buildList {
+                                    meta.tools?.let { add(if (it) "🔧工具" else "无工具") }
+                                    if (meta.vision) add("🖼视觉")
+                                    if (meta.reasoning) add("🧠推理")
+                                    meta.contextLength?.let { add("${it / 1000}k上下文") }
+                                }
+                                if (tags.isNotEmpty()) {
+                                    Text(
+                                        tags.joinToString(" · "),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                             IconButton(onClick = {
                                 testing = m
                                 scope.launch {

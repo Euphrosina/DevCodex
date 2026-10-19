@@ -272,7 +272,18 @@ fun ChatScreen(vm: AppViewModel) {
                         }.padding(horizontal = 8.dp),
                     ) {
                         Checkbox(checked = selected, onCheckedChange = null)
-                        Text(m, style = MaterialTheme.typography.bodyMedium, fontFamily = Mono)
+                        Column(Modifier.weight(1f)) {
+                            Text(m, style = MaterialTheme.typography.bodyMedium, fontFamily = Mono)
+                            val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
+                            val tags = buildList {
+                                meta.tools?.let { add(if (it) "🔧工具" else "无工具") }
+                                if (meta.vision) add("🖼视觉")
+                                if (meta.reasoning) add("🧠推理")
+                            }
+                            if (tags.isNotEmpty()) {
+                                Text(tags.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
             }

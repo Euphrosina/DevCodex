@@ -22,26 +22,29 @@ Daemon will be stopped at the end of the build
 > Task :app:mapDebugSourceSetPaths UP-TO-DATE
 > Task :app:compileDebugNavigationResources UP-TO-DATE
 > Task :app:mergeDebugResources UP-TO-DATE
-> Task :app:createDebugCompatibleScreenManifests
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
 > Task :app:extractDeepLinksDebug UP-TO-DATE
-> Task :app:processDebugMainManifest
-> Task :app:processDebugManifest
-> Task :app:processDebugManifestForPackage
-
-> Task :app:compileDebugKotlin
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ProvidersScreen.kt:108:107 Expression is unused.
-
-> Task :app:processDebugResources
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
 > Task :app:mergeDebugJniLibFolders UP-TO-DATE
 > Task :app:mergeDebugNativeLibs UP-TO-DATE
-> Task :app:compileDebugJavaWithJavac UP-TO-DATE
-> Task :app:processDebugJavaRes
-> Task :app:mergeDebugJavaResource
-> Task :app:dexBuilderDebug
 > Task :app:stripDebugDebugSymbols UP-TO-DATE
 > Task :app:validateSigningDebug UP-TO-DATE
 > Task :app:writeDebugAppMetadata UP-TO-DATE
 > Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileDebugKotlin
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/agent/AgentEngine.kt:186:85 Expression is unused.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:91:21 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:206:108 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ProvidersScreen.kt:108:107 Expression is unused.
+
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:dexBuilderDebug
 > Task :app:mergeProjectDexDebug
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
@@ -49,6 +52,6 @@ w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/u
 
 [Incubating] Problems report is available at: file:///home/z/my-project/DevCodex-v3/build/reports/problems/problems-report.html
 
-BUILD SUCCESSFUL in 57s
-38 actionable tasks: 12 executed, 26 up-to-date
+BUILD SUCCESSFUL in 53s
+38 actionable tasks: 5 executed, 33 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

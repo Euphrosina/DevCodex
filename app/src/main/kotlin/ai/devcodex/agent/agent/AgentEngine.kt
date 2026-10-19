@@ -7,6 +7,7 @@ import ai.devcodex.agent.data.ToolCall
 import ai.devcodex.agent.data.ToolStatus
 import ai.devcodex.agent.provider.ChatTurn
 import ai.devcodex.agent.provider.LlmClient
+import ai.devcodex.agent.provider.ModelRegistry
 import ai.devcodex.agent.provider.ProviderGateway
 import ai.devcodex.agent.provider.StreamEvent
 import ai.devcodex.agent.provider.streamPost
@@ -34,6 +35,45 @@ class AgentEngine(
 
     private fun ChatSession.patch(id: String, transform: (Message) -> Message): ChatSession =
         copy(messages = messages.map { if (it.id == id) transform(it) else it }, updatedAt = System.currentTimeMillis())
+
+    /** 流式消费：处理一行 SSE，更新聚合缓冲 */
+    private fun onLine(
+        provider: ai.devcodex.agent.data.ProviderConfig,
+        line: String,
+        text: StringBuilder,
+        think: StringBuilder,
+        toolAgg: LinkedHashMap<Int, Triple<String, String, StringBuilder>>,
+        assistantId: String,
+        currentRef: ChatSession,
+        onUpdate: (ChatSession) -> Unit,
+    ): ChatSession {
+        var current = currentRef
+        ProviderGateway.parseSseLine(provider, line).forEach { ev ->
+            when (ev) {
+                is StreamEvent.Delta -> {
+                    text.append(ev.text)
+                    current = current.patch(assistantId) { it.copy(content = text.toString()) }
+                    onUpdate(current)
+                }
+                is StreamEvent.Reasoning -> {
+                    think.append(ev.text)
+                    current = current.patch(assistantId) { it.copy(thinking = think.toString()) }
+                    onUpdate(current)
+                }
+                is StreamEvent.ToolCallDelta -> {
+                    val ex = toolAgg[ev.index]
+                    toolAgg[ev.index] = Triple(
+                        ev.id ?: ex?.first ?: "call_${ev.index}",
+                        ev.name ?: ex?.second ?: "",
+                        StringBuilder(ex?.third ?: "").append(ev.argsFragment),
+                    )
+                }
+                is StreamEvent.Done -> Unit
+                is StreamEvent.Error -> throw RuntimeException(ev.throwable.message ?: "stream error")
+            }
+        }
+        return current
+    }
 
     suspend fun run(session: ChatSession, onUpdate: (ChatSession) -> Unit) {
         val s = settings()
@@ -72,7 +112,10 @@ class AgentEngine(
                         }
                     }
                 }
-                val request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, toolSchemas, stream = true)
+
+                // rikkahub 式能力判定：无 TOOL 能力的已知模型不携带 tools（防 400）
+                val supportsTools = ModelRegistry.supportsTools(model)
+                val effectiveSchemas = if (supportsTools) toolSchemas else emptyList()
 
                 val assistantId = java.util.UUID.randomUUID().toString()
                 current = current.copy(messages = current.messages + Message(
@@ -84,30 +127,21 @@ class AgentEngine(
                 val think = StringBuilder()
                 val toolAgg = LinkedHashMap<Int, Triple<String, String, StringBuilder>>()
 
-                streamPost(LlmClient, request) { line ->
-                    ProviderGateway.parseSseLine(provider, line).forEach { ev ->
-                        when (ev) {
-                            is StreamEvent.Delta -> {
-                                text.append(ev.text)
-                                current = current.patch(assistantId) { it.copy(content = text.toString()) }
-                                onUpdate(current)
-                            }
-                            is StreamEvent.Reasoning -> {
-                                think.append(ev.text)
-                                current = current.patch(assistantId) { it.copy(thinking = think.toString()) }
-                                onUpdate(current)
-                            }
-                            is StreamEvent.ToolCallDelta -> {
-                                val ex = toolAgg[ev.index]
-                                toolAgg[ev.index] = Triple(
-                                    ev.id ?: ex?.first ?: "call_${ev.index}",
-                                    ev.name ?: ex?.second ?: "",
-                                    StringBuilder(ex?.third ?: "").append(ev.argsFragment),
-                                )
-                            }
-                            is StreamEvent.Done -> Unit
-                            is StreamEvent.Error -> throw RuntimeException(ev.throwable.message ?: "stream error")
-                        }
+                var request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, effectiveSchemas, stream = true)
+
+                fun consume(line: String): ChatSession =
+                    onLine(provider, line, text, think, toolAgg, assistantId, current, onUpdate)
+
+                try {
+                    streamPost(LlmClient, request) { line -> current = consume(line) }
+                } catch (e: Exception) {
+                    val msg = e.message ?: e.toString()
+                    if (msg.contains("HTTP 400") && effectiveSchemas.isNotEmpty()) {
+                        // 未知模型 400：降级去掉 tools 重试一次
+                        request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, emptyList(), stream = true)
+                        streamPost(LlmClient, request) { line -> current = consume(line) }
+                    } else {
+                        throw e
                     }
                 }
 
@@ -182,7 +216,7 @@ class AgentEngine(
             })
             onUpdate(current)
         } catch (e: Exception) {
-            events.emit(UiEvent.Error(e.message ?: "未知错误"))
+            events.emit(UiEvent.Error(e.message ?: e.toString()))
             onUpdate(current)
         }
     }
