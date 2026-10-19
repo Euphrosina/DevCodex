@@ -81,6 +81,7 @@ class AgentEngine(
                 onUpdate(current)
 
                 val text = StringBuilder()
+                val think = StringBuilder()
                 val toolAgg = LinkedHashMap<Int, Triple<String, String, StringBuilder>>()
 
                 streamPost(LlmClient, request) { line ->
@@ -91,7 +92,11 @@ class AgentEngine(
                                 current = current.patch(assistantId) { it.copy(content = text.toString()) }
                                 onUpdate(current)
                             }
-                            is StreamEvent.Reasoning -> Unit
+                            is StreamEvent.Reasoning -> {
+                                think.append(ev.text)
+                                current = current.patch(assistantId) { it.copy(thinking = think.toString()) }
+                                onUpdate(current)
+                            }
                             is StreamEvent.ToolCallDelta -> {
                                 val ex = toolAgg[ev.index]
                                 toolAgg[ev.index] = Triple(
@@ -134,9 +139,11 @@ class AgentEngine(
                         onUpdate(current)
                         continue
                     }
-                    // 审批判定：高危必审；fs_write 沙箱外必审
-                    val needApproval = def.risk == ToolDef.Risk.HIGH ||
-                        (tc.name == "fs_write" && !tc.argsJson.contains(SANDBOX_MARK))
+                    // 审批判定：用户已"总是允许"的直接放行；否则高危必审、fs_write 沙箱外必审
+                    val alwaysAllowed = s.toolPerms[tc.name] == "ALLOW"
+                    val needApproval = !alwaysAllowed && (
+                        def.risk == ToolDef.Risk.HIGH ||
+                            (tc.name == "fs_write" && !tc.argsJson.contains(SANDBOX_MARK)))
                     if (needApproval) {
                         val reason = when (def.risk) {
                             ToolDef.Risk.HIGH -> "高危操作，需确认：${def.description.take(50)}"

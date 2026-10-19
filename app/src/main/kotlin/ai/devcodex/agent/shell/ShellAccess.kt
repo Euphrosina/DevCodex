@@ -86,10 +86,15 @@ object ShellAccess {
         return shizukuService
     }
 
-    fun exec(command: String): String = when {
-        shizuku() != null -> runCatching { shizuku()!!.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" }
-        rootAvailable() -> rootExec(command)
-        else -> "ERROR: 无 Shizuku/Root 权限，请先在 设置→工具与权限 授权"
+    /** 挂起等待 Shizuku 服务绑定（修复授权后首次调用竞态） */
+    private suspend fun shizukuAwait(timeoutMs: Long = 4000): IShellService? {
+        bindShizukuService()
+        val t0 = System.currentTimeMillis()
+        while (shizukuService == null && System.currentTimeMillis() - t0 < timeoutMs) {
+            if (!shizukuAvailable() || !shizukuPermissionGranted()) return null
+            kotlinx.coroutines.delay(120)
+        }
+        return shizukuService
     }
 
     private fun rootExec(command: String): String = try {
@@ -99,25 +104,7 @@ object ShellAccess {
         out.ifBlank { "(exit ${p.exitValue()})" }
     } catch (e: Exception) { "ERROR(root): ${e.message}" }
 
-    fun readFile(path: String): String = when {
-        shizuku() != null -> runCatching { shizuku()!!.read(path) }.getOrElse { "ERROR: ${it.message}" }
-        else -> runCatching { File(path).readText() }.getOrElse { rootExec("cat \"$path\"") }
-    }
-
-    fun writeFile(path: String, data: String): String = when {
-        shizuku() != null -> runCatching { shizuku()!!.write(path, data); "OK" }.getOrElse { "ERROR: ${it.message}" }
-        else -> {
-            val ok = runCatching {
-                File(path).parentFile?.mkdirs()
-                File(path).writeText(data)
-                true
-            }.getOrDefault(false)
-            if (ok) "OK" else rootWrite(path, data)
-        }
-    }
-
     private fun rootWrite(path: String, data: String): String = try {
-        val esc = data.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
         val p = ProcessBuilder("su", "-c", "mkdir -p \"$(dirname \"$path\")\" && cat > \"$path\"").redirectErrorStream(true).start()
         p.outputStream.write(data.toByteArray())
         p.outputStream.close()
@@ -126,17 +113,36 @@ object ShellAccess {
         if (p.exitValue() == 0) "OK" else "ERROR(root write): $out"
     } catch (e: Exception) { "ERROR(root write): ${e.message}" }
 
-    fun listDir(path: String): String = when {
-        shizuku() != null -> runCatching { shizuku()!!.list(path) }.getOrElse { "ERROR: ${it.message}" }
-        else -> {
-            val f = File(path)
-            if (f.isDirectory) f.list()?.joinToString("\n") ?: "(empty)"
-            else rootExec("ls -la \"$path\"")
-        }
+    suspend fun exec(command: String): String {
+        shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
+        return if (rootAvailable()) rootExec(command)
+        else "ERROR: 无 Shizuku/Root 权限，请先在 设置→工具与权限 授权"
     }
 
-    fun delete(path: String): String = when {
-        shizuku() != null -> runCatching { if (shizuku()!!.delete(path)) "OK" else "ERROR: 删除失败" }.getOrElse { "ERROR: ${it.message}" }
-        else -> if (File(path).deleteRecursively()) "OK" else rootExec("rm -rf \"$path\"").ifBlank { "OK" }
+    suspend fun readFile(path: String): String {
+        shizukuAwait()?.let { svc -> return runCatching { svc.read(path) }.getOrElse { "ERROR: ${it.message}" } }
+        return runCatching { File(path).readText() }.getOrElse { rootExec("cat \"$path\"") }
+    }
+
+    suspend fun writeFile(path: String, data: String): String {
+        shizukuAwait()?.let { svc -> return runCatching { svc.write(path, data); "OK" }.getOrElse { "ERROR: ${it.message}" } }
+        val ok = runCatching {
+            File(path).parentFile?.mkdirs()
+            File(path).writeText(data)
+            true
+        }.getOrDefault(false)
+        return if (ok) "OK" else rootWrite(path, data)
+    }
+
+    suspend fun listDir(path: String): String {
+        shizukuAwait()?.let { svc -> return runCatching { svc.list(path) }.getOrElse { "ERROR: ${it.message}" } }
+        val f = File(path)
+        return if (f.isDirectory) (f.list()?.joinToString("\n") ?: "(empty)")
+        else rootExec("ls -la \"$path\"")
+    }
+
+    suspend fun delete(path: String): String {
+        shizukuAwait()?.let { svc -> return runCatching { if (svc.delete(path)) "OK" else "ERROR: 删除失败" }.getOrElse { "ERROR: ${it.message}" } }
+        return if (File(path).deleteRecursively()) "OK" else rootExec("rm -rf \"$path\"").ifBlank { "OK" }
     }
 }

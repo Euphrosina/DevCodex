@@ -81,7 +81,7 @@ data class AppSettings(
     val providers: List<ProviderConfig> = emptyList(),
     val theme: ThemePrefsData = ThemePrefsData(),
     val enabledTools: Set<String> = defaultTools(),
-    val sessionAllowShell: Boolean = false,   // 本会话内 shell 免确认
+    val toolPerms: Map<String, String> = emptyMap(),  // 工具名 -> ALLOW（总是允许）；缺省=每次询问
     val maxAgentSteps: Int = 24,
 ) {
     companion object {

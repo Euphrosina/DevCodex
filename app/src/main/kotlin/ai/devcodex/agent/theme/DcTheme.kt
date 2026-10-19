@@ -63,7 +63,7 @@ fun DcTheme(
 
     MaterialTheme(
         colorScheme = scheme,
-        typography = dcTypography(monoChat = prefs.chatFont == "mono"),
+        typography = dcTypography(appFont = prefs.appFont, chatFont = prefs.chatFont),
         content = content,
     )
 }

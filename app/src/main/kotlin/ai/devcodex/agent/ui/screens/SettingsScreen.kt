@@ -97,7 +97,7 @@ fun SettingsScreen(vm: AppViewModel) {
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("关于") },
-                    supportingContent = { Text("DevCodex v3.0.0 · AI Agent for Android\n主题与字体方案源自 rikkahub（Apache-2.0）") },
+                    supportingContent = { Text("DevCodex v3.1.0 · AI Agent for Android\n主题与字体方案源自 rikkahub（Apache-2.0）\nAgent 交互模式参考 Operit（Apache-2.0）") },
                 )
             }
         }
@@ -289,20 +289,42 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         Spacer(Modifier.padding(6.dp))
         ai.devcodex.agent.tools.BuiltinTools.all.forEach { tool ->
             val enabled = settings.enabledTools.contains(tool.name)
+            val alwaysAllowed = settings.toolPerms[tool.name] == "ALLOW"
             ListItem(
                 headlineContent = { Text(tool.name, style = MaterialTheme.typography.labelLarge) },
                 supportingContent = { Text(tool.description, maxLines = 2, style = MaterialTheme.typography.bodySmall) },
                 trailingContent = {
-                    Switch(
-                        checked = enabled,
-                        onCheckedChange = { on ->
-                            vm.saveSettings { s ->
-                                s.copy(enabledTools = if (on) s.enabledTools + tool.name else s.enabledTools - tool.name)
-                            }
-                        },
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Switch(
+                            checked = enabled,
+                            onCheckedChange = { on ->
+                                vm.saveSettings { s ->
+                                    s.copy(enabledTools = if (on) s.enabledTools + tool.name else s.enabledTools - tool.name)
+                                }
+                            },
+                        )
+                    }
                 },
             )
+            if (enabled && (tool.risk == ai.devcodex.agent.agent.ToolDef.Risk.HIGH || tool.risk == ai.devcodex.agent.agent.ToolDef.Risk.MEDIUM)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+                ) {
+                    Text("审批策略：", style = MaterialTheme.typography.labelSmall)
+                    FilterChip(
+                        selected = !alwaysAllowed,
+                        onClick = { vm.saveSettings { s -> s.copy(toolPerms = s.toolPerms - tool.name) } },
+                        label = { Text("每次询问", style = MaterialTheme.typography.labelSmall) },
+                    )
+                    Spacer(Modifier.padding(3.dp))
+                    FilterChip(
+                        selected = alwaysAllowed,
+                        onClick = { vm.saveSettings { s -> s.copy(toolPerms = s.toolPerms + (tool.name to "ALLOW")) } },
+                        label = { Text("总是允许", style = MaterialTheme.typography.labelSmall) },
+                    )
+                }
+            }
         }
         Spacer(Modifier.padding(32.dp))
     }

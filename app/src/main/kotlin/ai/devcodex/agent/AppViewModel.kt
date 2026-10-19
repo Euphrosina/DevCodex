@@ -143,8 +143,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             cont.invokeOnCancellation { approvalWaiters.remove(req.toolCall.id); _pendingApproval.value = null }
         }
 
-    fun respondApproval(granted: Boolean) {
+    fun respondApproval(granted: Boolean, always: Boolean = false) {
         val pending = _pendingApproval.value ?: return
+        if (granted && always) {
+            val toolName = pending.first.toolCall.name
+            saveSettings { s -> s.copy(toolPerms = s.toolPerms + (toolName to "ALLOW")) }
+        }
         approvalWaiters.remove(pending.first.toolCall.id)?.invoke(granted)
         _pendingApproval.value = null
     }

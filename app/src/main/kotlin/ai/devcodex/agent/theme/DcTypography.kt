@@ -41,19 +41,36 @@ private fun flexStyle(size: Int, weight: FontWeight, mono: Boolean = false): Tex
     )
 }
 
-/** M3 排版（Google Sans Flex 版） */
-fun dcTypography(monoChat: Boolean = false): Typography = Typography(
-    displaySmall = flexStyle(36, FontWeight.Normal),
-    headlineLarge = flexStyle(32, FontWeight.Normal),
-    headlineMedium = flexStyle(28, FontWeight.Normal),
-    headlineSmall = flexStyle(24, FontWeight.Normal),
-    titleLarge = flexStyle(22, FontWeight.Normal),
-    titleMedium = flexStyle(16, FontWeight.Medium),
-    titleSmall = flexStyle(14, FontWeight.Medium),
-    bodyLarge = flexStyle(16, FontWeight.Normal, monoChat),
-    bodyMedium = flexStyle(14, FontWeight.Normal, monoChat),
-    bodySmall = flexStyle(12, FontWeight.Normal, monoChat),
-    labelLarge = flexStyle(14, FontWeight.Medium),
-    labelMedium = flexStyle(12, FontWeight.Medium),
-    labelSmall = flexStyle(11, FontWeight.Medium),
-)
+/** M3 排版：应用字体(appFont) + 对话字体(chatFont) 双轨 */
+fun dcTypography(appFont: String = "gsf", chatFont: String = "gsf"): Typography {
+    val chatMono = chatFont == "mono"
+    val base = Typography(
+        displaySmall = flexStyle(36, FontWeight.Normal),
+        headlineLarge = flexStyle(32, FontWeight.Normal),
+        headlineMedium = flexStyle(28, FontWeight.Normal),
+        headlineSmall = flexStyle(24, FontWeight.Normal),
+        titleLarge = flexStyle(22, FontWeight.Normal),
+        titleMedium = flexStyle(16, FontWeight.Medium),
+        titleSmall = flexStyle(14, FontWeight.Medium),
+        bodyLarge = flexStyle(16, FontWeight.Normal, chatMono),
+        bodyMedium = flexStyle(14, FontWeight.Normal, chatMono),
+        bodySmall = flexStyle(12, FontWeight.Normal, chatMono),
+        labelLarge = flexStyle(14, FontWeight.Medium),
+        labelMedium = flexStyle(12, FontWeight.Medium),
+        labelSmall = flexStyle(11, FontWeight.Medium),
+    )
+    val appFamily = FlexFonts.byId(appFont)
+    if (appFamily == FlexFonts.GoogleSansFlex) return base
+    return base.copy(
+        displaySmall = base.displaySmall.copy(fontFamily = appFamily),
+        headlineLarge = base.headlineLarge.copy(fontFamily = appFamily),
+        headlineMedium = base.headlineMedium.copy(fontFamily = appFamily),
+        headlineSmall = base.headlineSmall.copy(fontFamily = appFamily),
+        titleLarge = base.titleLarge.copy(fontFamily = appFamily),
+        titleMedium = base.titleMedium.copy(fontFamily = appFamily),
+        titleSmall = base.titleSmall.copy(fontFamily = appFamily),
+        labelLarge = base.labelLarge.copy(fontFamily = appFamily),
+        labelMedium = base.labelMedium.copy(fontFamily = appFamily),
+        labelSmall = base.labelSmall.copy(fontFamily = appFamily),
+    )
+}

@@ -6,6 +6,7 @@ import ai.devcodex.agent.data.SessionRepo
 import ai.devcodex.agent.data.SettingsRepo
 import ai.devcodex.agent.shell.ShellAccess
 import ai.devcodex.agent.tools.BuiltinTools
+import ai.devcodex.agent.util.CrashHandler
 import rikka.shizuku.Shizuku
 
 class DevCodexApp : Application() {

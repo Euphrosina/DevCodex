@@ -119,10 +119,12 @@ object AnthropicProvider {
         }
         try {
             val req = chatRequest(p, model, "", listOf(ChatTurn("user", "say hi")), emptyList(), stream = true)
+            var gotDelta = false
             streamPost(LlmClient, req) { line ->
-                parseSseLine(line).forEach { ev -> if (ev is StreamEvent.Delta && ev.text.isNotBlank()) result = result.copy(streamOk = true) }
+                parseSseLine(line).forEach { ev -> if (ev is StreamEvent.Delta && ev.text.isNotBlank()) gotDelta = true }
             }
-            if (!result.streamOk) result = result.copy(streamOk = true, error = "流式无内容输出")
+            result = result.copy(streamOk = gotDelta)
+            if (!gotDelta) result = result.copy(error = "流式无内容输出")
         } catch (e: Exception) {
             result = result.copy(error = "流式失败: ${e.message}")
         }
