@@ -1,0 +1,22 @@
+{
+  "id": "builtin-ip-info",
+  "name": "IP 归属地查询",
+  "version": "1.0.0",
+  "author": "DevCodex 内置",
+  "description": "查询 IP 地址的归属地与运营商信息（ip-api.com 免费服务）",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "ip_lookup",
+      "description": "查询 IP 归属地（国家/省/市/ISP）。留空 ip 则查当前出口 IP",
+      "parameters": "{\"type\":\"object\",\"properties\":{\"ip\":{\"type\":\"string\",\"description\":\"要查的 IP，留空查本机出口\"}}}",
+      "endpoint": {
+        "method": "GET",
+        "url": "http://ip-api.com/json/{{ip}}?lang=zh-CN",
+        "headers": {},
+        "bodyTemplate": null,
+        "resultPath": null
+      }
+    }
+  ]
+}

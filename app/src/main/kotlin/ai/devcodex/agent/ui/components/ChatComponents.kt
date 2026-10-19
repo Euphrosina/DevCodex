@@ -19,6 +19,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.CheckCircle
@@ -88,7 +91,11 @@ fun AssistantMessage(msg: Message, showAvatar: Boolean = true) {
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("⚡", style = MaterialTheme.typography.labelLarge)
+                Icon(
+                    Icons.Filled.AutoAwesome, null,
+                    Modifier.size(17.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
             }
         }
         Column(Modifier.weight(1f)) {
@@ -122,7 +129,10 @@ fun ThinkingBlock(text: String) {
     ) {
         Column(Modifier.clickable { expanded = !expanded }.padding(horizontal = 10.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("✻", color = MaterialTheme.colorScheme.tertiary)
+                Icon(
+                    Icons.Filled.Psychology, null,
+                    Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary,
+                )
                 Text(
                     if (expanded) "思考过程" else "已深度思考",
                     style = MaterialTheme.typography.labelMedium,
@@ -228,7 +238,10 @@ fun ApprovalCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(12.dp)) {
-            Text("⚠ 权限确认 · $toolName", style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Filled.Warning, null, Modifier.size(16.dp))
+                Text("权限确认 · $toolName", style = MaterialTheme.typography.titleSmall)
+            }
             Spacer(Modifier.padding(3.dp))
             Text(reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
             Spacer(Modifier.padding(6.dp))

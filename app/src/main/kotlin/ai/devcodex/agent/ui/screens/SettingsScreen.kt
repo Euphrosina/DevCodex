@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
@@ -70,6 +71,7 @@ fun SettingsScreen(vm: AppViewModel) {
             Text(when (page) {
                 "theme" -> "主题与字体"
                 "tools" -> "工具与权限"
+                "stats" -> "使用统计"
                 else -> "设置"
             })
         }, navigationIcon = {
@@ -79,9 +81,16 @@ fun SettingsScreen(vm: AppViewModel) {
         when (page) {
             "theme" -> ThemePage(vm, settings, Modifier.padding(padding))
             "tools" -> ToolsPermPage(vm, settings, Modifier.padding(padding))
+            "stats" -> ai.devcodex.agent.ui.screens.StatsScreen(vm) { page = "root" }
             else -> Column(
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             ) {
+                ListItem(
+                    headlineContent = { Text("使用统计") },
+                    supportingContent = { Text("消息热力图 · 今日/累计数据") },
+                    leadingContent = { Icon(Icons.Filled.BarChart, null) },
+                    modifier = Modifier.clickable { page = "stats" },
+                )
                 ListItem(
                     headlineContent = { Text("主题与字体") },
                     supportingContent = { Text("预设主题 · 深色模式 · AMOLED · 字体") },

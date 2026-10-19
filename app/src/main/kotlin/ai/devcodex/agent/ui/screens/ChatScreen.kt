@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
@@ -117,7 +119,7 @@ fun ChatScreen(vm: AppViewModel) {
         last.index >= info.totalItemsCount - 2
     } }
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty() && nearBottom) listState.animateScrollToItem(messages.size - 1)
+        if (messages.isNotEmpty() && nearBottom) listState.scrollToItem(messages.size - 1)
     }
 
     val defaultProvider = settings.providers.find { it.id == session?.providerId }
@@ -212,7 +214,13 @@ fun ChatScreen(vm: AppViewModel) {
                                             .size(30.dp)
                                             .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
                                         contentAlignment = Alignment.Center,
-                                    ) { Text("⚡", style = MaterialTheme.typography.labelLarge) }
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.AutoAwesome, null,
+                                            Modifier.size(17.dp),
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        )
+                                    }
                                     Column(Modifier.weight(1f)) {
                                         if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!)
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
@@ -339,9 +347,9 @@ fun ChatScreen(vm: AppViewModel) {
                                     )
                                     val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
                                     val tags = buildList {
-                                        meta.tools?.let { add(if (it) "🔧 工具" else "无工具") }
-                                        if (meta.vision) add("🖼 视觉")
-                                        if (meta.reasoning) add("🧠 推理")
+                                        meta.tools?.let { add(if (it) "工具" else "无工具") }
+                                        if (meta.vision) add("视觉")
+                                        if (meta.reasoning) add("推理")
                                         meta.contextLength?.let { add("${it / 1000}k") }
                                     }
                                     if (tags.isNotEmpty()) {
@@ -463,7 +471,10 @@ private fun ThinkingBlockInline(text: String) {
     ) {
         Column(Modifier.clickable { expanded = !expanded }.padding(horizontal = 10.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("✻", color = MaterialTheme.colorScheme.tertiary)
+                Icon(
+                    Icons.Filled.Psychology, null,
+                    Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary,
+                )
                 Text(if (expanded) "思考过程" else "已深度思考", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (expanded) Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

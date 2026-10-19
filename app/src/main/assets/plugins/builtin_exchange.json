@@ -1,0 +1,22 @@
+{
+  "id": "builtin-exchange-rate",
+  "name": "汇率换算",
+  "version": "1.0.0",
+  "author": "DevCodex 内置",
+  "description": "查询货币汇率并换算（open.er-api.com 免费服务，无需 API Key）",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "exchange_rate",
+      "description": "查询两种货币之间的汇率。如 100 USD 兑换多少 CNY",
+      "parameters": "{\"type\":\"object\",\"properties\":{\"from\":{\"type\":\"string\",\"description\":\"源货币代码，如 USD\"},\"to\":{\"type\":\"string\",\"description\":\"目标货币代码，如 CNY\"},\"amount\":{\"type\":\"number\",\"description\":\"金额，默认 1\"}},\"required\":[\"from\",\"to\"]}",
+      "endpoint": {
+        "method": "GET",
+        "url": "https://open.er-api.com/v6/latest/{{from}}",
+        "headers": {},
+        "bodyTemplate": null,
+        "resultPath": "rates"
+      }
+    }
+  ]
+}

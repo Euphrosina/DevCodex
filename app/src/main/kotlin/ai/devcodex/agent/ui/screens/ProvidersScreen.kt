@@ -169,6 +169,12 @@ private fun ProviderEditDialog(
                     FilterChip(selected = type == ProviderType.ANTHROPIC, onClick = { type = ProviderType.ANTHROPIC; baseUrl = baseUrl.ifBlank { "https://api.anthropic.com" } }, label = { Text("Anthropic") })
                     FilterChip(selected = type == ProviderType.OLLAMA, onClick = { type = ProviderType.OLLAMA; baseUrl = baseUrl.ifBlank { "http://127.0.0.1:11434" } }, label = { Text("Ollama") })
                 }
+                // 本地模型连接提示
+                Text(
+                    "本地模型：LM Studio / PocketPal / Layla 选 OpenAI 兼容，填 http://127.0.0.1:1234/v1；Ollama（含 Termux 版）选 Ollama，填 http://127.0.0.1:11434；局域网电脑主机填 http://192.168.x.x:端口",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true)
                 OutlinedTextField(value = baseUrl, onValueChange = { baseUrl = it }, label = { Text("Base URL") }, singleLine = true)
                 OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text("API Key") }, singleLine = true)
@@ -247,9 +253,9 @@ private fun ProviderEditDialog(
                                 // 能力标签（内置知识库推断）
                                 val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
                                 val tags = buildList {
-                                    meta.tools?.let { add(if (it) "🔧工具" else "无工具") }
-                                    if (meta.vision) add("🖼视觉")
-                                    if (meta.reasoning) add("🧠推理")
+                                    meta.tools?.let { add(if (it) "工具" else "无工具") }
+                                    if (meta.vision) add("视觉")
+                                    if (meta.reasoning) add("推理")
                                     meta.contextLength?.let { add("${it / 1000}k上下文") }
                                 }
                                 if (tags.isNotEmpty()) {

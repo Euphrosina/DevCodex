@@ -1,0 +1,22 @@
+{
+  "id": "builtin-weather",
+  "name": "天气查询",
+  "version": "1.0.0",
+  "author": "DevCodex 内置",
+  "description": "查询指定城市的天气（wttr.in 免费服务，无需 API Key）",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "weather_query",
+      "description": "查询城市当前天气。返回温度/体感/湿度/风速/天气描述",
+      "parameters": "{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"城市名，如 Beijing 或 上海\"}},\"required\":[\"city\"]}",
+      "endpoint": {
+        "method": "GET",
+        "url": "https://wttr.in/{{city}}?format=j1",
+        "headers": { "User-Agent": "curl/8.0" },
+        "bodyTemplate": null,
+        "resultPath": "current_condition.0"
+      }
+    }
+  ]
+}

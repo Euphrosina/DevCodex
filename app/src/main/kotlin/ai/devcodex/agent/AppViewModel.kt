@@ -126,19 +126,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun startAgent(session: ChatSession) {
         isRunning.value = true
         runningJob = viewModelScope.launch {
+            var lastSave = 0L
             try {
                 engine.run(session) { s ->
                     _activeSession.value = s
-                    sessionRepo.save(s)
+                    // 节流存盘：流式期间最多 1 次/秒，防每 token 写盘卡顿
+                    val now = System.currentTimeMillis()
+                    if (now - lastSave > 1000) {
+                        lastSave = now
+                        saveSessionBg(s)
+                    }
                 }
             } finally {
                 isRunning.value = false
                 _pendingApproval.value = null
+                // 结束必存最终态
+                _activeSession.value?.let { saveSessionBg(it) }
             }
         }
     }
 
     fun stop() { runningJob?.cancel(); isRunning.value = false }
+
+    private fun saveSessionBg(s: ChatSession) {
+        viewModelScope.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { sessionRepo.save(s) } }
+    }
 
     fun updateSessionModel(providerId: String, modelId: String) {
         val cur = _activeSession.value ?: return

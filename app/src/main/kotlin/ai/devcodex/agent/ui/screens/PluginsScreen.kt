@@ -10,12 +10,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -39,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -52,6 +57,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 fun PluginsScreen(vm: AppViewModel) {
     val plugins by vm.plugins.collectAsState()
     var showInstall by remember { mutableStateOf(false) }
+    var showGuide by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<ai.devcodex.agent.data.PluginManifest?>(null) }
 
     Scaffold(
@@ -62,8 +68,27 @@ fun PluginsScreen(vm: AppViewModel) {
             }
         },
     ) { padding ->
+        // 开发指南入口
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.padding(padding).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(14.dp),
+            ) {
+                Icon(Icons.Filled.MenuBook, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Spacer(Modifier.padding(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("插件开发指南", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Text("JSON 格式说明 · 参数模板 · 示例", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                }
+                TextButton(onClick = { showGuide = true }) { Text("查看") }
+            }
+        }
         if (plugins.isEmpty()) {
-            Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
                 Text("暂无插件", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.padding(8.dp))
                 Text(
@@ -116,6 +141,9 @@ fun PluginsScreen(vm: AppViewModel) {
 
     if (showInstall) {
         InstallPluginDialog(vm) { showInstall = false }
+    }
+    if (showGuide) {
+        PluginGuideDialog { showGuide = false }
     }
     detail?.let { p ->
         AlertDialog(
@@ -226,4 +254,61 @@ private fun install(vm: AppViewModel, content: String, onError: (String) -> Unit
     vm.pluginRepo.installFromText(content)
         .onSuccess { vm.reloadPlugins() }
         .onFailure { onError("安装失败: ${it.message}") }
+}
+
+/** 插件开发指南对话框 */
+@Composable
+private fun PluginGuideDialog(onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("插件开发指南") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    """一个插件 = 一个 JSON 文件，声明若干"工具"。每个工具就是一次 HTTP 调用模板：AI 决定何时调用、填什么参数，DevCodex 按 URL/模板发请求并把结果回给 AI。
+
+字段说明：
+· id：插件唯一标识（英文数字横线）
+· name / description：名称与描述（给用户和 AI 看）
+· tools[]：工具列表
+  - name：工具名（英文，AI 看到它来调用）
+  - description：何时该用这个工具（写清楚，AI 靠它判断）
+  - parameters：JSON Schema，声明参数类型
+  - endpoint：HTTP 调用模板
+    · method / url：支持 {{参数名}} 占位
+    · headers：请求头（放 API Key）
+    · bodyTemplate：POST 请求体模板
+    · resultPath：结果提取路径（如 a.b.c，空=全文）
+
+最小示例（汇率查询）：
+{
+  "id": "my-exchange",
+  "name": "汇率换算",
+  "description": "查汇率",
+  "tools": [{
+    "name": "exchange_rate",
+    "description": "查询两种货币的汇率",
+    "parameters": "{\"type\":\"object\",\"properties\":{\"from\":{\"type\":\"string\"},\"to\":{\"type\":\"string\"}},\"required\":[\"from\",\"to\"]}",
+    "endpoint": {
+      "method": "GET",
+      "url": "https://open.er-api.com/v6/latest/{{from}}",
+      "resultPath": "rates"
+    }
+  }]
+}
+
+要点：
+1. parameters 是"字符串形式的 JSON Schema"，注意转义引号
+2. {{参数名}} 会被 AI 提供的参数值替换（URL/headers/body 均支持）
+3. API Key 放 headers 里，不要写进 URL
+4. resultPath 只支持简单点路径，复杂结果留空让 AI 自己读
+5. 保存为 .json 文件，从「安装 → 从文件安装」导入即可
+
+调试：装好后直接在对话里说"查一下 USD 到 CNY 的汇率"，观察工具卡片里的参数与返回。""",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text("知道了") } },
+    )
 }
