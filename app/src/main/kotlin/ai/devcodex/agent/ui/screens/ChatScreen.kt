@@ -37,6 +37,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -121,8 +123,8 @@ fun ChatScreen(vm: AppViewModel) {
     val defaultProvider = settings.providers.find { it.id == session?.providerId }
         ?: settings.providers.firstOrNull { it.isDefault }
         ?: settings.providers.firstOrNull()
-    val modelLabel = session?.modelId?.let { "$it · ${defaultProvider?.name ?: ""}" }
-        ?: defaultProvider?.enabledModels?.firstOrNull()?.let { "$it · ${defaultProvider.name}" }
+    val modelLabel = session?.modelId
+        ?: defaultProvider?.enabledModels?.firstOrNull()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -245,7 +247,7 @@ fun ChatScreen(vm: AppViewModel) {
                             )
                         }
                     }
-                    if (messages.isEmpty()) item { EmptyHint() }
+                    if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
                 }
                 InputBar(
                     value = input,
@@ -261,43 +263,100 @@ fun ChatScreen(vm: AppViewModel) {
         }
     }
 
-    // 模型选择
+    // 模型选择（aicode 风格：搜索 + 分组 + 单选）
     if (showModelPicker) {
+        var query by remember { mutableStateOf("") }
         ModalBottomSheet(onDismissRequest = { showModelPicker = false }) {
-            Text("选择模型", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
-            settings.providers.filter { it.enabled }.forEach { p ->
+            Column(Modifier.fillMaxWidth()) {
                 Text(
-                    "  ${p.name} · ${typeName(p.type.name)}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    "选择模型",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                 )
-                p.enabledModels.forEach { m ->
-                    val selected = session?.modelId == m && session?.providerId == p.id
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            vm.updateSessionModel(p.id, m)
-                            showModelPicker = false
-                        }.padding(horizontal = 8.dp),
-                    ) {
-                        Checkbox(checked = selected, onCheckedChange = null)
-                        Column(Modifier.weight(1f)) {
-                            Text(m, style = MaterialTheme.typography.bodyMedium, fontFamily = Mono)
-                            val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
-                            val tags = buildList {
-                                meta.tools?.let { add(if (it) "🔧工具" else "无工具") }
-                                if (meta.vision) add("🖼视觉")
-                                if (meta.reasoning) add("🧠推理")
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it },
+                    placeholder = { Text("搜索模型…") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                val activeProviders = settings.providers.filter { it.enabled && it.enabledModels.isNotEmpty() }
+                if (activeProviders.isEmpty()) {
+                    Text(
+                        "没有可用模型，请到「提供商」页配置",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(20.dp),
+                    )
+                }
+                LazyColumn(
+                    Modifier.fillMaxWidth().weight(1f, fill = false),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
+                ) {
+                    activeProviders.forEach { p ->
+                        // 提供商分组头
+                        item(key = "hdr-${p.id}") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(8.dp)
+                                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(p.name, style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    " · ${typeName(p.type.name)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
-                            if (tags.isNotEmpty()) {
-                                Text(tags.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        val filtered = p.enabledModels.filter { it.contains(query, ignoreCase = true) }
+                        items(filtered.size, key = { "${p.id}-" + filtered[it] }) { i ->
+                            val m = filtered[i]
+                            val selected = session?.modelId == m && session?.providerId == p.id
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        vm.updateSessionModel(p.id, m)
+                                        showModelPicker = false
+                                    }
+                                    .padding(start = 8.dp, end = 16.dp),
+                            ) {
+                                androidx.compose.material3.RadioButton(selected = selected, onClick = null)
+                                Column(Modifier.weight(1f).padding(vertical = 2.dp)) {
+                                    Text(
+                                        m,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontFamily = Mono,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
+                                    val tags = buildList {
+                                        meta.tools?.let { add(if (it) "🔧 工具" else "无工具") }
+                                        if (meta.vision) add("🖼 视觉")
+                                        if (meta.reasoning) add("🧠 推理")
+                                        meta.contextLength?.let { add("${it / 1000}k") }
+                                    }
+                                    if (tags.isNotEmpty()) {
+                                        Text(
+                                            tags.joinToString("  "),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(32.dp))
         }
     }
 
@@ -339,21 +398,39 @@ fun ChatScreen(vm: AppViewModel) {
 }
 
 @Composable
-private fun EmptyHint() {
+private fun EmptyHint(onExample: (String) -> Unit) {
     Column(
-        Modifier.fillMaxWidth().padding(top = 36.dp, start = 16.dp, end = 16.dp),
+        Modifier.fillMaxWidth().padding(top = 56.dp, start = 24.dp, end = 24.dp),
     ) {
-        Text("DevCodex", style = MaterialTheme.typography.headlineSmall, fontFamily = Mono)
-        Text("Android AI Agent · v3.1.0", style = MaterialTheme.typography.labelMedium, fontFamily = Mono, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(12.dp))
+        Text("有什么可以帮你的？", style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "DevCodex v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · Android AI Agent",
+            style = MaterialTheme.typography.labelMedium,
+            fontFamily = Mono,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.height(20.dp))
+        Text("试试这些指令：", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
         listOf(
-            "工具：fs_read · shell_exec · ui_snapshot · http_request …",
-            "「列出 /sdcard/Download 下的文件」",
-            "「读取当前屏幕内容并总结」",
-            "「写一段文字到 /sdcard/notes.txt」",
+            "列出 /sdcard/Download 下的文件",
+            "读取当前屏幕内容并总结",
+            "写一段文字到工作区 notes.txt",
+            "当前手机装了哪些 app？",
         ).forEach { line ->
-            Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = Mono, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onExample(line) },
+            ) {
+                Text(
+                    "❯ $line",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = Mono,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                )
+            }
         }
     }
 }

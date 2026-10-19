@@ -299,8 +299,9 @@ private fun ProviderEditDialog(
         },
         confirmButton = {
             TextButton(onClick = {
+                val cleaned = normalizeBaseUrl(baseUrl)
                 onSave(initial.copy(
-                    name = name.ifBlank { "提供商" }, type = type, baseUrl = baseUrl.trim().trimEnd('/'),
+                    name = name.ifBlank { hostOf(cleaned) }, type = type, baseUrl = cleaned,
                     apiKey = apiKey, models = models, enabledModels = enabledModels,
                     enabled = true,
                 ))
@@ -326,3 +327,8 @@ private fun normalizeBaseUrl(raw: String): String {
     u = u.removeSuffix("/chat/completions").removeSuffix("/messages").removeSuffix("/models")
     return u
 }
+
+/** 从 URL 提取可读的提供商名 */
+private fun hostOf(url: String): String = runCatching {
+    java.net.URI(url).host?.removePrefix("www.")?.replaceFirstChar { it.uppercase() } ?: url
+}.getOrDefault(url.ifBlank { "提供商" })
