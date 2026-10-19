@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -252,6 +253,7 @@ fun InputBar(
     running: Boolean,
     modelLabel: String?,
     onPickModel: () -> Unit,
+    onAttach: () -> Unit = {},
 ) {
     // rikkahub 视觉：顶部大圆角浮层容器
     Surface(
@@ -295,6 +297,13 @@ fun InputBar(
                     placeholder = { Text("给 DevCodex 下指令…") },
                     maxLines = 6,
                     shape = RoundedCornerShape(24.dp),
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.AttachFile, "上传附件",
+                            Modifier.clickable { onAttach() },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                 )
                 Spacer(Modifier.width(8.dp))
                 FilledIconButton(

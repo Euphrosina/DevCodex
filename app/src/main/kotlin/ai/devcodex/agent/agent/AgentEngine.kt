@@ -106,7 +106,10 @@ class AgentEngine(
                     add(ChatTurn("system", systemPrompt))
                     current.messages.forEach { m ->
                         when (m.role) {
-                            "user" -> if (m.content.isNotBlank()) add(ChatTurn("user", m.content))
+                            "user" -> {
+                                val c = (m.llmContent ?: m.content)
+                                if (c.isNotBlank()) add(ChatTurn("user", c))
+                            }
                             "assistant" -> if (m.content.isNotBlank() || m.toolCalls.isNotEmpty()) add(ChatTurn("assistant", m.content, m.toolCalls))
                             "tool" -> if (m.toolCallId != null) add(ChatTurn("tool", m.toolResult ?: "(空)", toolCallId = m.toolCallId, name = m.toolName))
                         }
@@ -228,6 +231,10 @@ class AgentEngine(
 
 val DEFAULT_SYSTEM_PROMPT = """你是 DevCodex，一个运行在 Android 手机上的 AI 智能体（Agent）。
 你可以通过工具读写手机本地文件、执行 shell 命令、发 HTTP 请求、读取屏幕内容、做界面自动化。
+
+工作区：用户上传的文件都在工作区，工具用相对路径即可访问（如 fs_read "报告.md"）。
+用户消息中出现 [附件 文件名] 标记时，表示该工作区文件已随消息附上内容，直接使用即可，不必重复读取。
+在非明确要求时，产出文件也写到工作区（相对路径），方便用户在「工作区」页查看。
 
 行为准则：
 1. 需要信息时主动调用工具获取，不要凭空编造手机上的内容。

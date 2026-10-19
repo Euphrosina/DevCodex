@@ -15,6 +15,7 @@ import ai.devcodex.agent.data.ChatSession
 import ai.devcodex.agent.data.PluginManifest
 import ai.devcodex.agent.data.ProviderConfig
 import ai.devcodex.agent.data.SessionRepo
+import ai.devcodex.agent.data.WorkspaceRepo
 import ai.devcodex.agent.data.ToolStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val settingsRepo get() = appCtx.settingsRepo
     val sessionRepo get() = appCtx.sessionRepo
     val pluginRepo get() = appCtx.pluginRepo
+    val workspaceRepo get() = appCtx.workspaceRepo
 
     val settings = appCtx.settingsRepo.settings
 
@@ -88,14 +90,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun send(text: String) {
         val session = _activeSession.value ?: sessionRepo.newSession().also { _activeSession.value = it }
         if (text.isBlank() || isRunning.value) return
+        // @引用 → 附件内容注入（LLM 侧带文件正文，UI 展示保持原文）
+        val display = text.trim()
+        var llmContent: String? = null
+        val mentions = Regex("@([\\w\\u4e00-\\u9fa5.\\-]+)").findAll(display).map { it.groupValues[1] }.toList()
+        if (mentions.isNotEmpty()) {
+            val sb = StringBuilder(display)
+            for (name in mentions.distinct()) {
+                val entry = workspaceRepo.list().firstOrNull { it.name.equals(name, ignoreCase = true) } ?: continue
+                if (workspaceRepo.isTextFile(entry)) {
+                    sb.append("\n\n[附件 ").append(entry.name).append("]\n")
+                        .append(WorkspaceRepo.textPreview(entry.file, 15000))
+                } else {
+                    sb.append("\n\n[附件 ").append(entry.name).append("]（二进制文件，大小 ")
+                        .append(workspaceRepo.formatSize(entry.size)).append("，可用工具按相对路径访问）")
+                }
+            }
+            llmContent = sb.toString()
+        }
         val userMsg = ai.devcodex.agent.data.Message(
             id = java.util.UUID.randomUUID().toString(),
-            role = "user", content = text.trim(),
+            role = "user", content = display, llmContent = llmContent,
             timestamp = System.currentTimeMillis(),
         )
         val updated = session.copy(
             messages = session.messages + userMsg,
-            title = if (session.title == "新会话") text.trim().take(20) else session.title,
+            title = if (session.title == "新会话") display.take(20) else session.title,
             updatedAt = System.currentTimeMillis(),
         )
         _activeSession.value = updated

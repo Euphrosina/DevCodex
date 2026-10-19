@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -30,6 +31,7 @@ import ai.devcodex.agent.ui.screens.ChatScreen
 import ai.devcodex.agent.ui.screens.PluginsScreen
 import ai.devcodex.agent.ui.screens.ProvidersScreen
 import ai.devcodex.agent.ui.screens.SettingsScreen
+import ai.devcodex.agent.ui.screens.WorkspaceScreen
 
 private data class Tab(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
@@ -38,6 +40,7 @@ fun AppRoot(vm: AppViewModel) {
     val tabs = remember {
         listOf(
             Tab("chat", "对话", Icons.Filled.Chat),
+            Tab("workspace", "工作区", Icons.Filled.Folder),
             Tab("providers", "提供商", Icons.Filled.AutoAwesome),
             Tab("plugins", "插件", Icons.Filled.Extension),
             Tab("settings", "设置", Icons.Filled.Settings),
@@ -88,6 +91,7 @@ fun AppRoot(vm: AppViewModel) {
         ) {
             composable("chat") { ChatScreen(vm) }
             composable("providers") { ProvidersScreen(vm) }
+            composable("workspace") { WorkspaceScreen(vm) }
             composable("plugins") { PluginsScreen(vm) }
             composable("settings") { SettingsScreen(vm) }
         }

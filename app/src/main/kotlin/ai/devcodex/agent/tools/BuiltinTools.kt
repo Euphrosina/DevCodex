@@ -23,7 +23,7 @@ object BuiltinTools {
     // ============ 内存文件读写工具 ============
     val fsRead = ToolDef(
         name = "fs_read",
-        description = "读取手机本地文本文件内容。路径可以是应用沙箱路径，也可以是系统绝对路径（需要 Shizuku/Root 授权后才能读沙箱外路径，如 /sdcard/xxx.txt）",
+        description = "读取手机本地文本文件。相对路径（如 \"notes.txt\" 或 \"src/Main.kt\"）= 工作区文件（用户上传的文件都在工作区）；绝对路径 = 系统路径（沙箱外需 Shizuku/Root 授权，如 /sdcard/xxx.txt）",
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -33,12 +33,13 @@ object BuiltinTools {
         },
     ) { args ->
         val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path 参数"
-        ShellAccess.readFile(path).take(20000)
+        val resolved = resolvePath(path)
+        ShellAccess.readFile(resolved).take(20000)
     }
 
     val fsWrite = ToolDef(
         name = "fs_write",
-        description = "写入手机本地文本文件（覆盖）。沙箱外路径需要 Shizuku/Root 授权，且每次写入需用户确认",
+        description = "写入文本文件（覆盖）。相对路径 = 工作区（免确认直接写）；绝对路径 = 系统路径（沙箱外需 Shizuku/Root + 用户确认）",
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -53,12 +54,20 @@ object BuiltinTools {
     ) { args ->
         val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path"
         val content = ai.devcodex.agent.util.JsonArg.string(args, "content") ?: ""
-        ShellAccess.writeFile(path, content)
+        val resolved = resolvePath(path)
+        // 工作区内或沙箱内 → 免审批直写；其他路径走 ShellAccess（需授权/审批）
+        if (resolved.startsWith(appContext.filesDir.canonicalPath)) {
+            runCatching {
+                java.io.File(resolved).parentFile?.mkdirs()
+                java.io.File(resolved).writeText(content)
+            }.fold(onSuccess = { "OK（工作区: ${java.io.File(resolved).relativeTo(java.io.File(appContext.filesDir, "workspace")).path}）" },
+                   onFailure = { "ERROR: ${it.message}" })
+        } else ShellAccess.writeFile(resolved, content)
     }
 
     val fsList = ToolDef(
         name = "fs_list",
-        description = "列出目录内容。可列任意路径（Shizuku/Root 授权后）",
+        description = "列目录。相对路径或空 = 工作区；绝对路径 = 系统目录（沙箱外需授权）",
         parameters = obj {
             put("type", "object")
             put("properties", obj { put("path", obj { put("type", "string"); put("description", "目录绝对路径") }) })
@@ -66,7 +75,7 @@ object BuiltinTools {
         },
     ) { args ->
         val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path"
-        ShellAccess.listDir(path).take(8000)
+        ShellAccess.listDir(resolvePath(path)).take(8000)
     }
 
     val fsDelete = ToolDef(
@@ -255,6 +264,14 @@ object BuiltinTools {
         val text = ai.devcodex.agent.util.JsonArg.string(args, "text") ?: ""
         ai.devcodex.agent.util.Notify.post(appContext, title, text)
         "已发送通知"
+    }
+
+    /** 相对路径 → 工作区绝对路径；绝对路径原样返回 */
+    private fun resolvePath(path: String): String {
+        if (path.startsWith("/")) return path
+        val ws = java.io.File(appContext.filesDir, "workspace")
+        ws.mkdirs()
+        return java.io.File(ws, path.removePrefix("./")).canonicalPath
     }
 
     val all: List<ToolDef> = listOf(

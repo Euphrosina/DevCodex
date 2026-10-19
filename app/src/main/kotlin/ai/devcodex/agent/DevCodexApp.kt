@@ -16,6 +16,7 @@ class DevCodexApp : Application() {
     lateinit var settingsRepo: SettingsRepo
     lateinit var sessionRepo: SessionRepo
     lateinit var pluginRepo: PluginRepo
+    lateinit var workspaceRepo: ai.devcodex.agent.data.WorkspaceRepo
 
     override fun onCreate() {
         super.onCreate()
@@ -23,6 +24,7 @@ class DevCodexApp : Application() {
         settingsRepo = SettingsRepo(this)
         sessionRepo = SessionRepo(this)
         pluginRepo = PluginRepo(this)
+        workspaceRepo = ai.devcodex.agent.data.WorkspaceRepo(this)
         BuiltinTools.init(this)
 
         // Shizuku 权限回调 → 尝试绑定服务

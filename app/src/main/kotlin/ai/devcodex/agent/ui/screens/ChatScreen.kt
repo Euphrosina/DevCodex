@@ -1,6 +1,8 @@
 package ai.devcodex.agent.ui.screens
 
 import androidx.compose.animation.animateContentSize
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -90,6 +92,13 @@ fun ChatScreen(vm: AppViewModel) {
     val listState = rememberLazyListState()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    val attachPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            vm.workspaceRepo.import(uri).onSuccess { e ->
+                input = (if (input.isBlank()) "" else input + " ") + "@${e.name}"
+            }
+        }
+    }
 
     // 启动时检查上次崩溃
     LaunchedEffect(Unit) { crashReport = CrashHandler.latestReport(context) }
@@ -246,6 +255,7 @@ fun ChatScreen(vm: AppViewModel) {
                     running = isRunning,
                     modelLabel = modelLabel,
                     onPickModel = { showModelPicker = true },
+                    onAttach = { attachPicker.launch("*/*") },
                 )
             }
         }

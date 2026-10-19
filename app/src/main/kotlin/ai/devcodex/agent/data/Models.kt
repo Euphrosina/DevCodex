@@ -45,6 +45,7 @@ data class Message(
     val id: String,
     val role: String,                       // user | assistant | tool | system
     val content: String = "",
+    val llmContent: String? = null,         // 发给 LLM 的内容（含附件展开）
     val toolCalls: List<ToolCall> = emptyList(),
     val toolCallId: String? = null,         // tool 消息对应
     val toolName: String? = null,
