@@ -49,6 +49,14 @@ val LlmClient = OkHttpClient.Builder()
     .writeTimeout(60, TimeUnit.SECONDS)
     .build()
 
+/** 测试专用客户端：总超时 90s，避免慢模型/断网把测试挂死 */
+val TestClient = OkHttpClient.Builder()
+    .connectTimeout(15, TimeUnit.SECONDS)
+    .readTimeout(75, TimeUnit.SECONDS)
+    .writeTimeout(30, TimeUnit.SECONDS)
+    .callTimeout(90, TimeUnit.SECONDS)
+    .build()
+
 suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
     enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) { if (cont.isActive) cont.resumeWithException(e) }

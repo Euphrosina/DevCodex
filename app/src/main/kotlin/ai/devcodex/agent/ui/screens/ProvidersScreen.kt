@@ -51,6 +51,7 @@ import ai.devcodex.agent.data.ModelTestResult
 import ai.devcodex.agent.data.ProviderConfig
 import ai.devcodex.agent.data.ProviderType
 import ai.devcodex.agent.provider.ProviderGateway
+import ai.devcodex.agent.util.describe
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -188,7 +189,7 @@ private fun ProviderEditDialog(
                                         enabledModels = list  // 全选，用户自行取消
                                     }
                                 } catch (e: Exception) {
-                                    fetchError = "识别失败: ${e.message?.take(160)}，可手动在下方添加模型"
+                                    fetchError = "识别失败: ${e.describe().take(200)}，可手动在下方添加模型"
                                 }
                                 fetching = false
                             }
@@ -246,7 +247,7 @@ private fun ProviderEditDialog(
                                 testing = m
                                 scope.launch {
                                     val r = runCatching { ProviderGateway.testModel(initial.copy(type = type, baseUrl = baseUrl, apiKey = apiKey), m) }
-                                        .getOrElse { ModelTestResult(error = it.message) }
+                                        .getOrElse { ModelTestResult(error = it.describe()) }
                                     testResult = m to r
                                     testing = null
                                 }

@@ -3,6 +3,7 @@ package ai.devcodex.agent.provider
 import ai.devcodex.agent.data.ModelTestResult
 import ai.devcodex.agent.data.ProviderConfig
 import ai.devcodex.agent.data.ToolCall
+import ai.devcodex.agent.util.describe
 import kotlinx.serialization.json.*
 import okhttp3.Request
 
@@ -91,7 +92,7 @@ object OpenAiCompatProvider {
             .url("${p.endpoint()}/models")
             .addHeader("Authorization", "Bearer ${p.apiKey}")
             .get().build()
-        LlmClient.newCall(req).await().use { resp ->
+        TestClient.newCall(req).await().use { resp ->
             if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}")
             val body = resp.body?.string() ?: ""
             val obj = LlmJson.parseToJsonElement(body).jsonObject
@@ -109,19 +110,19 @@ object OpenAiCompatProvider {
             // 1. 非流式延迟
             val t0 = System.currentTimeMillis()
             val req = chatRequest(p, model, listOf(ChatTurn("user", "ping")), emptyList(), stream = false)
-            LlmClient.newCall(req).await().use { resp ->
+            TestClient.newCall(req).await().use { resp ->
                 if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}: ${resp.body?.string()?.take(200)}")
                 resp.body?.string()
             }
             result = result.copy(latencyMs = System.currentTimeMillis() - t0)
         } catch (e: Exception) {
-            return result.copy(error = "非流式失败: ${e.message}")
+            return result.copy(error = "非流式失败: ${e.describe()}")
         }
         try {
             // 2. 流式
             val req = chatRequest(p, model, listOf(ChatTurn("user", "say hi")), emptyList(), stream = true)
             var gotDelta = false
-            streamPost(LlmClient, req) { line ->
+            streamPost(TestClient, req) { line ->
                 parseSseLine(line).forEach { ev ->
                     if (ev is StreamEvent.Delta && ev.text.isNotBlank()) gotDelta = true
                 }
@@ -129,7 +130,7 @@ object OpenAiCompatProvider {
             result = result.copy(streamOk = gotDelta)
             if (!gotDelta) result = result.copy(error = "流式无内容输出")
         } catch (e: Exception) {
-            result = result.copy(error = "流式失败: ${e.message}")
+            result = result.copy(error = "流式失败: ${e.describe()}")
         }
         try {
             // 3. 工具调用支持
@@ -143,7 +144,7 @@ object OpenAiCompatProvider {
                 })
             }
             val req = chatRequest(p, model, listOf(ChatTurn("user", "调用 echo_test 工具回显 hello")), listOf(testTool), stream = false)
-            LlmClient.newCall(req).await().use { resp ->
+            TestClient.newCall(req).await().use { resp ->
                 val body = resp.body?.string() ?: ""
                 if (resp.isSuccessful) {
                     val obj = LlmJson.parseToJsonElement(body).jsonObject
@@ -152,7 +153,7 @@ object OpenAiCompatProvider {
                 }
             }
         } catch (e: Exception) {
-            result = result.copy(error = result.error?.let { "$it; 工具测试失败: ${e.message}" } ?: "工具测试失败: ${e.message}")
+            result = result.copy(error = result.error?.let { "$it; 工具测试失败: ${e.describe()}" } ?: "工具测试失败: ${e.describe()}")
         }
         return result
     }

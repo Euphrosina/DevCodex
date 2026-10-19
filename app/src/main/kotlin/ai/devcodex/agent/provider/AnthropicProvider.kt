@@ -2,6 +2,7 @@ package ai.devcodex.agent.provider
 
 import ai.devcodex.agent.data.ModelTestResult
 import ai.devcodex.agent.data.ProviderConfig
+import ai.devcodex.agent.util.describe
 import kotlinx.serialization.json.*
 import okhttp3.Request
 
@@ -94,7 +95,7 @@ object AnthropicProvider {
             .addHeader("x-api-key", p.apiKey)
             .addHeader("anthropic-version", "2023-06-01")
             .get().build()
-        LlmClient.newCall(req).await().use { resp ->
+        TestClient.newCall(req).await().use { resp ->
             if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}")
             val body = resp.body?.string() ?: ""
             val obj = LlmJson.parseToJsonElement(body).jsonObject
@@ -109,24 +110,24 @@ object AnthropicProvider {
         try {
             val t0 = System.currentTimeMillis()
             val req = chatRequest(p, model, "", listOf(ChatTurn("user", "ping")), emptyList(), stream = false)
-            LlmClient.newCall(req).await().use { resp ->
+            TestClient.newCall(req).await().use { resp ->
                 if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}: ${resp.body?.string()?.take(200)}")
                 resp.body?.string()
             }
             result = result.copy(latencyMs = System.currentTimeMillis() - t0)
         } catch (e: Exception) {
-            return result.copy(error = "非流式失败: ${e.message}")
+            return result.copy(error = "非流式失败: ${e.describe()}")
         }
         try {
             val req = chatRequest(p, model, "", listOf(ChatTurn("user", "say hi")), emptyList(), stream = true)
             var gotDelta = false
-            streamPost(LlmClient, req) { line ->
+            streamPost(TestClient, req) { line ->
                 parseSseLine(line).forEach { ev -> if (ev is StreamEvent.Delta && ev.text.isNotBlank()) gotDelta = true }
             }
             result = result.copy(streamOk = gotDelta)
             if (!gotDelta) result = result.copy(error = "流式无内容输出")
         } catch (e: Exception) {
-            result = result.copy(error = "流式失败: ${e.message}")
+            result = result.copy(error = "流式失败: ${e.describe()}")
         }
         return result
     }

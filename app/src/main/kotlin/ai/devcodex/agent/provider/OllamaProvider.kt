@@ -2,6 +2,7 @@ package ai.devcodex.agent.provider
 
 import ai.devcodex.agent.data.ModelTestResult
 import ai.devcodex.agent.data.ProviderConfig
+import ai.devcodex.agent.util.describe
 import kotlinx.serialization.json.*
 import okhttp3.Request
 
@@ -40,7 +41,7 @@ object OllamaProvider {
 
     suspend fun listModels(p: ProviderConfig): List<String> {
         val req = Request.Builder().url("${p.endpoint()}/api/tags").get().build()
-        LlmClient.newCall(req).await().use { resp ->
+        TestClient.newCall(req).await().use { resp ->
             if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}")
             val obj = LlmJson.parseToJsonElement(resp.body?.string() ?: "").jsonObject
             return obj["models"]?.jsonArray?.mapNotNull { m ->
@@ -54,13 +55,13 @@ object OllamaProvider {
         try {
             val t0 = System.currentTimeMillis()
             val req = chatRequest(p, model, listOf(ChatTurn("user", "ping")), emptyList(), stream = false)
-            LlmClient.newCall(req).await().use { resp ->
+            TestClient.newCall(req).await().use { resp ->
                 if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}")
                 resp.body?.string()
             }
             result = result.copy(latencyMs = System.currentTimeMillis() - t0, streamOk = true)
         } catch (e: Exception) {
-            return result.copy(error = "连接失败: ${e.message}")
+            return result.copy(error = "连接失败: ${e.describe()}")
         }
         return result
     }
