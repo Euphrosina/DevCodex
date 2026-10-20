@@ -153,6 +153,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { sessionRepo.save(s) } }
     }
 
+    fun clearActiveSession() {
+        val cur = _activeSession.value ?: return
+        val cleared = cur.copy(messages = emptyList())
+        _activeSession.value = cleared
+        sessionRepo.save(cleared)
+    }
+
+    fun toggleSessionFlag(flag: String) {
+        val cur = _activeSession.value ?: return
+        val updated = when (flag) {
+            "deepThink" -> cur.copy(deepThink = !cur.deepThink)
+            "webSearch" -> cur.copy(webSearch = !cur.webSearch)
+            else -> return
+        }
+        _activeSession.value = updated
+        sessionRepo.save(updated)
+    }
+
     fun updateSessionModel(providerId: String, modelId: String) {
         val cur = _activeSession.value ?: return
         val updated = cur.copy(providerId = providerId, modelId = modelId)

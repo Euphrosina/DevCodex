@@ -16,8 +16,8 @@ android {
         applicationId = "ai.devcodex.agent"
         minSdk = 26
         targetSdk = 37
-        versionCode = 21
-        versionName = "3.7.0"
+        versionCode = 23
+        versionName = "3.8.0"
     }
 
     splits {
@@ -104,5 +104,6 @@ dependencies {
     implementation("io.noties.markwon:html:4.6.2")
     implementation("io.noties.markwon:image-coil:4.6.2")
     implementation("io.coil-kt:coil:2.7.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.github.ivan-magda:kotlin-textmate-core:0.3.0")
 }

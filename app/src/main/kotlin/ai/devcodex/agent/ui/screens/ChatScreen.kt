@@ -219,16 +219,33 @@ fun ChatScreen(vm: AppViewModel) {
                     items(messages.size, key = { messages[it].id }) { idx ->
                         val msg = messages[idx]
                         when {
-                            msg.role == "user" -> Box(Modifier.combinedClickable(
-                                onClick = {},
-                                onLongClick = {
-                                    selectedMsg = msg
-                                },
-                            )) { UserBubble(msg) }
+                            msg.role == "user" -> Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Box(Modifier.weight(1f).combinedClickable(
+                                    onClick = {},
+                                    onLongClick = { selectedMsg = msg },
+                                )) { UserBubble(msg) }
+                                ai.devcodex.agent.ui.components.Avatar(
+                                    name = settings.theme.userNick,
+                                    avatarFile = settings.theme.userAvatar,
+                                    defaultColor = androidx.compose.ui.graphics.Color(0xFF059669),
+                                    size = 28.dp,
+                                )
+                            }
                             // tool 消息内联渲染进 assistant 块
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
-                                Column(Modifier.fillMaxWidth()) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    ai.devcodex.agent.ui.components.Avatar(
+                                        name = settings.theme.aiNick,
+                                        avatarFile = settings.theme.aiAvatar,
+                                        defaultColor = androidx.compose.ui.graphics.Color(0xFF4F46E5),
+                                        defaultIcon = Icons.Filled.AutoAwesome,
+                                        size = 28.dp,
+                                    )
+                                    Column(Modifier.weight(1f)) {
                                         if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!)
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             TypingDots()
@@ -290,6 +307,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         }
                                         MessageStats(msg)
                                     }
+                                }
                             }
                         }
                     }
@@ -324,9 +342,63 @@ fun ChatScreen(vm: AppViewModel) {
                         },
                         valueRange = 0f..3f,
                         steps = 2,
+                        colors = androidx.compose.material3.SliderColors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            activeTickColor = MaterialTheme.colorScheme.primary,
+                            inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                            disabledThumbColor = MaterialTheme.colorScheme.primary,
+                            disabledActiveTrackColor = MaterialTheme.colorScheme.primary,
+                            disabledInactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            disabledActiveTickColor = MaterialTheme.colorScheme.primary,
+                            disabledInactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                     )
                     Text(labels[cur], style = MaterialTheme.typography.labelSmall, fontFamily = Mono, modifier = Modifier.width(24.dp))
+                }
+                // 斜杠命令面板（opencode/Claude Code 式）
+                if (input.startsWith("/") && !input.contains(" ")) {
+                    val cmds = listOf(
+                        "/new" to "新建会话", "/clear" to "清空本会话",
+                        "/compact" to "立即压缩上下文", "/model" to "选择模型",
+                        "/deep" to "切换深度思考", "/web" to "切换联网搜索",
+                        "/terminal" to "打开终端", "/stats" to "使用统计",
+                    ).filter { it.first.startsWith(input) }
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(14.dp),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    ) {
+                        Column {
+                            cmds.forEach { (c, desc) ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            input = ""
+                                            when (c) {
+                                                "/new" -> vm.openSession(null)
+                                                "/clear" -> vm.clearActiveSession()
+                                                "/compact" -> vm.toast.value = "已开启自动压缩（上下文超限时自动执行）"
+                                                "/model" -> showModelPicker = true
+                                                "/deep" -> vm.toggleSessionFlag("deepThink")
+                                                "/web" -> vm.toggleSessionFlag("webSearch")
+                                                "/terminal" -> vm.navRequest.value = "terminal"
+                                                "/stats" -> vm.navRequest.value = "stats"
+                                            }
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                ) {
+                                    Text(c, fontFamily = Mono, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(90.dp))
+                                    Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
                 }
                 InputBar(
                     value = input,
@@ -409,29 +481,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         )
                                 )
                                 Spacer(Modifier.width(12.dp))
-                                // 模型圆标（品牌色+首字母）
-                                val brandColor = when {
-                                    m.contains("gpt", true) || m.contains("o1") || m.contains("o3") || m.contains("o4") -> androidx.compose.ui.graphics.Color(0xFF10A37F)
-                                    m.contains("claude", true) -> androidx.compose.ui.graphics.Color(0xFFD97757)
-                                    m.contains("deepseek", true) -> androidx.compose.ui.graphics.Color(0xFF4D6BFE)
-                                    m.contains("glm", true) || m.contains("zhipu", true) -> androidx.compose.ui.graphics.Color(0xFF3859FF)
-                                    m.contains("gemini", true) -> androidx.compose.ui.graphics.Color(0xFF4285F4)
-                                    m.contains("qwen", true) || m.contains("通义", true) -> androidx.compose.ui.graphics.Color(0xFF615CED)
-                                    m.contains("kimi", true) || m.contains("moonshot", true) -> androidx.compose.ui.graphics.Color(0xFF000000)
-                                    m.contains("llama", true) -> androidx.compose.ui.graphics.Color(0xFF0668E1)
-                                    m.contains("step", true) -> androidx.compose.ui.graphics.Color(0xFF7C4DFF)
-                                    else -> MaterialTheme.colorScheme.primary
-                                }
-                                Box(
-                                    Modifier.size(28.dp).background(brandColor, androidx.compose.foundation.shape.CircleShape),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        m.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "?",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = androidx.compose.ui.graphics.Color.White,
-                                    )
-                                }
+                                ai.devcodex.agent.ui.components.ModelLogo(m, 28.dp)
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(

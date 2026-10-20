@@ -144,7 +144,7 @@ class AgentEngine(
         var current = session
         try {
             var steps = 0
-            while (steps < s.maxAgentSteps) {
+            while (true) {   // 已取消最大步数限制（按用户要求），由模型自主结束循环
                 steps++
 
                 // ---- 1. 流式调 LLM ----
@@ -296,7 +296,7 @@ class AgentEngine(
                 }
                 // ---- 3. 循环：工具结果已在消息里，下一轮带给 LLM ----
             }
-            events.emit(UiEvent.Error("已达最大步数（${s.maxAgentSteps}），停止执行"))
+            events.emit(UiEvent.Error("执行已中止"))
         } catch (e: CancellationException) {
             current = current.copy(messages = current.messages.map { m ->
                 if (m.toolStatus == ToolStatus.RUNNING) m.copy(toolStatus = ToolStatus.ERROR, toolResult = "已中断") else m

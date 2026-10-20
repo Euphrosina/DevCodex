@@ -14,7 +14,10 @@ import java.util.Locale
  */
 class WorkspaceRepo(private val context: Context) {
 
-    val root: File get() = File(context.filesDir, "workspace").apply { mkdirs() }
+    val root: File
+        get() = if (ai.devcodex.agent.data.WorkspaceConfig.dir.isNotBlank())
+            File(ai.devcodex.agent.data.WorkspaceConfig.dir).apply { mkdirs() }
+        else File(context.filesDir, "workspace").apply { mkdirs() }
 
     /** 相对路径 → 工作区绝对路径（防目录穿越） */
     fun resolve(path: String): File {

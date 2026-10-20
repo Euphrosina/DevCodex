@@ -267,12 +267,19 @@ object BuiltinTools {
         "已发送通知"
     }
 
-    /** 相对路径 → 工作区绝对路径；绝对路径原样返回 */
+    /** 相对路径 → 工作区绝对路径（尊重自定义工作区）；绝对路径原样返回 */
     private fun resolvePath(path: String): String {
         if (path.startsWith("/")) return path
-        val ws = java.io.File(appContext.filesDir, "workspace")
-        ws.mkdirs()
+        val ws = workspaceRoot()
         return java.io.File(ws, path.removePrefix("./")).canonicalPath
+    }
+
+    /** 当前工作区根（自定义目录或应用私有） */
+    fun workspaceRoot(): java.io.File {
+        val custom = ai.devcodex.agent.data.WorkspaceConfig.dir
+        val ws = if (custom.isNotBlank()) java.io.File(custom) else java.io.File(appContext.filesDir, "workspace")
+        ws.mkdirs()
+        return ws
     }
 
     // ============ 技能读取 ============

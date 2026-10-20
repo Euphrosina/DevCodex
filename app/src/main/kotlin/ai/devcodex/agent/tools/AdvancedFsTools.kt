@@ -16,7 +16,7 @@ object AdvancedFsTools {
 
     private fun resolve(path: String): String =
         if (path.startsWith("/")) path
-        else java.io.File(java.io.File(ai.devcodex.agent.tools.BuiltinTools.appContext().filesDir, "workspace"), path.removePrefix("./")).canonicalPath
+        else java.io.File(ai.devcodex.agent.tools.BuiltinTools.workspaceRoot(), path.removePrefix("./")).canonicalPath
 
     val fsCopy = ToolDef(
         name = "fs_copy",

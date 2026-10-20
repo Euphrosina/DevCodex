@@ -89,6 +89,15 @@ fun AppRoot(vm: AppViewModel) {
         }
     }
 
+    // 目的地变化同步 tabIdx（系统返回键退出页面后防止索引失同步——"设置只能打开一次"的根因）
+    androidx.compose.runtime.DisposableEffect(nav) {
+        val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
+            val i = tabs.indexOfFirst { it.route == destination.route }
+            if (i >= 0) tabIdx = i
+        }
+        nav.addOnDestinationChangedListener(listener)
+        onDispose { nav.removeOnDestinationChangedListener(listener) }
+    }
     // 沉浸模式逃生：一旦当前页不是 chat（如跳设置），立即恢复导航
     val showNav = !(theme.immersive && tabs[tabIdx].route == "chat" && nav.currentDestination?.route == "chat")
 

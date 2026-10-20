@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.activity.compose.rememberLauncherForActivityResult
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -151,6 +153,52 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         vm.saveSettings { s -> s.copy(theme = transform(s.theme)) }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        // ===== 个性化：昵称与头像 =====
+        Text("个性化", style = MaterialTheme.typography.titleMedium)
+        var userNick by remember(settings) { mutableStateOf(t.userNick) }
+        var aiNick by remember(settings) { mutableStateOf(t.aiNick) }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            ai.devcodex.agent.ui.components.Avatar(name = t.userNick, avatarFile = t.userAvatar, defaultColor = androidx.compose.ui.graphics.Color(0xFF059669), size = 44.dp)
+            Spacer(Modifier.width(10.dp))
+            OutlinedTextField(value = userNick, onValueChange = { userNick = it }, label = { Text("你的昵称") }, singleLine = true, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = { save { it.copy(userNick = userNick) } }) { Text("保存") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            ai.devcodex.agent.ui.components.Avatar(name = t.aiNick, avatarFile = t.aiAvatar, defaultColor = androidx.compose.ui.graphics.Color(0xFF4F46E5), size = 44.dp)
+            Spacer(Modifier.width(10.dp))
+            OutlinedTextField(value = aiNick, onValueChange = { aiNick = it }, label = { Text("AI 昵称") }, singleLine = true, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = { save { it.copy(aiNick = aiNick) } }) { Text("保存") }
+        }
+        // 头像从图库选择（复制进 filesDir/avatars）
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val userImgPicker = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+            uri ?: return@rememberLauncherForActivityResult
+            runCatching {
+                val dir = java.io.File(ctx.filesDir, "avatars").apply { mkdirs() }
+                val name = "user_" + java.util.UUID.randomUUID().toString().take(6) + ".png"
+                ctx.contentResolver.openInputStream(uri)?.use { input ->
+                    java.io.File(dir, name).outputStream().use { input.copyTo(it) }
+                }
+                save { it.copy(userAvatar = name) }
+            }
+        }
+        val aiImgPicker = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+            uri ?: return@rememberLauncherForActivityResult
+            runCatching {
+                val dir = java.io.File(ctx.filesDir, "avatars").apply { mkdirs() }
+                val name = "ai_" + java.util.UUID.randomUUID().toString().take(6) + ".png"
+                ctx.contentResolver.openInputStream(uri)?.use { input ->
+                    java.io.File(dir, name).outputStream().use { input.copyTo(it) }
+                }
+                save { it.copy(aiAvatar = name) }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { userImgPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("更换你的头像") }
+            OutlinedButton(onClick = { aiImgPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("更换 AI 头像") }
+        }
+        Spacer(Modifier.padding(10.dp))
+
         // ===== 界面偏好 =====
         Text("界面偏好", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.padding(6.dp))
@@ -258,6 +306,43 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
     var rootChecked by remember { mutableStateOf<Boolean?>(null) }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+
+        // ============ 工作区（Operit 式自定义） ============
+        Text("工作区", style = MaterialTheme.typography.titleMedium)
+        val curWs = settings.workspaceDir.ifBlank {
+            "应用私有目录（${context.filesDir.absolutePath}/workspace）"
+        }
+        Text("当前: $curWs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+        var wsInput by remember { mutableStateOf(settings.workspaceDir) }
+        OutlinedTextField(
+            value = wsInput, onValueChange = { wsInput = it },
+            label = { Text("自定义工作区绝对路径（留空=应用私有）") },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 2.dp)) {
+            listOf("" to "私有目录", "/sdcard/DevCodex" to "DevCodex", "/sdcard/Documents" to "Documents", "/sdcard/Download" to "Download").forEach { (v, label) ->
+                FilterChip(selected = wsInput == v, onClick = { wsInput = v }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+            }
+        }
+        var wsMsg by remember { mutableStateOf<String?>(null) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = {
+                val dir = wsInput.trim()
+                val f = java.io.File(dir)
+                val ok = f.exists() && f.isDirectory && f.canWrite() || (f.mkdirs() && f.canWrite())
+                wsMsg = if (dir.isBlank()) "已恢复应用私有工作区"
+                        else if (ok) "目录可写，已应用"
+                        else "目录不可写（需存储权限或改用已存在目录）"
+                if (dir.isBlank() || ok) {
+                    vm.saveSettings { it.copy(workspaceDir = dir) }
+                    ai.devcodex.agent.data.WorkspaceConfig.dir = dir
+                }
+            }) { Text("应用") }
+            if (wsMsg != null) Text(wsMsg!!, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp))
+        }
+        Spacer(Modifier.padding(10.dp))
 
         // ============ 权限通道 ============
         Text("权限通道", style = MaterialTheme.typography.titleMedium)

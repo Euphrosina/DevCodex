@@ -69,11 +69,20 @@ fun UserBubble(msg: Message) {
             shape = RoundedCornerShape(18.dp, 18.dp, 6.dp, 18.dp),
             modifier = Modifier.widthIn(max = 310.dp),
         ) {
-            Text(
-                msg.content,
-                Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            androidx.compose.runtime.CompositionLocalProvider(
+                ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
+                    primary = MaterialTheme.colorScheme.onPrimary,
+                    surface = MaterialTheme.colorScheme.primary,
+                    outlineVariant = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.4f),
+                ),
+            ) {
+                ai.devcodex.agent.m3l.MixedMarkdownLatex(
+                    text = msg.content,
+                    textColor = MaterialTheme.colorScheme.onPrimary,
+                    isStreaming = false,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
         }
     }
 }

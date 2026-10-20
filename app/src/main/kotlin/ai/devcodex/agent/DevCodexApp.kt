@@ -1,6 +1,7 @@
 package ai.devcodex.agent
 
 import android.app.Application
+import kotlinx.coroutines.launch
 import ai.devcodex.agent.data.PluginRepo
 import ai.devcodex.agent.data.SessionRepo
 import ai.devcodex.agent.data.SettingsRepo
@@ -30,6 +31,12 @@ class DevCodexApp : Application() {
         BuiltinTools.init(this)
         seedPlugins()
         seedSkills()
+        // 工作区目录同步（自定义工作区生效）
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            settingsRepo.settings.collect { s ->
+                ai.devcodex.agent.data.WorkspaceConfig.dir = s.workspaceDir
+            }
+        }
 
         Shizuku.addRequestPermissionResultListener { _, grantResult ->
             if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {

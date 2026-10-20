@@ -99,6 +99,8 @@ data class AppSettings(
     val customTools: List<CustomToolDef> = emptyList(),
     // 思考推理等级：空=默认, low/medium/high
     val reasoningEffort: String = "",
+    // 自定义工作区：空=应用私有目录；否则为绝对路径
+    val workspaceDir: String = "",
 ) {
     companion object {
         fun defaultTools(): Set<String> = setOf(
@@ -122,6 +124,10 @@ data class ThemePrefsData(
     val chatFont: String = "gsf",
     val navPosition: String = "bottom",    // bottom | rail（左侧）
     val immersive: Boolean = false,        // 沉浸模式：隐藏导航栏（聊天页全屏）
+    val userNick: String = "我",
+    val aiNick: String = "DevCodex",
+    val userAvatar: String = "",           // 头像文件名（filesDir/avatars/）
+    val aiAvatar: String = "",
 )
 
 // ============ 自定义工具 ============

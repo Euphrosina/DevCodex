@@ -39,22 +39,17 @@ Daemon will be stopped at the end of the build
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/agent/AgentEngine.kt:273:85 Expression is unused.
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/data/Models.kt:70:5 @kotlin.jvm.Transient does not affect @Serializable classes. Please use @kotlinx.serialization.Transient instead.
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/AppRoot.kt:49:44 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/components/ChatComponents.kt:102:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/components/ChatComponents.kt:111:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/components/MarkdownText.kt:38:21 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:108:21 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:232:108 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:249:108 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/PluginsScreen.kt:83:34 'val Icons.Filled.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook.
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ProvidersScreen.kt:109:107 Expression is unused.
 w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/WorkspaceScreen.kt:160:33 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
 
 > Task :app:compileDebugJavaWithJavac
-Note: Some input files use or override a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-Note: Some input files use unchecked or unsafe operations.
-Note: Recompile with -Xlint:unchecked for details.
-
-> Task :app:processDebugJavaRes
-> Task :app:mergeDebugJavaResource
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
 > Task :app:dexBuilderDebug
 > Task :app:mergeProjectDexDebug
 > Task :app:packageDebug
@@ -63,6 +58,6 @@ Note: Recompile with -Xlint:unchecked for details.
 
 [Incubating] Problems report is available at: file:///home/z/my-project/DevCodex-v3/build/reports/problems/problems-report.html
 
-BUILD SUCCESSFUL in 2m 18s
-39 actionable tasks: 8 executed, 31 up-to-date
+BUILD SUCCESSFUL in 1m 32s
+39 actionable tasks: 6 executed, 33 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

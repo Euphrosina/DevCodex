@@ -42,15 +42,15 @@ Daemon will be stopped at the end of the build
 > Task :app:compressReleaseAssets UP-TO-DATE
 > Task :app:extractReleaseVersionControlInfo UP-TO-DATE
 > Task :app:generateReleaseLintVitalReportModel UP-TO-DATE
-> Task :app:minifyReleaseWithR8
-> Task :app:lintVitalAnalyzeRelease
-> Task :app:lintVitalReportRelease
+> Task :app:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :app:lintVitalReportRelease UP-TO-DATE
 > Task :app:lintVitalRelease
 > Task :app:collectReleaseDependencies UP-TO-DATE
 > Task :app:sdkReleaseDependencyData UP-TO-DATE
 > Task :app:validateSigningRelease UP-TO-DATE
 > Task :app:writeReleaseAppMetadata UP-TO-DATE
 > Task :app:writeReleaseSigningConfigVersions UP-TO-DATE
+> Task :app:minifyReleaseWithR8
 > Task :app:mergeReleaseComposeMapping
 > Task :app:compileReleaseArtProfile
 > Task :app:convertShrunkResourcesToBinaryRelease
@@ -59,6 +59,6 @@ Daemon will be stopped at the end of the build
 > Task :app:createReleaseApkListingFileRedirect
 > Task :app:assembleRelease
 
-BUILD SUCCESSFUL in 6m 47s
-53 actionable tasks: 11 executed, 42 up-to-date
+BUILD SUCCESSFUL in 5m 33s
+53 actionable tasks: 9 executed, 44 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html
