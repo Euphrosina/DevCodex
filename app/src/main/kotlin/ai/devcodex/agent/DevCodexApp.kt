@@ -29,6 +29,7 @@ class DevCodexApp : Application() {
         workspaceRepo = WorkspaceRepo(this)
         BuiltinTools.init(this)
         seedPlugins()
+        seedSkills()
 
         Shizuku.addRequestPermissionResultListener { _, grantResult ->
             if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {

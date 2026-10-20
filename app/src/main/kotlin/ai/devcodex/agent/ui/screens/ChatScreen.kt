@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerValue
@@ -192,6 +193,12 @@ fun ChatScreen(vm: AppViewModel) {
                             Icon(Icons.Filled.Menu, "会话列表")
                         }
                     },
+                    actions = {
+                        // 沉浸模式下的设置出口（任何时候都可进）
+                        IconButton(onClick = { vm.navRequest.value = "settings" }) {
+                            Icon(Icons.Filled.Settings, "设置")
+                        }
+                    },
                 )
             },
         ) { padding ->
@@ -240,9 +247,20 @@ fun ChatScreen(vm: AppViewModel) {
                                                 onClick = {},
                                                 onLongClick = { selectedMsg = msg },
                                             )) {
-                                                ai.devcodex.agent.ui.components.MarkdownText(
-                                                    content = msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
-                                                )
+                                                // M3L 渲染：Markdown + 代码高亮 + LaTeX + 表格（流式稳定）
+                                                androidx.compose.runtime.CompositionLocalProvider(
+                                                    ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
+                                                        primary = MaterialTheme.colorScheme.primary,
+                                                        surface = MaterialTheme.colorScheme.surfaceContainerLow,
+                                                        outlineVariant = MaterialTheme.colorScheme.outlineVariant,
+                                                    ),
+                                                ) {
+                                                    ai.devcodex.agent.m3l.MixedMarkdownLatex(
+                                                        text = msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
+                                                        textColor = MaterialTheme.colorScheme.onSurface,
+                                                        isStreaming = msg.toolStatus == ToolStatus.RUNNING,
+                                                    )
+                                                }
                                             }
                                         }
                                         msg.toolCalls.forEach { tc ->

@@ -109,6 +109,8 @@ data class ThemePrefsData(
     val amoled: Boolean = false,
     val appFont: String = "gsf",
     val chatFont: String = "gsf",
+    val navPosition: String = "bottom",    // bottom | rail（左侧）
+    val immersive: Boolean = false,        // 沉浸模式：隐藏导航栏（聊天页全屏）
 )
 
 // ============ 插件 ============

@@ -115,8 +115,14 @@ object ShellAccess {
 
     suspend fun exec(command: String): String {
         shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
-        return if (rootAvailable()) rootExec(command)
-        else "ERROR: 无 Shizuku/Root 权限，请先在 设置→工具与权限 授权"
+        if (rootAvailable()) return rootExec(command)
+        // 细化诊断：告诉用户到底卡在哪一步
+        val diag = when {
+            !shizukuAvailable() -> "Shizuku 服务未运行（请打开 Shizuku App 启动服务，ADB/无线调试方式）"
+            !shizukuPermissionGranted() -> "Shizuku 已运行但未授权本应用（Shizuku App 内点授权，或本应用设置页点「授权」）"
+            else -> "Shizuku 已授权但服务绑定失败（试试在设置页点「重新绑定服务」）"
+        }
+        return "ERROR: Shell 通道不可用。$diag"
     }
 
     suspend fun readFile(path: String): String {

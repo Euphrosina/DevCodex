@@ -12,6 +12,7 @@ dependencyResolutionManagement {
     repositories {
         maven("https://maven.aliyun.com/repository/google") { isAllowInsecureProtocol = true }
         maven("https://maven.aliyun.com/repository/public") { isAllowInsecureProtocol = true }
+        maven("https://jitpack.io")
         google()
         mavenCentral()
     }

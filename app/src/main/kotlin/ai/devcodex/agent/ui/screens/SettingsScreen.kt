@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.School
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PrivacyTip
@@ -140,6 +141,33 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         vm.saveSettings { s -> s.copy(theme = transform(s.theme)) }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        // ===== 界面偏好 =====
+        Text("界面偏好", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.padding(6.dp))
+        Text("导航位置", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+            listOf("bottom" to "底部", "rail" to "左侧", "immersive" to "沉浸").forEach { (v, label) ->
+                FilterChip(selected = t.navPosition == v, onClick = { save { it.copy(navPosition = v) } }, label = { Text(label) })
+            }
+        }
+        if (t.navPosition == "immersive") {
+            Text(
+                "沉浸模式：仅对话页全屏无导航，通过会话抽屉右上角齿轮回到设置",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        ListItem(
+            headlineContent = { Text("沉浸模式（对话页隐藏导航）") },
+            supportingContent = { Text("底部/左侧导航时也可单独开启") },
+            trailingContent = {
+                Switch(checked = t.immersive, onCheckedChange = { on -> save { it.copy(immersive = on) } })
+            },
+        )
+        Spacer(Modifier.padding(12.dp))
+        HorizontalDivider()
+        Spacer(Modifier.padding(12.dp))
+
         Text("主题预设", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.padding(6.dp))
         LazyVerticalGrid(
@@ -491,7 +519,7 @@ private fun AboutPage(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("DevCodex", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("DevCodex", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · Android AI Agent",
                     style = MaterialTheme.typography.labelMedium,

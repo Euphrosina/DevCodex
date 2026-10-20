@@ -28,6 +28,7 @@ object FlexFonts {
     fun byId(id: String): FontFamily = when (id) {
         "gsf" -> GoogleSansFlex
         "mono" -> JetBrainsMono
+        "serif" -> FontFamily.Serif
         else -> System
     }
 }

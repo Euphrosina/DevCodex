@@ -16,8 +16,8 @@ android {
         applicationId = "ai.devcodex.agent"
         minSdk = 26
         targetSdk = 37
-        versionCode = 17
-        versionName = "3.6.0"
+        versionCode = 18
+        versionName = "3.7.0"
     }
 
     splits {
@@ -95,4 +95,14 @@ dependencies {
 
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
+
+    // M3L 渲染库（Markdown+TextMate 高亮+LaTeX）
+    implementation("io.noties.markwon:core:4.6.2")
+    implementation("io.noties.markwon:ext-strikethrough:4.6.2")
+    implementation("io.noties.markwon:ext-tasklist:4.6.2")
+    implementation("io.noties.markwon:linkify:4.6.2")
+    implementation("io.noties.markwon:html:4.6.2")
+    implementation("io.noties.markwon:image-coil:4.6.2")
+    implementation("io.coil-kt:coil:2.7.0")
+    implementation("io.github.ivan-magda:kotlin-textmate-core:0.3.0")
 }
