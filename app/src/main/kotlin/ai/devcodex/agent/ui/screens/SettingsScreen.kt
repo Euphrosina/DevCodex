@@ -101,6 +101,15 @@ fun SettingsScreen(vm: AppViewModel) {
             }
         })
     }) { padding ->
+        // 页面跳转请求（如 /stats → stats 子页）
+        LaunchedEffect(Unit) {
+            vm.settingsPageRequest.collect { req ->
+                if (req != null) {
+                    page = req
+                    vm.settingsPageRequest.value = null
+                }
+            }
+        }
         when (page) {
             "theme" -> ThemePage(vm, settings, Modifier.padding(padding))
             "tools" -> ToolsPermPage(vm, settings, Modifier.padding(padding))

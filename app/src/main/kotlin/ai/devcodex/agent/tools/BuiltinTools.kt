@@ -19,6 +19,10 @@ object BuiltinTools {
     fun init(ctx: Context) { appContext = ctx.applicationContext }
     fun appContext(): Context = appContext
 
+    /** 应用内页面导航回调（ChatScreen 注册：AI 可打开终端/设置等页面） */
+    @Volatile
+    var navigateCallback: ((String) -> Unit)? = null
+
     private fun obj(block: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): kotlinx.serialization.json.JsonObject = buildJsonObject(block)
 
     // ============ 内存文件读写工具 ============
@@ -94,6 +98,31 @@ object BuiltinTools {
     }
 
     // ============ Shell ============
+    val appOpen = ToolDef(
+        name = "app_open",
+        description = "打开应用内页面。当用户要求打开终端/设置/统计/插件时用这个（不要用 shell 启动 Termux 等外部应用）。page 可选: terminal(应用内终端), settings(设置), stats(使用统计), plugins(插件), providers(提供商)",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("page", obj { put("type", "string"); put("enum", kotlinx.serialization.json.buildJsonArray {
+                    add(kotlinx.serialization.json.JsonPrimitive("terminal"))
+                    add(kotlinx.serialization.json.JsonPrimitive("settings"))
+                    add(kotlinx.serialization.json.JsonPrimitive("stats"))
+                    add(kotlinx.serialization.json.JsonPrimitive("plugins"))
+                    add(kotlinx.serialization.json.JsonPrimitive("providers"))
+                }) })
+            })
+            put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("page")) })
+        },
+        risk = ToolDef.Risk.LOW,
+    ) { args ->
+        val page = ai.devcodex.agent.util.JsonArg.string(args, "page") ?: return@ToolDef "ERROR: 缺少 page"
+        val valid = listOf("terminal", "settings", "stats", "plugins", "providers")
+        if (page !in valid) return@ToolDef "ERROR: page 须为 ${valid.joinToString("/")}"
+        navigateCallback?.invoke(page) ?: return@ToolDef "ERROR: 界面未就绪"
+        "OK: 已打开 $page"
+    }
+
     val shellExec = ToolDef(
         name = "shell_exec",
         description = "执行 shell 命令（Shizuku 提供ADB权限，或Root）。可执行 pm/am/ls/cat 等任意命令。危险操作，每次需用户确认（可选择本会话内记住）",
@@ -310,7 +339,7 @@ object BuiltinTools {
     }
 
     val all: List<ToolDef> = listOf(
-        fsRead, fsWrite, fsList, fsDelete, shellExec, httpRequest,
+        fsRead, fsWrite, fsList, fsDelete, shellExec, httpRequest, appOpen,
         memorySave, memoryRead, appList, deviceInfo,
         uiSnapshot, uiTap, uiBack, uiHome, uiScroll, notify,
         skillRead, skillList,

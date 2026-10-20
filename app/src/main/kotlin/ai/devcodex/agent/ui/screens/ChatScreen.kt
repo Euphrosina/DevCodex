@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
@@ -188,9 +191,26 @@ fun ChatScreen(vm: AppViewModel) {
             topBar = {
                 TopAppBar(
                     title = {
-                        Column {
+                        Column(Modifier.clickable { showModelPicker = true }) {
+                            // MChat 式：会话标题 + 当前模型行（Logo+名称+下拉箭头）
                             Text(session?.title ?: "DevCodex", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (isRunning) Text("● agent 运行中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val displayModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: "选择模型"
+                                ai.devcodex.agent.ui.components.ModelLogo(displayModel, 16.dp)
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    displayModel.substringAfterLast('/'),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = Mono,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.widthIn(max = 140.dp),
+                                )
+                                Icon(Icons.Filled.ArrowDropDown, "切换", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (isRunning) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("●", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
                     },
                     navigationIcon = {
@@ -199,6 +219,10 @@ fun ChatScreen(vm: AppViewModel) {
                         }
                     },
                     actions = {
+                        // 终端直达
+                        IconButton(onClick = { vm.navRequest.value = "terminal" }) {
+                            Icon(Icons.Filled.Code, "终端")
+                        }
                         // 沉浸模式下的设置出口（任何时候都可进）
                         IconButton(onClick = { vm.navRequest.value = "settings" }) {
                             Icon(Icons.Filled.Settings, "设置")

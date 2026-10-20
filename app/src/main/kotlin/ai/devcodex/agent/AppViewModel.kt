@@ -51,6 +51,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val toast = MutableStateFlow<String?>(null)
     val navRequest = MutableStateFlow<String?>(null)   // "settings" 等页面跳转请求
+    val settingsPageRequest = MutableStateFlow<String?>(null)  // 设置内子页跳转（stats 等）
 
     // 审批：挂起等待 UI 回调
     private val approvalWaiters = ConcurrentHashMap<String, (Boolean) -> Unit>()
