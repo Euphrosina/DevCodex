@@ -145,6 +145,7 @@ fun PluginsScreen(vm: AppViewModel) {
     if (showGuide) {
         PluginGuideDialog { showGuide = false }
     }
+
     detail?.let { p ->
         AlertDialog(
             onDismissRequest = { detail = null },
@@ -256,59 +257,113 @@ private fun install(vm: AppViewModel, content: String, onError: (String) -> Unit
         .onFailure { onError("安装失败: ${it.message}") }
 }
 
-/** 插件开发指南对话框 */
+/** 插件开发指南：全屏文档页 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PluginGuideDialog(onClose: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onClose,
-        title = { Text("插件开发指南") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("插件开发指南") },
+                    navigationIcon = { TextButton(onClick = onClose) { Text("关闭") } },
+                )
+            },
+        ) { padding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+            ) {
                 Text(
-                    """一个插件 = 一个 JSON 文件，声明若干"工具"。每个工具就是一次 HTTP 调用模板：AI 决定何时调用、填什么参数，DevCodex 按 URL/模板发请求并把结果回给 AI。
+                    """什么是插件
 
-字段说明：
-· id：插件唯一标识（英文数字横线）
-· name / description：名称与描述（给用户和 AI 看）
-· tools[]：工具列表
-  - name：工具名（英文，AI 看到它来调用）
-  - description：何时该用这个工具（写清楚，AI 靠它判断）
-  - parameters：JSON Schema，声明参数类型
-  - endpoint：HTTP 调用模板
-    · method / url：支持 {{参数名}} 占位
-    · headers：请求头（放 API Key）
-    · bodyTemplate：POST 请求体模板
-    · resultPath：结果提取路径（如 a.b.c，空=全文）
+插件 = 一个 JSON 文件，给智能体添加调用外部服务的能力。AI 自动判断何时调用、自动填参数，DevCodex 按你的模板发 HTTP 请求并把结果回给 AI。
 
-最小示例（汇率查询）：
+典型用途：查天气、控制智能家居（Home Assistant）、调自建 API、对接 n8n 工作流、查内部系统数据。
+
+完整字段说明
+
 {
-  "id": "my-exchange",
-  "name": "汇率换算",
-  "description": "查汇率",
+  "id": "my-plugin",              // 唯一标识：英文数字横线
+  "name": "我的插件",              // 显示名
+  "version": "1.0.0",
+  "author": "你的名字",
+  "description": "一句话说明（AI 也会看）",
+  "enabled": true,
+  "tools": [                       // 工具列表，可多个
+    {
+      "name": "my_tool",           // 工具名：英文（AI 看到它来调用）
+      "description": "何时该用这个工具，写得越清楚 AI 判断越准",
+      "parameters": "JSON Schema 字符串（见下）",
+      "endpoint": {
+        "method": "GET",           // GET/POST/PUT/DELETE
+        "url": "https://api.example.com/query?q={{query}}",
+        "headers": { "Authorization": "Bearer YOUR_KEY" },
+        "bodyTemplate": "{\"text\": \"{{text}}\"}",   // POST 请求体模板
+        "resultPath": "data.items" // 结果提取：点路径；留空返回全文
+      }
+    }
+  ]
+}
+
+parameters 写法（字符串形式的 JSON Schema）
+
+"{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\",\"description\":\"城市名\"}},\"required\":[\"city\"]}"
+
+注意：整个 Schema 是字符串，内部引号要用 \" 转义。
+
+{{参数名}} 模板语法
+
+- url：https://wttr.in/{{city}}
+- headers：值里可用
+- bodyTemplate：任意位置替换
+替换值来自 AI 按你的 Schema 填的参数。
+
+五条铁律
+
+1. API Key 放 headers，不要拼进 URL（避免泄露到日志）
+2. resultPath 只支持 a.b.c 点路径；返回结构复杂就留空让 AI 自己读
+3. description 写"何时用"而不是"是什么"——这是 AI 的调用依据
+4. 参数的 description 一定要有，AI 靠它填对值
+5. 工具名不能有空格，一个插件内不能重名
+
+最小可用示例（可直接粘贴安装）
+
+{
+  "id": "hello-plugin",
+  "name": "Hello 示例",
+  "description": "演示插件结构",
   "tools": [{
-    "name": "exchange_rate",
-    "description": "查询两种货币的汇率",
-    "parameters": "{\"type\":\"object\",\"properties\":{\"from\":{\"type\":\"string\"},\"to\":{\"type\":\"string\"}},\"required\":[\"from\",\"to\"]}",
+    "name": "say_hello",
+    "description": "向某人问好",
+    "parameters": "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"对方名字\"}},\"required\":[\"name\"]}",
     "endpoint": {
-      "method": "GET",
-      "url": "https://open.er-api.com/v6/latest/{{from}}",
-      "resultPath": "rates"
+      "method": "POST",
+      "url": "https://httpbin.org/post",
+      "bodyTemplate": "{\"greeting\": \"你好，{{name}}!\"}"
     }
   }]
 }
 
-要点：
-1. parameters 是"字符串形式的 JSON Schema"，注意转义引号
-2. {{参数名}} 会被 AI 提供的参数值替换（URL/headers/body 均支持）
-3. API Key 放 headers 里，不要写进 URL
-4. resultPath 只支持简单点路径，复杂结果留空让 AI 自己读
-5. 保存为 .json 文件，从「安装 → 从文件安装」导入即可
+安装与调试
 
-调试：装好后直接在对话里说"查一下 USD 到 CNY 的汇率"，观察工具卡片里的参数与返回。""",
-                    style = MaterialTheme.typography.bodySmall,
+1. 保存为 .json 文件 → 插件页 ➕ → 从文件安装
+2. 对话里说"用 say_hello 向小明问好"
+3. 展开工具卡片看：AI 填的参数、HTTP 状态、返回体
+4. 修 JSON 重新导入（同名覆盖）
+
+Skill（技能）与 Plugin（插件）的区别
+
+· 插件 = 给 AI 新的"手"（HTTP 调用能力）
+· 技能 = 给 AI 新的"脑"（知识与方法论，SKILL.md）
+· 两者可配合：技能教方法，插件给工具""",
+                    style = MaterialTheme.typography.bodyMedium,
                 )
+                Spacer(Modifier.padding(24.dp))
             }
-        },
-        confirmButton = { TextButton(onClick = onClose) { Text("知道了") } },
-    )
+        }
+    }
 }

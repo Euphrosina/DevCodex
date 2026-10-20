@@ -28,7 +28,8 @@ class SkillRepo(private val context: Context) {
         }?.sortedBy { it.name } ?: emptyList()
 
     private fun parse(text: String, dir: File): Skill? {
-        val m = Regex("^---\\s*\\n(.*?)\\n---\\s*\\n?(.*)$", RegexOption.DOT_MATCHES_ALL).find(text) ?: return null
+        val normalized = text.replace("\r\n", "\n").replace("\uFEFF", "")
+        val m = Regex("^---\\s*\\n(.*?)\\n---\\s*\\n?(.*)$", RegexOption.DOT_MATCHES_ALL).find(normalized) ?: return null
         val fm = m.groupValues[1]
         val name = Regex("^name:\\s*(.+)$", RegexOption.MULTILINE).find(fm)?.groupValues?.get(1)?.trim() ?: dir.name
         val desc = Regex("^description:\\s*(.+)$", RegexOption.MULTILINE).find(fm)?.groupValues?.get(1)?.trim() ?: ""

@@ -50,12 +50,25 @@ data class DailyStats(
     val totalMessages: Int,
     val totalSessions: Int,
     val activeDays: Int,
+    val inputTokens: Long = 0,
+    val outputTokens: Long = 0,
+    val cachedTokens: Long = 0,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var stats by remember { mutableStateOf<DailyStats?>(null) }
+    val launchCount = remember { 
+        val sp = vm.getPreferences()
+        val n = sp.getInt("launch_count", 0) + 1
+        sp.edit().putInt("launch_count", n).putLong("first_use", sp.getLong("first_use", System.currentTimeMillis())).apply()
+        n
+    }
+    val firstUseDate = remember {
+        val sp = vm.getPreferences()
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(java.util.Date(sp.getLong("first_use", System.currentTimeMillis())))
+    }
     LaunchedEffect(Unit) {
         stats = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val sessions = vm.sessionRepo.list()
@@ -70,7 +83,13 @@ fun StatsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     byDay[key] = (byDay[key] ?: 0) + 1
                 }
             }
-            DailyStats(byDay, total, sessions.size, byDay.count { it.value > 0 })
+            var inTok = 0L; var outTok = 0L; var cacheTok = 0L
+            sessions.forEach { s ->
+                s.messages.forEach { m ->
+                    inTok += m.inputTokens; outTok += m.outputTokens; cacheTok += m.cachedTokens
+                }
+            }
+            DailyStats(byDay, total, sessions.size, byDay.count { it.value > 0 }, inTok, outTok, cacheTok)
         }
     }
 
@@ -99,6 +118,54 @@ fun StatsScreen(vm: AppViewModel, onBack: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatCard("活跃天数", st.activeDays.toString(), Modifier.weight(1f))
                 StatCard("今日", todayCount(st).toString(), Modifier.weight(1f))
+            }
+            // ===== Token 用量 =====
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("Token 用量", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    TokenRow("输入 Token", st.inputTokens)
+                    TokenRow("输出 Token", st.outputTokens)
+                    TokenRow("缓存节省 Token", st.cachedTokens)
+                    TokenRow("合计", st.inputTokens + st.outputTokens)
+                }
+            }
+            // ===== 启动次数 =====
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("应用启动", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        Text("$launchCount 次", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Text(
+                        "首次使用：$firstUseDate",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            // ===== 设备信息 =====
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("设备信息", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(2.dp))
+                    InfoRow("型号", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                    InfoRow("系统", "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+                    InfoRow("架构", android.os.Build.SUPPORTED_ABIS.joinToString())
+                    InfoRow("应用版本", "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} (${ai.devcodex.agent.BuildConfig.VERSION_CODE})")
+                }
             }
 
             // ===== 热力图（最近 16 周，GitHub 风格）=====
@@ -157,6 +224,28 @@ fun StatsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TokenRow(label: String, value: Long) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        Text(formatTokN(value), style = MaterialTheme.typography.bodyMedium, fontFamily = Mono, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+private fun formatTokN(n: Long): String = when {
+    n >= 1_000_000 -> "%.2fM".format(n / 1_000_000.0)
+    n >= 1000 -> "%.1fk".format(n / 1000.0)
+    else -> n.toString()
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(80.dp))
+        Text(value, style = MaterialTheme.typography.bodySmall, fontFamily = Mono, modifier = Modifier.weight(1f))
     }
 }
 

@@ -159,6 +159,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sessionRepo.save(updated)
     }
 
+    fun getPreferences(): android.content.SharedPreferences =
+        getApplication<android.app.Application>().getSharedPreferences("devcodex_stats", android.content.Context.MODE_PRIVATE)
+
+    fun deleteMessage(msgId: String) {
+        val cur = _activeSession.value ?: return
+        val updated = cur.copy(messages = cur.messages.filter { it.id != msgId })
+        _activeSession.value = updated
+        sessionRepo.save(updated)
+    }
+
     fun deleteSession(id: String) {
         sessionRepo.delete(id)
         if (_activeSession.value?.id == id) _activeSession.value = null

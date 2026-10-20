@@ -5,6 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,6 +95,7 @@ fun ChatScreen(vm: AppViewModel) {
     var input by remember { mutableStateOf("") }
     var showModelPicker by remember { mutableStateOf(false) }
     var crashReport by remember { mutableStateOf<String?>(null) }
+    var selectedMsg by remember { mutableStateOf<Message?>(null) }
     val listState = rememberLazyListState()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
@@ -202,7 +205,12 @@ fun ChatScreen(vm: AppViewModel) {
                     items(messages.size, key = { messages[it].id }) { idx ->
                         val msg = messages[idx]
                         when {
-                            msg.role == "user" -> UserBubble(msg)
+                            msg.role == "user" -> Box(Modifier.combinedClickable(
+                                onClick = {},
+                                onLongClick = {
+                                    selectedMsg = msg
+                                },
+                            )) { UserBubble(msg) }
                             // tool 消息内联渲染进 assistant 块
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
@@ -226,11 +234,14 @@ fun ChatScreen(vm: AppViewModel) {
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             TypingDots()
                                         } else if (msg.content.isNotBlank()) {
-                                            Text(
-                                                msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
-                                                Modifier.fillMaxWidth(),
-                                                style = MaterialTheme.typography.bodyLarge,
-                                            )
+                                            Box(Modifier.combinedClickable(
+                                                onClick = {},
+                                                onLongClick = { selectedMsg = msg },
+                                            )) {
+                                                ai.devcodex.agent.ui.components.MarkdownText(
+                                                    content = msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
+                                                )
+                                            }
                                         }
                                         msg.toolCalls.forEach { tc ->
                                             val toolMsg = toolResults[tc.id]
@@ -369,6 +380,36 @@ fun ChatScreen(vm: AppViewModel) {
         }
     }
 
+    // 消息长按操作
+    selectedMsg?.let { sm ->
+        AlertDialog(
+            onDismissRequest = { selectedMsg = null },
+            title = { Text(if (sm.role == "user") "你的消息" else "AI 消息", style = MaterialTheme.typography.titleSmall) },
+            text = {
+                Column {
+                    Text(
+                        sm.content.take(120).ifBlank { "（无文本内容）" },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(sm.content))
+                    selectedMsg = null
+                }) { Text("复制全文") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    vm.deleteMessage(sm.id)
+                    selectedMsg = null
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+        )
+    }
+
     // 崩溃报告提示
     crashReport?.let { report ->
         AlertDialog(
@@ -488,21 +529,33 @@ private fun MessageStats(msg: Message) {
     val speed = if (msg.totalMs > 0 && msg.outputTokens > 0) msg.outputTokens * 1000 / msg.totalMs else 0
     val ctx = msg.inputTokens + msg.outputTokens
     val cachePct = if (msg.inputTokens > 0) msg.cachedTokens * 100 / msg.inputTokens else 0
-    val parts = buildList {
-        add(msg.model ?: "")
-        if (msg.firstTokenMs > 0) add("首 ${"%.1f".format(msg.firstTokenMs / 1000.0)}s")
+    // rikkahub 式两行统计：第一行 token 用量（输入/输出/缓存），第二行速度与耗时
+    val line1 = buildList {
+        if (msg.inputTokens > 0) add("输入 ${formatTok(msg.inputTokens)}")
+        if (msg.outputTokens > 0) add("输出 ${formatTok(msg.outputTokens)}")
+        if (msg.cachedTokens > 0) add("缓存节省 ${formatTok(msg.cachedTokens)}")
+    }
+    val line2 = buildList {
+        msg.model?.let { add(it) }
+        if (msg.firstTokenMs > 0) add("首包 ${"%.1f".format(msg.firstTokenMs / 1000.0)}s")
         if (msg.totalMs > 0) add("${"%.1f".format(msg.totalMs / 1000.0)}s")
-        if (speed > 0) add("$speed tok/s")
-        if (ctx > 0) add("${formatTok(ctx)}")
-        if (msg.inputTokens > 0) add("缓存 $cachePct%")
+        if (speed > 0) add("${speed} tok/s")
+        if (ctx > 0) add("上下文 ${formatTok(ctx)}")
     }.filter { it.isNotBlank() }
-    Text(
-        parts.joinToString(" · "),
-        style = MaterialTheme.typography.labelSmall,
-        fontFamily = Mono,
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-        modifier = Modifier.padding(top = 4.dp),
-    )
+    Column(Modifier.padding(top = 4.dp)) {
+        if (line1.isNotEmpty()) Text(
+            line1.joinToString(" · "),
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = Mono,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+        )
+        if (line2.isNotEmpty()) Text(
+            line2.joinToString(" · "),
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = Mono,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+        )
+    }
 }
 
 private fun formatTok(n: Long): String = when {

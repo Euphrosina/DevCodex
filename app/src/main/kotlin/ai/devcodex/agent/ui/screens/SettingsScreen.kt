@@ -29,9 +29,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.School
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -77,6 +81,7 @@ fun SettingsScreen(vm: AppViewModel) {
                 "tools" -> "工具与权限"
                 "stats" -> "使用统计"
                 "skills" -> "技能"
+                "about" -> "关于"
                 else -> "设置"
             })
         }, navigationIcon = {
@@ -88,6 +93,7 @@ fun SettingsScreen(vm: AppViewModel) {
             "tools" -> ToolsPermPage(vm, settings, Modifier.padding(padding))
             "stats" -> ai.devcodex.agent.ui.screens.StatsScreen(vm) { page = "root" }
             "skills" -> SkillsPage(vm) { page = "root" }
+            "about" -> AboutPage { page = "root" }
             else -> Column(
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             ) {
@@ -117,8 +123,10 @@ fun SettingsScreen(vm: AppViewModel) {
                 )
                 HorizontalDivider()
                 ListItem(
-                    headlineContent = { Text("关于") },
-                    supportingContent = { Text("DevCodex v3.1.0 · AI Agent for Android\n主题与字体方案源自 rikkahub（Apache-2.0）\nAgent 交互模式参考 Operit（Apache-2.0）") },
+                    headlineContent = { Text("关于与赞助") },
+                    supportingContent = { Text("作者 · 反馈 · 喝杯奶茶 · 隐私政策") },
+                    leadingContent = { Icon(Icons.Filled.Favorite, null) },
+                    modifier = Modifier.clickable { page = "about" },
                 )
             }
         }
@@ -416,5 +424,137 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
                 },
             )
         }
+    }
+}
+
+/** 关于页：作者/反馈/赞助/隐私政策 */
+@Composable
+private fun AboutPage(onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showReward by remember { mutableStateOf(false) }
+    var showPrivacy by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        // 作者卡
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("DevCodex", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(
+                    "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · Android AI Agent",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                )
+                Spacer(Modifier.padding(8.dp))
+                Text("作者：刘雨欣", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Spacer(Modifier.padding(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {
+                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("mqq://im/chat?chat_type=wpa&uin=3633190269"))) }
+                    }) { Text("QQ 联系") }
+                    OutlinedButton(onClick = {
+                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:Lv520e3e4@163.com"))) }
+                    }) { Text("邮件反馈") }
+                }
+            }
+        }
+        Spacer(Modifier.padding(10.dp))
+
+        // 反馈信息
+        ListItem(
+            headlineContent = { Text("反馈意见") },
+            supportingContent = { Text("QQ：3633190269\\n邮箱：Lv520e3e4@163.com", fontFamily = FontFamily.Monospace) },
+        )
+
+        // 赞助
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            onClick = { showReward = true },
+        ) {
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("🧋", style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.padding(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("请作者喝杯奶茶", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text("如果 DevCodex 帮到了你，欢迎请作者喝杯奶茶支持一下", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
+                }
+                Text("→", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onTertiaryContainer)
+            }
+        }
+
+        // 隐私
+        ListItem(
+            headlineContent = { Text("隐私政策") },
+            supportingContent = { Text("应用隐私与用户数据处理说明") },
+            leadingContent = { Icon(Icons.Filled.PrivacyTip, null) },
+            modifier = Modifier.clickable { showPrivacy = true },
+        )
+        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        Text(
+            "致谢：主题与字体方案源自 rikkahub（Apache-2.0）；Agent 交互模式参考 Operit（Apache-2.0）；设计参考 AiCode。",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    // 赞赏码弹窗
+    if (showReward) {
+        AlertDialog(
+            onDismissRequest = { showReward = false },
+            title = { Text("请作者喝杯奶茶", style = MaterialTheme.typography.titleMedium) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(ai.devcodex.agent.R.drawable.reward_qrcode),
+                        contentDescription = "微信赞赏码",
+                        modifier = Modifier.size(260.dp),
+                    )
+                    Text("微信扫码 · 金额随意", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = { TextButton(onClick = { showReward = false }) { Text("关闭") } },
+        )
+    }
+
+    // 隐私政策弹窗
+    if (showPrivacy) {
+        AlertDialog(
+            onDismissRequest = { showPrivacy = false },
+            title = { Text("隐私政策") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        """DevCodex 隐私政策（应用隐私与用户隐私）
+
+一、数据本地化
+DevCodex 不内置任何模型服务，不运营任何服务器。你的会话记录、API 配置（密钥）、工作区文件、技能与插件全部保存在手机本地（应用私有目录），卸载应用即随之删除。
+
+二、网络请求
+应用仅在你主动使用时向「你自己配置的 API 提供商」发送对话请求（含你输入的内容与必要的会话上下文）；插件工具会向你安装的插件所声明的 URL 发起请求。我们不代理、不收集、不分析这些流量。
+
+三、敏感权限
+· Shizuku/Root：仅在你明确授权后用于执行你批准的命令与文件操作，全部操作有审批记录；
+· 无障碍服务：仅在你手动开启后用于屏幕内容读取与界面自动化，服务在你的设备上本地运行；
+· 文件访问：工作区为应用私有目录；访问其他路径（如 /sdcard）需要 Shizuku/Root 授权且高危操作逐次确认。
+
+四、崩溃报告
+崩溃堆栈仅保存在本地，只有你主动点击"复制"并自行发送，才会离开你的设备。
+
+五、第三方代码致谢
+主题方案源自 rikkahub（Apache-2.0）、交互模式参考 Operit（Apache-2.0），其许可与来源见项目仓库。
+
+如对隐私有任何疑问：QQ 3633190269 · Lv520e3e4@163.com（刘雨欣）""",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { showPrivacy = false }) { Text("我已阅读") } },
+        )
     }
 }

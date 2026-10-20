@@ -61,20 +61,23 @@ object OpenAiCompatProvider {
     fun parseSseLine(line: String): List<StreamEvent> {
         if (!line.startsWith("data:")) return emptyList()
         val data = line.removePrefix("data:").trim()
-        if (data == "[DONE]") return listOf(StreamEvent.Done("stop"))
-        val obj = runCatching { LlmJson.parseToJsonElement(data).jsonObject }.getOrNull() ?: return emptyList()
+        if (data == "[DONE]" || data == "null" || data.isBlank()) return emptyList()
+        val obj = runCatching { LlmJson.parseToJsonElement(data) }.getOrNull()
+            as? kotlinx.serialization.json.JsonObject ?: return emptyList()
         val events = mutableListOf<StreamEvent>()
-        // usage（部分服务在最后一个 chunk 带）
-        obj["usage"]?.jsonObject?.let { u ->
-            val it2 = u["prompt_tokens"]?.jsonPrimitive?.longOrNull ?: 0
-            val ot = u["completion_tokens"]?.jsonPrimitive?.longOrNull ?: 0
-            val ct = (u["prompt_tokens_details"]?.jsonObject?.get("cached_tokens")?.jsonPrimitive?.longOrNull
-                ?: u["cached_tokens"]?.jsonPrimitive?.longOrNull ?: 0)
+        // usage（部分服务在最后一个 chunk 带；字段可能为 null，逐个防御）
+        (obj["usage"] as? kotlinx.serialization.json.JsonObject)?.let { u ->
+            val it2 = (u["prompt_tokens"] as? kotlinx.serialization.json.JsonPrimitive)?.longOrNull ?: 0
+            val ot = (u["completion_tokens"] as? kotlinx.serialization.json.JsonPrimitive)?.longOrNull ?: 0
+            val ct = ((u["prompt_tokens_details"] as? kotlinx.serialization.json.JsonObject)
+                ?.get("cached_tokens") as? kotlinx.serialization.json.JsonPrimitive)?.longOrNull
+                ?: (u["cached_tokens"] as? kotlinx.serialization.json.JsonPrimitive)?.longOrNull ?: 0
             events.add(StreamEvent.Usage(it2, ot, ct))
         }
-        val choices = obj["choices"]?.jsonArray ?: return emptyList()
+        val choices = obj["choices"] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
         if (choices.isEmpty()) return emptyList()
-        val delta = choices[0].jsonObject["delta"]?.jsonObject ?: return emptyList()
+        val delta = (choices[0] as? kotlinx.serialization.json.JsonObject)?.get("delta")
+            as? kotlinx.serialization.json.JsonObject ?: return emptyList()
         delta["reasoning_content"]?.jsonPrimitive?.contentOrNull?.let { events.add(StreamEvent.Reasoning(it)) }
         delta["content"]?.jsonPrimitive?.contentOrNull?.let { if (it.isNotEmpty()) events.add(StreamEvent.Delta(it)) }
         delta["tool_calls"]?.jsonArray?.forEach { tcEl ->

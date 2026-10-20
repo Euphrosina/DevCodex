@@ -52,4 +52,19 @@ class DevCodexApp : Application() {
             marker.writeText("ok")
         }
     }
+
+    // 首启导入内置技能（assets/skills/*.md，独立 marker 可重复导入新技能）
+    private fun seedSkills() {
+        runCatching {
+            val repo = ai.devcodex.agent.data.SkillRepo(this)
+            assets.list("skills")?.forEach { name ->
+                runCatching {
+                    val text = assets.open("skills/" + name).bufferedReader().readText()
+                    // 同名已装则跳过（用户可能改过）
+                    val skillName = Regex("^name:\\s*(.+)$", RegexOption.MULTILINE).find(text)?.groupValues?.get(1)?.trim() ?: return@runCatching
+                    if (repo.list().none { it.name == skillName }) repo.install(text)
+                }
+            }
+        }
+    }
 }
