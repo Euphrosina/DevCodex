@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
-    var lines by remember { mutableStateOf(mutableListOf("\u001b[1mDevCodex Shell\u001b[0m（Shizuku/Root 通道）\n输入命令回车执行；exit 清屏")) }
+    var lines by remember { mutableStateOf(mutableListOf("DevCodex 终端（Shizuku/Root/内置沙盒自动选择）\n工作目录 = 当前工作区；输入命令回车执行")) }
     var cmd by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -42,6 +42,19 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
+            // 通道指示
+            val mode = ai.devcodex.agent.shell.ShellAccess.availableMode()
+            val modeLabel = when (mode) {
+                ai.devcodex.agent.shell.ShellAccess.Mode.SHIZUKU -> "Shizuku（特权）"
+                ai.devcodex.agent.shell.ShellAccess.Mode.ROOT -> "Root（特权）"
+                ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX -> "内置沙盒（应用权限，无需 Shizuku）"
+            }
+            Text(
+                "通道: $modeLabel",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (mode == ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+            )
             // 输出区
             Column(
                 Modifier

@@ -83,13 +83,37 @@ object ShellAccess {
     } catch (e: Exception) { false }
 
     // ============ 统一操作接口（优先 Shizuku，其次 Root） ============
-    enum class Mode { SHIZUKU, ROOT, NONE }
+    enum class Mode { SHIZUKU, ROOT, SANDBOX }
 
     fun availableMode(): Mode = when {
         shizukuService != null || (shizukuAvailable() && shizukuPermissionGranted()) -> Mode.SHIZUKU
         rootAvailable() -> Mode.ROOT
-        else -> Mode.NONE
+        else -> Mode.SANDBOX   // 内置沙盒：app uid 的本地 sh，永远可用
     }
+
+    /** 本地沙盒执行（app uid，工作目录=工作区）：toybox 提供常规命令，可访问应用私有目录与自定义工作区 */
+    fun localExec(command: String, timeoutSec: Long = 15): String = try {
+        val ws = ai.devcodex.agent.tools.BuiltinTools.workspaceRoot()
+        val p = ProcessBuilder("sh", "-c", command)
+            .redirectErrorStream(true)
+            .apply { directory(ws) }
+            .start()
+        val out = kotlinx.coroutines.runBlocking {
+            kotlinx.coroutines.withTimeoutOrNull(timeoutSec * 1000) {
+                val sb = StringBuilder()
+                val reader = p.inputStream.bufferedReader()
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    sb.appendLine(line)
+                    if (sb.length > 60_000) break
+                }
+                sb.toString()
+            }
+        }
+        runCatching { p.destroyForcibly() }
+        val result = (out ?: "(超时 ${timeoutSec}s，已终止)").ifBlank { "(exit ok)" }
+        "[sandbox|app权限] $result"
+    } catch (e: Exception) { "ERROR(sandbox): ${e.message}" }
 
     private fun shizuku(): IShellService? {
         bindShizukuService()
@@ -126,13 +150,8 @@ object ShellAccess {
     suspend fun exec(command: String): String {
         shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
         if (rootAvailable()) return rootExec(command)
-        // 细化诊断：告诉用户到底卡在哪一步
-        val diag = when {
-            !shizukuAvailable() -> "Shizuku 服务未运行（请打开 Shizuku App 启动服务，ADB/无线调试方式）"
-            !shizukuPermissionGranted() -> "Shizuku 已运行但未授权本应用（Shizuku App 内点授权，或本应用设置页点「授权」）"
-            else -> "Shizuku 已授权但服务绑定失败（试试在设置页点「重新绑定服务」）"
-        }
-        return "ERROR: Shell 通道不可用。$diag"
+        // 无特权通道 → 内置沙盒（app uid 本地 sh，可操作工作区）
+        return localExec(command)
     }
 
     suspend fun readFile(path: String): String {

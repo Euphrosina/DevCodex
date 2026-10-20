@@ -455,7 +455,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             ListItem(
                 overlineContent = { Text("MCP", style = MaterialTheme.typography.labelSmall) },
                 headlineContent = { Text(m.name) },
-                supportingContent = { Text(m.url, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                supportingContent = { Text((if (m.protocol == "sse") "[SSE] " else "") + m.url, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 trailingContent = {
                     Row {
                         Switch(checked = m.enabled, onCheckedChange = { on ->
@@ -470,18 +470,28 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         }
         var newMcpName by remember { mutableStateOf("") }
         var newMcpUrl by remember { mutableStateOf("") }
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(value = newMcpName, onValueChange = { newMcpName = it }, label = { Text("名称") }, singleLine = true, modifier = Modifier.weight(0.35f), textStyle = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.padding(4.dp))
-            OutlinedTextField(value = newMcpUrl, onValueChange = { newMcpUrl = it }, label = { Text("MCP URL (https://…)") }, singleLine = true, modifier = Modifier.weight(0.65f), textStyle = MaterialTheme.typography.bodySmall)
-            IconButton(onClick = {
-                if (newMcpUrl.isNotBlank()) {
-                    val id = java.util.UUID.randomUUID().toString().take(8)
-                    vm.saveSettings { s -> s.copy(mcpServers = s.mcpServers + ai.devcodex.agent.provider.McpClient.McpServerConfig(id, newMcpName.ifBlank { "MCP-" + id }, newMcpUrl.trim())) }
-                    newMcpName = ""; newMcpUrl = ""
-                }
-            }) { Icon(Icons.Filled.Add, "添加") }
+        var newMcpProto by remember { mutableStateOf("auto") }
+        var newMcpHeaders by remember { mutableStateOf("") }
+        OutlinedTextField(value = newMcpName, onValueChange = { newMcpName = it }, label = { Text("名称") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = newMcpUrl, onValueChange = { newMcpUrl = it }, label = { Text("MCP URL（streamable 填完整端点 / SSE 填 /sse 端点）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+            Text("协议", style = MaterialTheme.typography.labelSmall)
+            listOf("auto" to "自动", "streamable" to "Streamable", "sse" to "SSE").forEach { (v, label) ->
+                FilterChip(selected = newMcpProto == v, onClick = { newMcpProto = v }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+            }
         }
+        OutlinedTextField(value = newMcpHeaders, onValueChange = { newMcpHeaders = it }, label = { Text("自定义头（可选，每行 Key: Value，如 Authorization: Bearer xxx）") }, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        TextButton(onClick = {
+            if (newMcpUrl.isNotBlank()) {
+                val id = java.util.UUID.randomUUID().toString().take(8)
+                val hdrs = newMcpHeaders.lines().mapNotNull { l ->
+                    val i = l.indexOf(':')
+                    if (i > 0) l.take(i).trim() to l.substring(i + 1).trim() else null
+                }.toMap()
+                vm.saveSettings { s -> s.copy(mcpServers = s.mcpServers + ai.devcodex.agent.provider.McpClient.McpServerConfig(id, newMcpName.ifBlank { "MCP-" + id }, newMcpUrl.trim(), protocol = newMcpProto, headers = hdrs)) }
+                newMcpName = ""; newMcpUrl = ""; newMcpHeaders = ""
+            }
+        }) { Icon(Icons.Filled.Add, null, Modifier.size(16.dp)); Spacer(Modifier.padding(4.dp)); Text("添加 MCP 服务器") }
         Spacer(Modifier.padding(10.dp))
 
         // ============ 自定义工具 ============
