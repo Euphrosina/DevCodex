@@ -45,7 +45,7 @@ object ModelLogos {
 
     /** 词级严格匹配（避免 o1/step 之类的短词误命中） */
     private fun String.hasWord(w: String): Boolean =
-        Regex("(?i)(^|[^a-z0-9])${'$'}w([^a-z0-9]|${'$'})").containsMatchIn(this)
+        Regex("(?i)(^|[^a-z0-9])" + Regex.escape(w) + "([^a-z0-9]|${'$'})").containsMatchIn(this)
 
     fun forModel(model: String): ImageVector = when {
         model.hasWord("gpt") || model.hasWord("openai") || Regex("(?i)\bo[134]\b").containsMatchIn(model) -> openaiLogo

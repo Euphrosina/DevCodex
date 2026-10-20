@@ -78,7 +78,7 @@ fun AppRoot(vm: AppViewModel) {
         vm.navRequest.collect { req ->
             if (req != null) {
                 when {
-                    req == "terminal" -> nav.navigate("terminal") { launchSingleTop = true }
+                    req == "terminal" -> runCatching { nav.navigate("terminal") { launchSingleTop = true } }
                     req in listOf("stats", "about", "skills", "theme", "tools") -> {
                         // 设置子页：跳设置 tab 并请求对应子页
                         vm.settingsPageRequest.value = req
@@ -143,6 +143,7 @@ fun AppRoot(vm: AppViewModel) {
                             composable("providers") { ProvidersScreen(vm) }
                             composable("plugins") { PluginsScreen(vm) }
                             composable("settings") { SettingsScreen(vm) }
+                            composable("terminal") { ai.devcodex.agent.ui.screens.TerminalScreen(vm) }
                         }
                     }
                 }
@@ -163,6 +164,7 @@ fun AppRoot(vm: AppViewModel) {
                         composable("providers") { ProvidersScreen(vm) }
                         composable("plugins") { PluginsScreen(vm) }
                         composable("settings") { SettingsScreen(vm) }
+                            composable("terminal") { ai.devcodex.agent.ui.screens.TerminalScreen(vm) }
                     }
                 }
             }
@@ -196,6 +198,7 @@ fun AppRoot(vm: AppViewModel) {
                         composable("providers") { ProvidersScreen(vm) }
                         composable("plugins") { PluginsScreen(vm) }
                         composable("settings") { SettingsScreen(vm) }
+                            composable("terminal") { ai.devcodex.agent.ui.screens.TerminalScreen(vm) }
                     }
                 }
             }

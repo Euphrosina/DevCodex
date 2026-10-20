@@ -20,7 +20,7 @@ object CrashHandler {
                 File(dir, name).writeText(buildString {
                     appendLine("time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss.Sss", Locale.US).format(Date())}")
                     appendLine("thread: ${thread.name}")
-                    appendLine("version: v3.1.0 (6)")
+                    appendLine("version: v${ai.devcodex.agent.BuildConfig.VERSION_NAME} (${ai.devcodex.agent.BuildConfig.VERSION_CODE})")
                     appendLine("device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} Android ${android.os.Build.VERSION.RELEASE}")
                     appendLine()
                     appendLine(Log.getStackTraceString(throwable))

@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Dvr
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
@@ -221,7 +221,7 @@ fun ChatScreen(vm: AppViewModel) {
                     actions = {
                         // 终端直达
                         IconButton(onClick = { vm.navRequest.value = "terminal" }) {
-                            Icon(Icons.Filled.Code, "终端")
+                            Icon(Icons.Filled.Dvr, "终端")
                         }
                         // 沉浸模式下的设置出口（任何时候都可进）
                         IconButton(onClick = { vm.navRequest.value = "settings" }) {
