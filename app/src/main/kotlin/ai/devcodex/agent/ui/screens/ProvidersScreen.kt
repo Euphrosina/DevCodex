@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -125,11 +126,41 @@ fun ProvidersScreen(vm: AppViewModel) {
     }
 
     if (creating) {
-        ProviderEditDialog(
-            initial = ProviderConfig(id = java.util.UUID.randomUUID().toString()),
-            onDismiss = { creating = false },
-            onSave = { vm.upsertProvider(it); creating = false },
-        )
+        // 先选预设 → 带入配置编辑
+        var presetChosen by remember { mutableStateOf<ai.devcodex.agent.data.ProviderPreset?>(null) }
+        if (presetChosen == null) {
+            AlertDialog(
+                onDismissRequest = { creating = false },
+                title = { Text("选择提供商预设") },
+                text = {
+                    Column {
+                        Text("选一个快速开始（Base URL 已填好，只需填 Key）；或拉到底选「自定义」", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
+                            items(ai.devcodex.agent.data.ProviderPresets) { preset ->
+                                ListItem(
+                                    headlineContent = { Text(preset.name) },
+                                    supportingContent = { Text(if (preset.baseUrl.isBlank()) preset.desc else preset.baseUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    modifier = Modifier.clickable { presetChosen = preset },
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = { creating = false }) { Text("取消") } },
+            )
+        } else {
+            ProviderEditDialog(
+                initial = ProviderConfig(
+                    id = java.util.UUID.randomUUID().toString(),
+                    name = presetChosen!!.name,
+                    type = presetChosen!!.type,
+                    baseUrl = presetChosen!!.baseUrl,
+                ),
+                onDismiss = { creating = false },
+                onSave = { vm.upsertProvider(it); creating = false },
+            )
+        }
     }
     editing?.let { p ->
         ProviderEditDialog(

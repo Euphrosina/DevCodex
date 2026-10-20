@@ -18,10 +18,10 @@ object ShellAccess {
 
     private val userServiceArgs by lazy {
         UserServiceArgs(ComponentName("ai.devcodex.agent", "ai.devcodex.agent.shell.ShellService"))
-            .daemon(false)
+            .daemon(true)   // 常驻：避免每次 unbind 后 Shizuku 端销毁导致的重绑失败
             .processNameSuffix("shell")
             .debuggable(false)
-            .version(1)
+            .version(3)     // 版本升级触发 Shizuku 端刷新旧绑定
     }
 
     @Volatile private var shizukuService: IShellService? = null
@@ -55,7 +55,11 @@ object ShellAccess {
             try {
                 binding = true
                 Shizuku.bindUserService(userServiceArgs, serviceConnection)
-            } catch (e: Exception) { binding = false }
+            } catch (e: Exception) {
+                binding = false
+                // 立即二次尝试（Shizuku 端旧绑定清理竞态）
+                try { Shizuku.bindUserService(userServiceArgs, serviceConnection) } catch (_: Exception) {}
+            }
         }
     }
 

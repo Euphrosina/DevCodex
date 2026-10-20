@@ -276,9 +276,9 @@ private fun HeatmapGrid(byDay: Map<Long, Int>) {
     end.add(Calendar.DAY_OF_YEAR, 6 - dow)
     val start = (end.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -(weeks * 7 - 1)) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         for (row in 0..6) {
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 for (col in 0 until weeks) {
                     val c = (start.clone() as Calendar).apply {
                         add(Calendar.DAY_OF_YEAR, col * 7 + row)
@@ -287,7 +287,7 @@ private fun HeatmapGrid(byDay: Map<Long, Int>) {
                     val n = if (inFuture) -1 else (byDay[dayKey(c)] ?: 0)
                     Box(
                         Modifier
-                            .size(14.dp)
+                            .size(18.dp)
                             .background(
                                 when {
                                     n < 0 -> emptyColor.copy(alpha = 0.3f)
@@ -304,7 +304,7 @@ private fun HeatmapGrid(byDay: Map<Long, Int>) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("少", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         listOf(0, 3, 8, 20, 50).forEach { n ->
-            Box(Modifier.size(10.dp).background(levelColor(n, emptyColor, primary), RoundedCornerShape(2.dp)))
+            Box(Modifier.size(13.dp).background(levelColor(n, emptyColor, primary), RoundedCornerShape(3.dp)))
         }
         Text("多", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

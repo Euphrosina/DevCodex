@@ -111,6 +111,7 @@ fun AppRoot(vm: AppViewModel) {
                     }
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbar) },
+                        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                     ) { padding ->
                         NavHost(
                             navController = nav,
@@ -128,7 +129,10 @@ fun AppRoot(vm: AppViewModel) {
             }
             theme.navPosition == "immersive" || !showNav -> {
                 // 沉浸模式：无导航栏，仅对话（从设置进出）
-                Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+                Scaffold(
+                    snackbarHost = { SnackbarHost(snackbar) },
+                    contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+                ) { padding ->
                     NavHost(
                         navController = nav,
                         startDestination = "chat",
@@ -146,6 +150,7 @@ fun AppRoot(vm: AppViewModel) {
                 // 默认：底部导航
                 Scaffold(
                     snackbarHost = { SnackbarHost(snackbar) },
+                    contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                     bottomBar = {
                         if (showNav) {
                             NavigationBar {

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
@@ -317,22 +318,23 @@ fun ChatScreen(vm: AppViewModel) {
         }
     }
 
-    // 模型选择（aicode 风格：搜索 + 分组 + 单选）
+    // 模型选择（MChat 式：紧凑单行列表 + 选中指示 + 分组小字头）
     if (showModelPicker) {
         var query by remember { mutableStateOf("") }
-        ModalBottomSheet(onDismissRequest = { showModelPicker = false }) {
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        ModalBottomSheet(onDismissRequest = { showModelPicker = false }, containerColor = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.fillMaxWidth()) {
                 Text(
                     "选择模型",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(vertical = 10.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                 )
                 OutlinedTextField(
                     value = query, onValueChange = { query = it },
                     placeholder = { Text("搜索模型…") },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.size(18.dp)) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 )
                 val activeProviders = settings.providers.filter { it.enabled && it.enabledModels.isNotEmpty() }
                 if (activeProviders.isEmpty()) {
@@ -345,96 +347,69 @@ fun ChatScreen(vm: AppViewModel) {
                 }
                 LazyColumn(
                     Modifier.fillMaxWidth().weight(1f, fill = false),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 4.dp, bottom = 28.dp),
                 ) {
                     activeProviders.forEach { p ->
-                        // 提供商分组头
                         item(key = "hdr-${p.id}") {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
-                            ) {
-                                Box(
-                                    Modifier
-                                        .size(8.dp)
-                                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(p.name, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    " · ${typeName(p.type.name)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            Text(
+                                p.name,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 28.dp, top = 12.dp, bottom = 4.dp),
+                            )
                         }
                         val filtered = p.enabledModels.filter { it.contains(query, ignoreCase = true) }
                         items(filtered.size, key = { "${p.id}-" + filtered[it] }) { i ->
                             val m = filtered[i]
                             val selected = session?.modelId == m && session?.providerId == p.id
-                            // 卡片式模型项：选中主色描边 + 圆角 + 能力胶囊
-                            Surface(
-                                color = if (selected) MaterialTheme.colorScheme.primaryContainer
-                                        else MaterialTheme.colorScheme.surfaceContainerLow,
-                                shape = RoundedCornerShape(12.dp),
-                                border = if (selected) androidx.compose.foundation.BorderStroke(
-                                    1.5.dp, MaterialTheme.colorScheme.primary,
-                                ) else null,
+                            // MChat 紧凑行：左侧选中色条 + 模型名 + 能力小字 + 右侧勾
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 3.dp)
                                     .clickable {
                                         vm.updateSessionModel(p.id, m)
                                         showModelPicker = false
-                                    },
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 2.dp),
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                ) {
-                                    Column(Modifier.weight(1f)) {
+                                // 选中指示条（MChat selectionOffset 动画的静态版）
+                                Box(
+                                    Modifier
+                                        .width(3.dp)
+                                        .height(30.dp)
+                                        .background(
+                                            if (selected) MaterialTheme.colorScheme.primary
+                                            else androidx.compose.ui.graphics.Color.Transparent,
+                                            RoundedCornerShape(2.dp),
+                                        )
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        m,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontFamily = Mono,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
+                                    val tags = buildList {
+                                        meta.tools?.let { add(if (it) "工具" else "无工具") }
+                                        if (meta.vision) add("视觉")
+                                        if (meta.reasoning) add("推理")
+                                        meta.contextLength?.let { add("${it / 1000}k") }
+                                    }
+                                    if (tags.isNotEmpty()) {
                                         Text(
-                                            m,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontFamily = Mono,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
-                                        val tags = buildList {
-                                            meta.tools?.let { add(if (it) "工具" else "无工具") }
-                                            if (meta.vision) add("视觉")
-                                            if (meta.reasoning) add("推理")
-                                            meta.contextLength?.let { add("${it / 1000}k") }
-                                        }
-                                        if (tags.isNotEmpty()) {
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                                modifier = Modifier.padding(top = 4.dp),
-                                            ) {
-                                                tags.forEach { tag ->
-                                                    Surface(
-                                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                                        shape = RoundedCornerShape(50),
-                                                    ) {
-                                                        Text(
-                                                            tag,
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    if (selected) {
-                                        Icon(
-                                            Icons.Filled.CheckCircle, "已选",
-                                            Modifier.size(20.dp),
-                                            tint = MaterialTheme.colorScheme.primary,
+                                            tags.joinToString(" · "),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
+                                }
+                                if (selected) {
+                                    Icon(Icons.Filled.CheckCircle, "已选", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }

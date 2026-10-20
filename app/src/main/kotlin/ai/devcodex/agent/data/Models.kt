@@ -80,6 +80,8 @@ data class ChatSession(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val systemPrompt: String? = null,
+    val deepThink: Boolean = false,     // 会话级深度思考
+    val webSearch: Boolean = false,     // 会话级联网搜索（注入搜索工具指引）
 )
 
 // ============ 设置 ============

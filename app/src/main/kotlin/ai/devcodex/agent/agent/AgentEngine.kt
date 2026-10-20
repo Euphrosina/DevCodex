@@ -135,7 +135,11 @@ class AgentEngine(
                     list.joinToString("\n") { "- ${it.name}: ${it.description.take(120)}" }
             }.getOrDefault("")
         }
-        val systemPrompt = basePrompt + skillSection
+        var systemPrompt = basePrompt + skillSection
+        if (session.webSearch) {
+            systemPrompt += "\n\n联网搜索模式已开启：对时效性问题，先用 http_request 工具搜索（可用 https://www.bing.com/search?q=... 或 https://duckduckgo.com/html/?q=... 抓取结果页并引用来源），综合搜索结果回答。"
+        }
+        val effort = if (session.deepThink) "high" else s.reasoningEffort
 
         var current = session
         try {
@@ -175,7 +179,7 @@ class AgentEngine(
                 var firstTokMs = 0L
                 val t0 = System.currentTimeMillis()
 
-                var request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, effectiveSchemas, stream = true, reasoningEffort = s.reasoningEffort)
+                var request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, effectiveSchemas, stream = true, reasoningEffort = effort)
 
                 fun consume(line: String): ChatSession {
                     val t = System.currentTimeMillis()
@@ -191,7 +195,7 @@ class AgentEngine(
                     val msg = e.message ?: e.toString()
                     if (msg.contains("HTTP 400") && effectiveSchemas.isNotEmpty()) {
                         // 未知模型 400：降级去掉 tools 重试一次
-                        request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, emptyList(), stream = true, reasoningEffort = s.reasoningEffort)
+                        request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, emptyList(), stream = true, reasoningEffort = effort)
                         streamPost(LlmClient, request) { line -> current = consume(line) }
                     } else {
                         throw e
