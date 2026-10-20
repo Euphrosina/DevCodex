@@ -59,6 +59,12 @@ object ShellAccess {
         }
     }
 
+    /** Shizuku 进程死亡：清引用（监听器回调） */
+    fun onShizukuDead() {
+        shizukuService = null
+        binding = false
+    }
+
     fun unbindShizukuService() {
         runCatching { Shizuku.unbindUserService(userServiceArgs, serviceConnection, true) }
         shizukuService = null

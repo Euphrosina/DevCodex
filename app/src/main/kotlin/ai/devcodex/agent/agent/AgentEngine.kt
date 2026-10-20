@@ -88,7 +88,36 @@ class AgentEngine(
             ?: provider.enabledModels.firstOrNull()
             ?: run { events.emit(UiEvent.Error("该提供商没有启用的模型")); return }
 
+        // MCP 工具拉取（启用中的服务器，单服务器 8s 超时保护）
+        val mcpTools = s.mcpServers.filter { it.enabled }.flatMap { cfg ->
+            runCatching {
+                kotlinx.coroutines.withTimeoutOrNull(8000) {
+                    val sid = ai.devcodex.agent.provider.McpClient.initialize(cfg).getOrNull()
+                    ai.devcodex.agent.provider.McpClient.listTools(cfg, sid).getOrDefault(emptyList())
+                } ?: emptyList()
+            }.getOrDefault(emptyList())
+        }
         val toolDefs = BuiltinTools.all.filter { s.enabledTools.contains(it.name) } +
+            ai.devcodex.agent.tools.AdvancedFsTools.all.filter { s.enabledTools.contains(it.name) } +
+            customToolDefs(s.customTools) +
+            mcpTools.map { mt ->
+                ToolDef(
+                    name = "mcp_${mt.serverId.take(8)}_${mt.name}",
+                    description = "[MCP:${mt.serverName}] ${mt.description.ifBlank { mt.name }}",
+                    parameters = runCatching {
+                        kotlinx.serialization.json.Json.parseToJsonElement(mt.inputSchema) as? JsonObject
+                    }.getOrNull() ?: buildJsonObject { put("type", "object"); put("properties", buildJsonObject {}) },
+                ) { argsJson ->
+                    val cfg = s.mcpServers.firstOrNull { it.id == mt.serverId }
+                        ?: return@ToolDef "ERROR: MCP 服务器已移除"
+                    val sid = runCatching {
+                        kotlinx.coroutines.withTimeoutOrNull(8000) {
+                            ai.devcodex.agent.provider.McpClient.initialize(cfg).getOrNull()
+                        }
+                    }.getOrNull()
+                    ai.devcodex.agent.provider.McpClient.callTool(cfg, mt.name, argsJson, sid)
+                }
+            } +
             BuiltinTools.pluginTools(plugins())
         val toolSchemas: List<JsonObject> = toolDefs.map { t ->
             buildJsonObject {
@@ -146,7 +175,7 @@ class AgentEngine(
                 var firstTokMs = 0L
                 val t0 = System.currentTimeMillis()
 
-                var request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, effectiveSchemas, stream = true)
+                var request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, effectiveSchemas, stream = true, reasoningEffort = s.reasoningEffort)
 
                 fun consume(line: String): ChatSession {
                     val t = System.currentTimeMillis()
@@ -162,7 +191,7 @@ class AgentEngine(
                     val msg = e.message ?: e.toString()
                     if (msg.contains("HTTP 400") && effectiveSchemas.isNotEmpty()) {
                         // 未知模型 400：降级去掉 tools 重试一次
-                        request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, emptyList(), stream = true)
+                        request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, emptyList(), stream = true, reasoningEffort = s.reasoningEffort)
                         streamPost(LlmClient, request) { line -> current = consume(line) }
                     } else {
                         throw e
@@ -257,6 +286,28 @@ class AgentEngine(
         private const val SANDBOX_MARK = "/data/user/0/ai.devcodex.agent"
     }
 }
+
+/** 自定义工具（用户 shell 模板）→ ToolDef */
+private fun customToolDefs(defs: List<ai.devcodex.agent.data.CustomToolDef>): List<ToolDef> =
+    defs.filter { it.enabled }.map { ct ->
+        val schema = runCatching {
+            kotlinx.serialization.json.Json.parseToJsonElement(ct.parameters) as? JsonObject
+        }.getOrNull() ?: kotlinx.serialization.json.buildJsonObject {
+            put("type", kotlinx.serialization.json.JsonPrimitive("object"))
+            put("properties", kotlinx.serialization.json.buildJsonObject {})
+        }
+        ToolDef(
+            name = ct.name,
+            description = ct.description.ifBlank { "自定义工具 ${ct.name}（shell 模板）" },
+            parameters = schema,
+            risk = ToolDef.Risk.MEDIUM,
+        ) { argsJson ->
+            val cmd = ct.command.replace(Regex("\\{\\{(\\w+)\\}\\}")) { m ->
+                ai.devcodex.agent.util.JsonArg.string(argsJson, m.groupValues[1]) ?: ""
+            }
+            ai.devcodex.agent.shell.ShellAccess.exec(cmd).take(15000)
+        }
+    }
 
 val DEFAULT_SYSTEM_PROMPT = """你是 DevCodex，一个运行在 Android 手机上的 AI 智能体（Agent）。
 你可以通过工具读写手机本地文件、执行 shell 命令、发 HTTP 请求、读取屏幕内容、做界面自动化。

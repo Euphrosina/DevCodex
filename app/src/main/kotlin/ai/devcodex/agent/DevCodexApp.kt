@@ -36,6 +36,9 @@ class DevCodexApp : Application() {
                 ShellAccess.bindShizukuService()
             }
         }
+        // Shizuku 服务生死监听：死了清空引用，复活自动重绑
+        rikka.shizuku.Shizuku.addBinderReceivedListenerSticky { ShellAccess.bindShizukuService() }
+        rikka.shizuku.Shizuku.addBinderDeadListener { ShellAccess.onShizukuDead() }
         ShellAccess.bindShizukuService()
     }
 

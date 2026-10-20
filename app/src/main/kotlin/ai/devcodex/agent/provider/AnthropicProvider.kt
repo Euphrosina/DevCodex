@@ -42,12 +42,17 @@ object AnthropicProvider {
         }
     }
 
-    fun chatRequest(p: ProviderConfig, model: String, systemPrompt: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean): Request {
+    fun chatRequest(p: ProviderConfig, model: String, systemPrompt: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean, reasoningEffort: String = ""): Request {
         val body = buildJsonObject {
             put("model", model)
             put("max_tokens", 8192)
             put("stream", stream)
             if (systemPrompt.isNotBlank()) put("system", systemPrompt)
+            if (reasoningEffort.isNotBlank()) {
+                // Anthropic: thinking budget 映射 low=2048 / medium=8192 / high=16384
+                val budget = when (reasoningEffort) { "low" -> 2048; "medium" -> 8192; else -> 16384 }
+                put("thinking", buildJsonObject { put("type", "enabled"); put("budget_tokens", budget) })
+            }
             put("messages", turnsToBlocks(turns))
             if (tools.isNotEmpty()) {
                 put("tools", buildJsonArray {

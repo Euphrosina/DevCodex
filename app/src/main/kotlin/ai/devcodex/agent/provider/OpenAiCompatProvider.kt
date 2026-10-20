@@ -10,7 +10,7 @@ import okhttp3.Request
 /** OpenAI 兼容协议（GLM/DeepSeek/Kimi/OpenAI/OpenRouter/groq 等） */
 object OpenAiCompatProvider {
 
-    fun chatRequest(p: ProviderConfig, model: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean): Request {
+    fun chatRequest(p: ProviderConfig, model: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean, reasoningEffort: String = ""): Request {
         val messages = turns.map { t ->
             buildJsonObject {
                 put("role", t.role)
@@ -42,6 +42,7 @@ object OpenAiCompatProvider {
             put("model", model)
             put("messages", buildJsonArray { messages.forEach { add(it) } })
             put("stream", stream)
+            if (reasoningEffort.isNotBlank()) put("reasoning_effort", reasoningEffort)
             if (tools.isNotEmpty()) {
                 put("tools", buildJsonArray {
                     tools.forEach { t -> add(buildJsonObject { put("type", "function"); put("function", t) }) }

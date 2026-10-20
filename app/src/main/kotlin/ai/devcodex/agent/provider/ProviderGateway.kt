@@ -20,9 +20,9 @@ object ProviderGateway {
         ProviderType.OLLAMA -> OllamaProvider.testModel(p, model)
     }
 
-    fun chatRequest(p: ProviderConfig, model: String, systemPrompt: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean) = when (p.type) {
-        ProviderType.OPENAI_COMPAT -> OpenAiCompatProvider.chatRequest(p, model, turns, tools, stream)
-        ProviderType.ANTHROPIC -> AnthropicProvider.chatRequest(p, model, systemPrompt, turns, tools, stream)
+    fun chatRequest(p: ProviderConfig, model: String, systemPrompt: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean, reasoningEffort: String = "") = when (p.type) {
+        ProviderType.OPENAI_COMPAT -> OpenAiCompatProvider.chatRequest(p, model, turns, tools, stream, reasoningEffort)
+        ProviderType.ANTHROPIC -> AnthropicProvider.chatRequest(p, model, systemPrompt, turns, tools, stream, reasoningEffort)
         ProviderType.OLLAMA -> OllamaProvider.chatRequest(p, model, turns, tools, stream)
     }
 

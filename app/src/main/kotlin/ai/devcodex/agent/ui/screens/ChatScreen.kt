@@ -27,6 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
@@ -243,23 +247,33 @@ fun ChatScreen(vm: AppViewModel) {
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             TypingDots()
                                         } else if (msg.content.isNotBlank()) {
+                                            // 性能关键：流式输出中（最后一条+运行中）用轻量纯 Text，
+                                            // 完成后一次性切换 M3L 富渲染（Markdown/代码高亮/LaTeX/表格）
+                                            val streamingNow = isRunning && idx == messages.lastIndex && msg.role == "assistant"
                                             Box(Modifier.combinedClickable(
                                                 onClick = {},
                                                 onLongClick = { selectedMsg = msg },
                                             )) {
-                                                // M3L 渲染：Markdown + 代码高亮 + LaTeX + 表格（流式稳定）
-                                                androidx.compose.runtime.CompositionLocalProvider(
-                                                    ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
-                                                        primary = MaterialTheme.colorScheme.primary,
-                                                        surface = MaterialTheme.colorScheme.surfaceContainerLow,
-                                                        outlineVariant = MaterialTheme.colorScheme.outlineVariant,
-                                                    ),
-                                                ) {
-                                                    ai.devcodex.agent.m3l.MixedMarkdownLatex(
-                                                        text = msg.content + if (msg.toolStatus == ToolStatus.RUNNING) " ▍" else "",
-                                                        textColor = MaterialTheme.colorScheme.onSurface,
-                                                        isStreaming = msg.toolStatus == ToolStatus.RUNNING,
+                                                if (streamingNow) {
+                                                    Text(
+                                                        msg.content + " ▍",
+                                                        Modifier.fillMaxWidth(),
+                                                        style = MaterialTheme.typography.bodyLarge,
                                                     )
+                                                } else {
+                                                    androidx.compose.runtime.CompositionLocalProvider(
+                                                        ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
+                                                            primary = MaterialTheme.colorScheme.primary,
+                                                            surface = MaterialTheme.colorScheme.surfaceContainerLow,
+                                                            outlineVariant = MaterialTheme.colorScheme.outlineVariant,
+                                                        ),
+                                                    ) {
+                                                        ai.devcodex.agent.m3l.MixedMarkdownLatex(
+                                                            text = msg.content,
+                                                            textColor = MaterialTheme.colorScheme.onSurface,
+                                                            isStreaming = false,
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -307,11 +321,11 @@ fun ChatScreen(vm: AppViewModel) {
     if (showModelPicker) {
         var query by remember { mutableStateOf("") }
         ModalBottomSheet(onDismissRequest = { showModelPicker = false }) {
-            Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "选择模型",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(vertical = 10.dp),
                 )
                 OutlinedTextField(
                     value = query, onValueChange = { query = it },
@@ -362,13 +376,13 @@ fun ChatScreen(vm: AppViewModel) {
                             Surface(
                                 color = if (selected) MaterialTheme.colorScheme.primaryContainer
                                         else MaterialTheme.colorScheme.surfaceContainerLow,
-                                shape = RoundedCornerShape(14.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 border = if (selected) androidx.compose.foundation.BorderStroke(
                                     1.5.dp, MaterialTheme.colorScheme.primary,
                                 ) else null,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .padding(horizontal = 16.dp, vertical = 3.dp)
                                     .clickable {
                                         vm.updateSessionModel(p.id, m)
                                         showModelPicker = false
@@ -579,29 +593,33 @@ private fun MessageStats(msg: Message) {
     val speed = if (msg.totalMs > 0 && msg.outputTokens > 0) msg.outputTokens * 1000 / msg.totalMs else 0
     val ctx = msg.inputTokens + msg.outputTokens
     val cachePct = if (msg.inputTokens > 0) msg.cachedTokens * 100 / msg.inputTokens else 0
-    // rikkahub 原版格式：↑ 输入 tokens(缓存命中) ↓ 输出 tokens ⚡ 速度 ⏱ 耗时
-    val sb = StringBuilder()
-    if (msg.inputTokens > 0) {
-        sb.append("↑ ").append(formatTok(msg.inputTokens)).append(" tokens")
-        if (msg.cachedTokens > 0) sb.append("(").append(formatTok(msg.cachedTokens)).append(" cached)")
-    }
-    if (msg.outputTokens > 0) {
-        if (sb.isNotEmpty()) sb.append("  ")
-        sb.append("↓ ").append(formatTok(msg.outputTokens)).append(" tokens")
-    }
-    if (sb.isNotEmpty()) sb.append("  ")
-    if (speed > 0) sb.append("⚡ ").append(speed).append(" tok/s")
-    if (msg.totalMs > 0) sb.append("  ⏱ ").append("%.1f".format(msg.totalMs / 1000.0)).append("s")
-    Text(
-        sb.toString(),
-        style = MaterialTheme.typography.labelSmall,
-        fontFamily = Mono,
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+    // 图标化统计（无 emoji）：上行箭头=输入（括号缓存命中） 下行箭头=输出 闪电=速度 时钟=耗时
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(top = 4.dp),
-    )
+    ) {
+        if (msg.inputTokens > 0) {
+            StatIcon(Icons.Filled.ArrowUpward, formatTok(msg.inputTokens) + if (msg.cachedTokens > 0) " (${formatTok(msg.cachedTokens)} cached)" else "")
+        }
+        if (msg.outputTokens > 0) {
+            StatIcon(Icons.Filled.ArrowDownward, formatTok(msg.outputTokens))
+        }
+        if (speed > 0) StatIcon(Icons.Filled.Bolt, "$speed tok/s")
+        if (msg.totalMs > 0) StatIcon(Icons.Filled.Schedule, "%.1fs".format(msg.totalMs / 1000.0))
+    }
 }
 
 private fun formatTok(n: Long): String = when {
     n >= 1000 -> "%.1fk".format(n / 1000.0)
     else -> n.toString()
+}
+
+
+@Composable
+private fun StatIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Icon(icon, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+        Text(text, style = MaterialTheme.typography.labelSmall, fontFamily = Mono, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
+    }
 }

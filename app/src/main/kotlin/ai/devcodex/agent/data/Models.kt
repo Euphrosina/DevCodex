@@ -90,6 +90,12 @@ data class AppSettings(
     val enabledTools: Set<String> = defaultTools(),
     val toolPerms: Map<String, String> = emptyMap(),  // 工具名 -> ALLOW（总是允许）；缺省=每次询问
     val maxAgentSteps: Int = 24,
+    // MCP 服务器（Streamable HTTP）
+    val mcpServers: List<ai.devcodex.agent.provider.McpClient.McpServerConfig> = emptyList(),
+    // 自定义工具：name/description/command 模板（{{参数}} 替换，走 Shell 通道）
+    val customTools: List<CustomToolDef> = emptyList(),
+    // 思考推理等级：空=默认, low/medium/high
+    val reasoningEffort: String = "",
 ) {
     companion object {
         fun defaultTools(): Set<String> = setOf(
@@ -97,6 +103,8 @@ data class AppSettings(
             "shell_exec", "http_request", "memory_save", "memory_read",
             "app_list", "device_info", "ui_snapshot", "ui_tap", "ui_back", "ui_home", "ui_scroll", "notify",
             "skill_read", "skill_list",
+            "fs_copy", "fs_move", "fs_mkdir", "fs_rename", "fs_grep", "fs_find",
+            "fs_chmod", "fs_tail", "fs_head", "fs_stat", "fs_wc",
         )
     }
 }
@@ -111,6 +119,16 @@ data class ThemePrefsData(
     val chatFont: String = "gsf",
     val navPosition: String = "bottom",    // bottom | rail（左侧）
     val immersive: Boolean = false,        // 沉浸模式：隐藏导航栏（聊天页全屏）
+)
+
+// ============ 自定义工具 ============
+@Serializable
+data class CustomToolDef(
+    val name: String,                 // 英文名
+    val description: String = "",
+    val parameters: String = "{}",    // JSON Schema 字符串
+    val command: String,              // shell 模板，{{参数名}} 替换
+    val enabled: Boolean = true,
 )
 
 // ============ 插件 ============

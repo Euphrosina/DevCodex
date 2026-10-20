@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.School
@@ -48,6 +49,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -340,11 +342,95 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         }
         Spacer(Modifier.padding(16.dp))
 
+        // ============ 思考推理等级 ============
+        Text("思考推理等级", style = MaterialTheme.typography.titleMedium)
+        Text("控制模型的思考深度（支持 OpenAI o/gpt-5 系与 Claude 3.7+）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+            listOf("" to "默认", "low" to "低", "medium" to "中", "high" to "高").forEach { (v, label) ->
+                FilterChip(selected = settings.reasoningEffort == v, onClick = {
+                    vm.saveSettings { it.copy(reasoningEffort = v) }
+                }, label = { Text(label) })
+            }
+        }
+        Spacer(Modifier.padding(8.dp))
+
+        // ============ MCP 服务器 ============
+        Text("MCP 服务器", style = MaterialTheme.typography.titleMedium)
+        Text("连接 Streamable HTTP 协议的 MCP 服务，其工具自动注入本应用", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.padding(6.dp))
+        settings.mcpServers.forEach { m ->
+            ListItem(
+                overlineContent = { Text("MCP", style = MaterialTheme.typography.labelSmall) },
+                headlineContent = { Text(m.name) },
+                supportingContent = { Text(m.url, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                trailingContent = {
+                    Row {
+                        Switch(checked = m.enabled, onCheckedChange = { on ->
+                            vm.saveSettings { s -> s.copy(mcpServers = s.mcpServers.map { if (it.id == m.id) it.copy(enabled = on) else it }) }
+                        })
+                        IconButton(onClick = {
+                            vm.saveSettings { s -> s.copy(mcpServers = s.mcpServers.filter { it.id != m.id }) }
+                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                    }
+                },
+            )
+        }
+        var newMcpName by remember { mutableStateOf("") }
+        var newMcpUrl by remember { mutableStateOf("") }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(value = newMcpName, onValueChange = { newMcpName = it }, label = { Text("名称") }, singleLine = true, modifier = Modifier.weight(0.35f), textStyle = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.padding(4.dp))
+            OutlinedTextField(value = newMcpUrl, onValueChange = { newMcpUrl = it }, label = { Text("MCP URL (https://…)") }, singleLine = true, modifier = Modifier.weight(0.65f), textStyle = MaterialTheme.typography.bodySmall)
+            IconButton(onClick = {
+                if (newMcpUrl.isNotBlank()) {
+                    val id = java.util.UUID.randomUUID().toString().take(8)
+                    vm.saveSettings { s -> s.copy(mcpServers = s.mcpServers + ai.devcodex.agent.provider.McpClient.McpServerConfig(id, newMcpName.ifBlank { "MCP-" + id }, newMcpUrl.trim())) }
+                    newMcpName = ""; newMcpUrl = ""
+                }
+            }) { Icon(Icons.Filled.Add, "添加") }
+        }
+        Spacer(Modifier.padding(10.dp))
+
+        // ============ 自定义工具 ============
+        Text("自定义工具", style = MaterialTheme.typography.titleMedium)
+        Text("shell 命令模板，{{参数名}} 会被 AI 填的参数替换，走 Shizuku/Root 执行", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.padding(6.dp))
+        settings.customTools.forEach { ct ->
+            ListItem(
+                overlineContent = { Text("自定义", style = MaterialTheme.typography.labelSmall) },
+                headlineContent = { Text(ct.name, fontFamily = FontFamily.Monospace) },
+                supportingContent = { Text(ct.command, maxLines = 2, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) },
+                trailingContent = {
+                    Row {
+                        Switch(checked = ct.enabled, onCheckedChange = { on ->
+                            vm.saveSettings { s -> s.copy(customTools = s.customTools.map { if (it.name == ct.name) it.copy(enabled = on) else it }) }
+                        })
+                        IconButton(onClick = {
+                            vm.saveSettings { s -> s.copy(customTools = s.customTools.filter { it.name != ct.name }) }
+                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                    }
+                },
+            )
+        }
+        var ctName by remember { mutableStateOf("") }
+        var ctDesc by remember { mutableStateOf("") }
+        var ctCmd by remember { mutableStateOf("") }
+        OutlinedTextField(value = ctName, onValueChange = { ctName = it }, label = { Text("工具名（英文）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = ctDesc, onValueChange = { ctDesc = it }, label = { Text("描述（AI 靠它判断何时用）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = ctCmd, onValueChange = { ctCmd = it }, label = { Text("命令模板，如 pm list packages | grep {{keyword}}") }, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        TextButton(onClick = {
+            if (ctName.isNotBlank() && ctCmd.isNotBlank()) {
+                vm.saveSettings { s -> s.copy(customTools = s.customTools + ai.devcodex.agent.data.CustomToolDef(ctName.trim(), ctDesc.trim(), "{}", ctCmd.trim())) }
+                ctName = ""; ctDesc = ""; ctCmd = ""
+            }
+        }) { Icon(Icons.Filled.Add, null, Modifier.size(16.dp)); Spacer(Modifier.padding(4.dp)); Text("添加自定义工具") }
+        Spacer(Modifier.padding(12.dp))
+
         // ============ 内置工具开关 ============
         Text("内置工具", style = MaterialTheme.typography.titleMedium)
         Text("关闭后智能体将看不到对应能力", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.padding(6.dp))
-        ai.devcodex.agent.tools.BuiltinTools.all.forEach { tool ->
+        (ai.devcodex.agent.tools.BuiltinTools.all + ai.devcodex.agent.tools.AdvancedFsTools.all).forEach { tool ->
             val enabled = settings.enabledTools.contains(tool.name)
             val alwaysAllowed = settings.toolPerms[tool.name] == "ALLOW"
             ListItem(
