@@ -529,33 +529,26 @@ private fun MessageStats(msg: Message) {
     val speed = if (msg.totalMs > 0 && msg.outputTokens > 0) msg.outputTokens * 1000 / msg.totalMs else 0
     val ctx = msg.inputTokens + msg.outputTokens
     val cachePct = if (msg.inputTokens > 0) msg.cachedTokens * 100 / msg.inputTokens else 0
-    // rikkahub 式两行统计：第一行 token 用量（输入/输出/缓存），第二行速度与耗时
-    val line1 = buildList {
-        if (msg.inputTokens > 0) add("输入 ${formatTok(msg.inputTokens)}")
-        if (msg.outputTokens > 0) add("输出 ${formatTok(msg.outputTokens)}")
-        if (msg.cachedTokens > 0) add("缓存节省 ${formatTok(msg.cachedTokens)}")
+    // rikkahub 原版格式：↑ 输入 tokens(缓存命中) ↓ 输出 tokens ⚡ 速度 ⏱ 耗时
+    val sb = StringBuilder()
+    if (msg.inputTokens > 0) {
+        sb.append("↑ ").append(formatTok(msg.inputTokens)).append(" tokens")
+        if (msg.cachedTokens > 0) sb.append("(").append(formatTok(msg.cachedTokens)).append(" cached)")
     }
-    val line2 = buildList {
-        msg.model?.let { add(it) }
-        if (msg.firstTokenMs > 0) add("首包 ${"%.1f".format(msg.firstTokenMs / 1000.0)}s")
-        if (msg.totalMs > 0) add("${"%.1f".format(msg.totalMs / 1000.0)}s")
-        if (speed > 0) add("${speed} tok/s")
-        if (ctx > 0) add("上下文 ${formatTok(ctx)}")
-    }.filter { it.isNotBlank() }
-    Column(Modifier.padding(top = 4.dp)) {
-        if (line1.isNotEmpty()) Text(
-            line1.joinToString(" · "),
-            style = MaterialTheme.typography.labelSmall,
-            fontFamily = Mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-        )
-        if (line2.isNotEmpty()) Text(
-            line2.joinToString(" · "),
-            style = MaterialTheme.typography.labelSmall,
-            fontFamily = Mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-        )
+    if (msg.outputTokens > 0) {
+        if (sb.isNotEmpty()) sb.append("  ")
+        sb.append("↓ ").append(formatTok(msg.outputTokens)).append(" tokens")
     }
+    if (sb.isNotEmpty()) sb.append("  ")
+    if (speed > 0) sb.append("⚡ ").append(speed).append(" tok/s")
+    if (msg.totalMs > 0) sb.append("  ⏱ ").append("%.1f".format(msg.totalMs / 1000.0)).append("s")
+    Text(
+        sb.toString(),
+        style = MaterialTheme.typography.labelSmall,
+        fontFamily = Mono,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+        modifier = Modifier.padding(top = 4.dp),
+    )
 }
 
 private fun formatTok(n: Long): String = when {

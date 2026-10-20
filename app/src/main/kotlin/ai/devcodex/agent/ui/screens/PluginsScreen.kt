@@ -68,23 +68,32 @@ fun PluginsScreen(vm: AppViewModel) {
             }
         },
     ) { padding ->
-        // 开发指南入口
+        // 开发文档大入口（首屏第一项）
         Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier.padding(padding).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            onClick = { showGuide = true },
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(16.dp),
             ) {
-                Icon(Icons.Filled.MenuBook, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                Spacer(Modifier.padding(8.dp))
+                Icon(
+                    Icons.Filled.MenuBook, null,
+                    Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Spacer(Modifier.padding(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("插件开发指南", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                    Text("JSON 格式说明 · 参数模板 · 示例", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                    Text("插件开发文档", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(
+                        "是什么 · JSON 字段说明 · 参数写法 · 模板语法 · 五条铁律 · 最小示例 · 调试流程",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                    )
                 }
-                TextButton(onClick = { showGuide = true }) { Text("查看") }
+                Text("→", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
         if (plugins.isEmpty()) {

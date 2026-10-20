@@ -384,45 +384,94 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
         }
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("技能（Skills）", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "SKILL.md 格式技能包：简介常驻提示词，正文由 AI 按需读取。兼容 agentskills.io 标准（Claude Code / android-skills 生态）",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+    Scaffold(
+        floatingActionButton = {
+            androidx.compose.material3.ExtendedFloatingActionButton(
+                onClick = { picker.launch("*/*") },
+                icon = { Icon(Icons.Filled.School, null) },
+                text = { Text("安装 SKILL.md") },
+            )
+        },
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            // 说明卡
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("技能 = AI 的说明书", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Text(
+                        "SKILL.md 格式：简介常驻提示词，正文由 AI 按需读取（skill_read）。\n兼容 agentskills.io 标准，Claude Code / android-skills 生态的技能直接装。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                    )
+                }
             }
-            TextButton(onClick = { picker.launch("*/*") }) { Text("从文件安装") }
-        }
-        msg?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-        }
-        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-        if (skills.isEmpty()) {
-            Text(
-                "暂无技能。可从 Claude Code 生态的 SKILL.md 文件安装（GitHub 上搜 agentskills 或 android/skills）",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        skills.forEach { sk ->
-            ListItem(
-                overlineContent = { Text(if (sk.enabled) "已启用" else "已停用", style = MaterialTheme.typography.labelSmall) },
-                headlineContent = { Text(sk.name) },
-                supportingContent = { Text(sk.description, maxLines = 2, style = MaterialTheme.typography.bodySmall) },
-                trailingContent = {
-                    Row {
-                        Switch(checked = sk.enabled, onCheckedChange = {
-                            ai.devcodex.agent.data.SkillRepo(context).toggle(sk.name); reload()
-                        })
-                        IconButton(onClick = {
-                            ai.devcodex.agent.data.SkillRepo(context).delete(sk.name); reload()
-                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+            msg?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 4.dp))
+            }
+            if (skills.isEmpty()) {
+                // 空态：居中图形 + 引导
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        Icons.Filled.School, null,
+                        Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                    )
+                    Spacer(Modifier.padding(10.dp))
+                    Text("还没有技能", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "点右下角安装 SKILL.md，或去 GitHub 搜\nagentskills / android-skills 下载技能文件",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            } else {
+                Spacer(Modifier.padding(8.dp))
+                Text("已安装 ${skills.size} 个", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.padding(4.dp))
+                skills.forEach { sk ->
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (sk.enabled) MaterialTheme.colorScheme.surfaceContainerLow
+                            else MaterialTheme.colorScheme.surfaceContainer,
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                    ) {
+                        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(sk.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                Text(
+                                    if (sk.enabled) "已启用" else "已停用",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (sk.enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.clickable {
+                                        ai.devcodex.agent.data.SkillRepo(context).toggle(sk.name); reload()
+                                    },
+                                )
+                                Switch(checked = sk.enabled, onCheckedChange = {
+                                    ai.devcodex.agent.data.SkillRepo(context).toggle(sk.name); reload()
+                                })
+                                IconButton(onClick = {
+                                    ai.devcodex.agent.data.SkillRepo(context).delete(sk.name); reload()
+                                }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                            }
+                            Text(
+                                sk.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 3,
+                            )
+                        }
                     }
-                },
-            )
+                }
+            }
         }
     }
 }
@@ -467,7 +516,7 @@ private fun AboutPage(onBack: () -> Unit) {
         // 反馈信息
         ListItem(
             headlineContent = { Text("反馈意见") },
-            supportingContent = { Text("QQ：3633190269\\n邮箱：Lv520e3e4@163.com", fontFamily = FontFamily.Monospace) },
+            supportingContent = { Text("QQ：3633190269\n邮箱：Lv520e3e4@163.com", fontFamily = FontFamily.Monospace) },
         )
 
         // 赞助
