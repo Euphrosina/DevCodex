@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -74,6 +75,7 @@ fun MarkdownText(content: String, modifier: Modifier = Modifier) {
                         )
                     }
                 }
+                is MdBlock.Table -> MdTable(block)
                 is MdBlock.Heading -> Text(
                     inline(block.text, inlineCodeBg),
                     style = when (block.level) {
@@ -119,6 +121,7 @@ private sealed interface MdBlock {
     data class Bullet(val text: String, val ordered: Boolean, val num: Int) : MdBlock
     data class Quote(val text: String) : MdBlock
     data class Code(val lang: String, val code: String) : MdBlock
+    data class Table(val headers: List<String>, val rows: List<List<String>>) : MdBlock
     object Rule : MdBlock
 }
 
@@ -148,6 +151,17 @@ private fun blocks(src: String): List<MdBlock> {
                 flush()
                 val level = line.takeWhile { it == '#' }.length
                 out.add(MdBlock.Heading(level, line.dropWhile { it == '#' }.trim()))
+            }
+            line.trimStart().startsWith("|") -> {
+                flush()
+                // 收集整个表格块
+                val tableLines = mutableListOf<String>()
+                while (i < lines.size && lines[i].trimStart().startsWith("|")) {
+                    tableLines.add(lines[i]); i++
+                }
+                i-- // 抵消外层 i++
+                val parsed = parseTable(tableLines)
+                if (parsed != null) out.add(parsed)
             }
             Regex("^\\s*[-*] ").containsMatchIn(line) -> {
                 flush()
@@ -231,6 +245,67 @@ private fun inline(text: String, codeBg: Color): AnnotatedString = buildAnnotate
             }
             t[i] == '#' && i == 0 -> { append(t[i]); i++ }
             else -> { append(t[i]); i++ }
+        }
+    }
+}
+
+
+/** 解析 GFM 表格：| a | b | + |---|---| + 数据行 */
+private fun parseTable(lines: List<String>): MdBlock.Table? {
+    if (lines.size < 2) return null
+    fun cells(l: String): List<String> = l.trim().trim('|').split('|').map { it.trim() }
+    val headers = cells(lines[0])
+    // 第二行必须是分隔行
+    val sep = cells(lines[1])
+    if (sep.isEmpty() || sep.any { !Regex("^:?-{2,}:?$").matches(it) }) return null
+    val rows = lines.drop(2).map { cells(it) }.filter { it.isNotEmpty() }
+    return MdBlock.Table(headers, rows)
+}
+
+/** 表格渲染：表头主色底 + 横向滚动 + 斑马纹 */
+@Composable
+private fun MdTable(table: MdBlock.Table) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+        Column(Modifier.padding(1.dp)) {
+            // 表头
+            Row(Modifier.fillMaxWidth().horizontalScroll(remember { androidx.compose.foundation.ScrollState(0) })) {
+                table.headers.forEach { h ->
+                    Text(
+                        inline(h, MaterialTheme.colorScheme.secondaryContainer),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 10.dp, vertical = 7.dp)
+                            .widthIn(min = 84.dp),
+                    )
+                }
+            }
+            // 数据行（斑马纹）
+            table.rows.forEachIndexed { ri, row ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(if (ri % 2 == 1) MaterialTheme.colorScheme.surfaceContainerHigh else androidx.compose.ui.graphics.Color.Transparent)
+                        .horizontalScroll(remember { androidx.compose.foundation.ScrollState(0) })
+                ) {
+                    row.forEachIndexed { ci, cell ->
+                        Text(
+                            inline(cell, MaterialTheme.colorScheme.secondaryContainer),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .widthIn(min = 84.dp),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
         }
     }
 }

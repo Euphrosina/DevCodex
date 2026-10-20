@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
@@ -338,37 +340,67 @@ fun ChatScreen(vm: AppViewModel) {
                         items(filtered.size, key = { "${p.id}-" + filtered[it] }) { i ->
                             val m = filtered[i]
                             val selected = session?.modelId == m && session?.providerId == p.id
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                            // 卡片式模型项：选中主色描边 + 圆角 + 能力胶囊
+                            Surface(
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surfaceContainerLow,
+                                shape = RoundedCornerShape(14.dp),
+                                border = if (selected) androidx.compose.foundation.BorderStroke(
+                                    1.5.dp, MaterialTheme.colorScheme.primary,
+                                ) else null,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
                                     .clickable {
                                         vm.updateSessionModel(p.id, m)
                                         showModelPicker = false
-                                    }
-                                    .padding(start = 8.dp, end = 16.dp),
+                                    },
                             ) {
-                                androidx.compose.material3.RadioButton(selected = selected, onClick = null)
-                                Column(Modifier.weight(1f).padding(vertical = 2.dp)) {
-                                    Text(
-                                        m,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontFamily = Mono,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
-                                    val tags = buildList {
-                                        meta.tools?.let { add(if (it) "工具" else "无工具") }
-                                        if (meta.vision) add("视觉")
-                                        if (meta.reasoning) add("推理")
-                                        meta.contextLength?.let { add("${it / 1000}k") }
-                                    }
-                                    if (tags.isNotEmpty()) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                ) {
+                                    Column(Modifier.weight(1f)) {
                                         Text(
-                                            tags.joinToString("  "),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            m,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontFamily = Mono,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
+                                        val tags = buildList {
+                                            meta.tools?.let { add(if (it) "工具" else "无工具") }
+                                            if (meta.vision) add("视觉")
+                                            if (meta.reasoning) add("推理")
+                                            meta.contextLength?.let { add("${it / 1000}k") }
+                                        }
+                                        if (tags.isNotEmpty()) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                modifier = Modifier.padding(top = 4.dp),
+                                            ) {
+                                                tags.forEach { tag ->
+                                                    Surface(
+                                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                                        shape = RoundedCornerShape(50),
+                                                    ) {
+                                                        Text(
+                                                            tag,
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (selected) {
+                                        Icon(
+                                            Icons.Filled.CheckCircle, "已选",
+                                            Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary,
                                         )
                                     }
                                 }
