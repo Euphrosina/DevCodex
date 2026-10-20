@@ -148,7 +148,7 @@ class AgentEngine(
                 steps++
 
                 // ---- 1. 流式调 LLM ----
-                val turns = buildList {
+                var turns = buildList {
                     add(ChatTurn("system", systemPrompt))
                     current.messages.forEach { m ->
                         when (m.role) {
@@ -159,6 +159,28 @@ class AgentEngine(
                             "assistant" -> if (m.content.isNotBlank() || m.toolCalls.isNotEmpty()) add(ChatTurn("assistant", m.content, m.toolCalls))
                             "tool" -> if (m.toolCallId != null) add(ChatTurn("tool", m.toolResult ?: "(空)", toolCallId = m.toolCallId, name = m.toolName))
                         }
+                    }
+                }
+                // 自动压缩：粗估 token（字符/2.5 中文比）超 24k 时折叠中段旧对话
+                if (s.autoCompact) {
+                    val estTokens = turns.sumOf { (it.content.length / 2.5 + it.toolCalls.size * 50).toLong() }
+                    if (estTokens > 24_000 && turns.size > 8) {
+                        val keepHead = 2
+                        val keepTail = 6
+                        val dropped = turns.subList(keepHead, turns.size - keepTail)
+                        val summary = buildString {
+                            append("（前文摘要：以下为较早对话的压缩记录）\n")
+                            dropped.forEach { t ->
+                                when (t.role) {
+                                    "user" -> append("[用户] ").append(t.content.take(120)).append("\n")
+                                    "assistant" -> append("[AI] ").append(t.content.take(150)).append("\n")
+                                    "tool" -> append("[工具 ").append(t.name ?: "").append("] ").append((t.content).take(80)).append("\n")
+                                }
+                            }
+                        }
+                        turns = turns.subList(0, keepHead) +
+                            listOf(ChatTurn("user", summary), ChatTurn("assistant", "（已了解前文摘要，继续）")) +
+                            turns.subList(turns.size - keepTail, turns.size)
                     }
                 }
 

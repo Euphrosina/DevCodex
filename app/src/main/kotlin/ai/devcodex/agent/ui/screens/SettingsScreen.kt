@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.statusBarsPadding
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,9 +30,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.School
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,7 +94,9 @@ fun SettingsScreen(vm: AppViewModel) {
                 else -> "设置"
             })
         }, navigationIcon = {
-            if (page != "root") TextButton(onClick = { page = "root" }) { Text("← 返回") }
+            if (page != "root") IconButton(onClick = { page = "root" }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+            }
         })
     }) { padding ->
         when (page) {
@@ -592,11 +599,13 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
 }
 
 /** 关于页：作者/反馈/赞助/隐私政策 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AboutPage(onBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var showReward by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
+    var showPluginGuide by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -658,6 +667,51 @@ private fun AboutPage(onBack: () -> Unit) {
             }
         }
 
+        // 检查更新 + 调试日志 + 插件文档（关键入口，多路可达）
+        var updateMsg by remember { mutableStateOf<String?>(null) }
+        var checking by remember { mutableStateOf(false) }
+        var exporting by remember { mutableStateOf(false) }
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        ListItem(
+            headlineContent = { Text("检查更新") },
+            supportingContent = { Text(updateMsg ?: "当前 v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · GitHub Releases") },
+            leadingContent = { Icon(Icons.Filled.SystemUpdate, null) },
+            modifier = Modifier.clickable {
+                if (!checking) {
+                    checking = true
+                    scope.launch {
+                        val rel = ai.devcodex.agent.util.AppUpdate.checkLatest()
+                        updateMsg = when {
+                            rel == null -> "检查失败（网络或仓库不可达）"
+                            rel.tagName != "v${ai.devcodex.agent.BuildConfig.VERSION_NAME}" -> "新版本 ${rel.tagName} 可用：Releases 页下载 APK"
+                            else -> "已是最新版本"
+                        }
+                        checking = false
+                    }
+                }
+            },
+        )
+        ListItem(
+            headlineContent = { Text("导出调试日志") },
+            supportingContent = { Text(if (exporting) "打包中…" else "崩溃+会话+logcat 打包为 ZIP（在 Android/data 可取出）") },
+            leadingContent = { Icon(Icons.Filled.BugReport, null) },
+            modifier = Modifier.clickable {
+                exporting = true
+                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val f = ai.devcodex.agent.util.AppUpdate.exportDebugZip(context)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        updateMsg = "调试包已导出：${f.absolutePath}"
+                        exporting = false
+                    }
+                }
+            },
+        )
+        ListItem(
+            headlineContent = { Text("插件开发文档") },
+            supportingContent = { Text("是什么 · JSON 字段 · 模板语法 · 示例 · 调试") },
+            leadingContent = { Icon(Icons.Filled.Extension, null) },
+            modifier = Modifier.clickable { showPluginGuide = true },
+        )
         // 隐私
         ListItem(
             headlineContent = { Text("隐私政策") },
@@ -690,6 +744,24 @@ private fun AboutPage(onBack: () -> Unit) {
             },
             confirmButton = { TextButton(onClick = { showReward = false }) { Text("关闭") } },
         )
+    }
+
+    // 插件开发文档（全屏，与插件页同一份）
+    if (showPluginGuide) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginGuide = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("插件开发文档") },
+                        navigationIcon = { IconButton(onClick = { showPluginGuide = false }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "关闭") } },
+                    )
+                },
+            ) { pad ->
+                Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp)) {
+                    Text(PLUGIN_GUIDE_TEXT, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
     }
 
     // 隐私政策弹窗

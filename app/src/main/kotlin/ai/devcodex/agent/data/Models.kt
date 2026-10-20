@@ -92,6 +92,7 @@ data class AppSettings(
     val enabledTools: Set<String> = defaultTools(),
     val toolPerms: Map<String, String> = emptyMap(),  // 工具名 -> ALLOW（总是允许）；缺省=每次询问
     val maxAgentSteps: Int = 24,
+    val autoCompact: Boolean = true,      // 自动压缩上下文（超阈值摘要旧对话）
     // MCP 服务器（Streamable HTTP）
     val mcpServers: List<ai.devcodex.agent.provider.McpClient.McpServerConfig> = emptyList(),
     // 自定义工具：name/description/command 模板（{{参数}} 替换，走 Shell 通道）

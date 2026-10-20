@@ -89,8 +89,8 @@ fun AppRoot(vm: AppViewModel) {
         }
     }
 
-    // 导航模式：底部栏 / 左侧栏 / 沉浸隐藏（仅对话页）
-    val showNav = !(theme.immersive && tabs[tabIdx].route == "chat")
+    // 沉浸模式逃生：一旦当前页不是 chat（如跳设置），立即恢复导航
+    val showNav = !(theme.immersive && tabs[tabIdx].route == "chat" && nav.currentDestination?.route == "chat")
 
     Surface(color = MaterialTheme.colorScheme.background) {
         when {

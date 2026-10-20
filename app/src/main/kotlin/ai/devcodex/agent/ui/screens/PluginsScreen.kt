@@ -286,8 +286,16 @@ private fun PluginGuideDialog(onClose: () -> Unit) {
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 8.dp),
             ) {
-                Text(
-                    """什么是插件
+                Text(PLUGIN_GUIDE_TEXT, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.padding(24.dp))
+            }
+        }
+    }
+}
+
+
+/** 插件开发文档全文（关于页/插件页共用） */
+val PLUGIN_GUIDE_TEXT = """什么是插件
 
 插件 = 一个 JSON 文件，给智能体添加调用外部服务的能力。AI 自动判断何时调用、自动填参数，DevCodex 按你的模板发 HTTP 请求并把结果回给 AI。
 
@@ -368,11 +376,4 @@ Skill（技能）与 Plugin（插件）的区别
 
 · 插件 = 给 AI 新的"手"（HTTP 调用能力）
 · 技能 = 给 AI 新的"脑"（知识与方法论，SKILL.md）
-· 两者可配合：技能教方法，插件给工具""",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Spacer(Modifier.padding(24.dp))
-            }
-        }
-    }
-}
+· 两者可配合：技能教方法，插件给工具"""

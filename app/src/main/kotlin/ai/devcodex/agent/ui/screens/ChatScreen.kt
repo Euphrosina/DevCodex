@@ -228,22 +228,7 @@ fun ChatScreen(vm: AppViewModel) {
                             // tool 消息内联渲染进 assistant 块
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
-                                Row(Modifier.fillMaxWidth()) {
-                                    // AI 头像
-                                    Box(
-                                        Modifier
-                                            .padding(end = 10.dp, top = 2.dp)
-                                            .size(30.dp)
-                                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.AutoAwesome, null,
-                                            Modifier.size(17.dp),
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        )
-                                    }
-                                    Column(Modifier.weight(1f)) {
+                                Column(Modifier.fillMaxWidth()) {
                                         if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!)
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             TypingDots()
@@ -268,6 +253,24 @@ fun ChatScreen(vm: AppViewModel) {
                                                             surface = MaterialTheme.colorScheme.surfaceContainerLow,
                                                             outlineVariant = MaterialTheme.colorScheme.outlineVariant,
                                                         ),
+                                                        ai.devcodex.agent.m3l.LocalCodeBlockHeader provides { block ->
+                                                            // 代码块工具条：复制按钮
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+                                                            ) {
+                                                                Text(
+                                                                    block.language.ifBlank { "code" },
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    fontFamily = Mono,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.weight(1f),
+                                                                )
+                                                                TextButton(onClick = {
+                                                                    clipboard.setText(AnnotatedString(block.code))
+                                                                }) { Text("复制", style = MaterialTheme.typography.labelSmall) }
+                                                            }
+                                                        },
                                                     ) {
                                                         ai.devcodex.agent.m3l.MixedMarkdownLatex(
                                                             text = msg.content,
@@ -287,7 +290,6 @@ fun ChatScreen(vm: AppViewModel) {
                                         }
                                         MessageStats(msg)
                                     }
-                                }
                             }
                         }
                     }
@@ -303,6 +305,28 @@ fun ChatScreen(vm: AppViewModel) {
                         }
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
+                }
+                // 思考推理等级滑块（MChat 风格：拖动选择）
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                ) {
+                    Icon(Icons.Filled.Psychology, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(" 推理 ", style = MaterialTheme.typography.labelSmall)
+                    val levels = listOf("", "low", "medium", "high")
+                    val labels = listOf("关", "低", "中", "高")
+                    val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
+                    androidx.compose.material3.Slider(
+                        value = cur.toFloat(),
+                        onValueChange = { v ->
+                            val idx = v.toInt().coerceIn(0, 3)
+                            vm.saveSettings { s -> s.copy(reasoningEffort = levels[idx]) }
+                        },
+                        valueRange = 0f..3f,
+                        steps = 2,
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    )
+                    Text(labels[cur], style = MaterialTheme.typography.labelSmall, fontFamily = Mono, modifier = Modifier.width(24.dp))
                 }
                 InputBar(
                     value = input,
@@ -385,6 +409,30 @@ fun ChatScreen(vm: AppViewModel) {
                                         )
                                 )
                                 Spacer(Modifier.width(12.dp))
+                                // 模型圆标（品牌色+首字母）
+                                val brandColor = when {
+                                    m.contains("gpt", true) || m.contains("o1") || m.contains("o3") || m.contains("o4") -> androidx.compose.ui.graphics.Color(0xFF10A37F)
+                                    m.contains("claude", true) -> androidx.compose.ui.graphics.Color(0xFFD97757)
+                                    m.contains("deepseek", true) -> androidx.compose.ui.graphics.Color(0xFF4D6BFE)
+                                    m.contains("glm", true) || m.contains("zhipu", true) -> androidx.compose.ui.graphics.Color(0xFF3859FF)
+                                    m.contains("gemini", true) -> androidx.compose.ui.graphics.Color(0xFF4285F4)
+                                    m.contains("qwen", true) || m.contains("通义", true) -> androidx.compose.ui.graphics.Color(0xFF615CED)
+                                    m.contains("kimi", true) || m.contains("moonshot", true) -> androidx.compose.ui.graphics.Color(0xFF000000)
+                                    m.contains("llama", true) -> androidx.compose.ui.graphics.Color(0xFF0668E1)
+                                    m.contains("step", true) -> androidx.compose.ui.graphics.Color(0xFF7C4DFF)
+                                    else -> MaterialTheme.colorScheme.primary
+                                }
+                                Box(
+                                    Modifier.size(28.dp).background(brandColor, androidx.compose.foundation.shape.CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        m.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "?",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = androidx.compose.ui.graphics.Color.White,
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(
                                         m,
@@ -582,6 +630,24 @@ private fun MessageStats(msg: Message) {
         }
         if (speed > 0) StatIcon(Icons.Filled.Bolt, "$speed tok/s")
         if (msg.totalMs > 0) StatIcon(Icons.Filled.Schedule, "%.1fs".format(msg.totalMs / 1000.0))
+        // 上下文窗口圆圈：输入/模型上下文上限（默认 128k）
+        if (ctx > 0) {
+            val limit = ai.devcodex.agent.provider.ModelRegistry.lookup(msg.model ?: "").contextLength ?: 128_000
+            val pct = (ctx.toFloat() / limit).coerceIn(0f, 1f)
+            androidx.compose.foundation.Canvas(Modifier.size(14.dp)) {
+                drawArc(
+                    color = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.3f),
+                    startAngle = -90f, sweepAngle = 360f, useCenter = false,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f),
+                )
+                drawArc(
+                    color = androidx.compose.ui.graphics.Color(0xFFF59E0B),
+                    startAngle = -90f, sweepAngle = 360f * pct, useCenter = false,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f),
+                )
+            }
+            Text(formatTok(ctx) + "/" + (limit / 1000) + "k", style = MaterialTheme.typography.labelSmall, fontFamily = Mono, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
+        }
     }
 }
 
