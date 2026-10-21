@@ -43,6 +43,15 @@ object ModelLogos {
     val qwenLogo = logo("qwen", "M23.919 14.545 20.817 9.17l1.47-2.544a.56.56 0 0 0 0-.566l-1.633-2.83a.57.57 0 0 0-.49-.283h-6.207L12.487.402a.57.57 0 0 0-.49-.284H8.732a.56.56 0 0 0-.49.284L5.139 5.775h-2.94a.56.56 0 0 0-.49.284L.077 8.887a.56.56 0 0 0 0 .567L3.18 14.83l-1.47 2.545a.56.56 0 0 0 0 .566l1.634 2.83a.57.57 0 0 0 .49.283h6.205l1.47 2.545a.57.57 0 0 0 .49.284h3.266a.57.57 0 0 0 .49-.284l3.104-5.375h2.94a.57.57 0 0 0 .49-.283l1.634-2.828a.55.55 0 0 0-.004-.568M8.733.686l1.634 2.828-1.634 2.828H21.8L20.164 9.17H7.425L5.63 6.06Zm1.306 19.801-6.205-.002 1.634-2.83h3.265L2.201 6.344h3.267q3.182 5.517 6.367 11.032zm10.124-5.66L18.53 12l-6.532 11.315-1.634-2.83c2.129-3.673 4.25-7.351 6.373-11.028h3.592l3.102 5.374z", 0xFF615CED)
 
 
+    /** NVIDIA（NIM/nemotron 系） */
+    val nvidiaLogo = logo("nvidia", "M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.493 3.374 6.493 3.374s-2.774 3.851-5.75 3.851c-.398 0-.787-.062-1.158-.185v-4.346c1.528.185 1.837.857 2.747 2.385l2.04-1.714s-1.492-1.952-4-1.952a6.016 6.016 0 0 0-.796.035m0-4.735v2.138l.424-.027c5.45-.185 9.01 4.47 9.01 4.47s-4.08 4.964-8.33 4.964c-.37 0-.733-.035-1.095-.097v1.325c.3.035.61.062.91.062 3.957 0 6.82-2.023 9.593-4.408.459.371 2.34 1.263 2.73 1.652-2.633 2.208-8.772 3.984-12.253 3.984-.335 0-.653-.018-.971-.053v1.864H24V4.063zm0 10.326v1.131c-3.657-.654-4.673-4.46-4.673-4.46s1.758-1.944 4.673-2.262v1.237H8.94c-1.528-.186-2.73 1.245-2.73 1.245s.68 2.412 2.739 3.11M2.456 10.9s2.164-3.197 6.5-3.533V6.201C4.153 6.59 0 10.653 0 10.653s2.35 6.802 8.948 7.42v-1.237c-4.84-.6-6.492-5.936-6.492-5.936z", 0xFF76B900)
+
+    /** Google（Gemma 等 Google 系模型） */
+    val googleLogo = logo("google", "M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z", 0xFF4285F4)
+
+    /** 通用 fallback：四芒星（未识别模型用，不再错用千问） */
+    val genericLogo = logo("generic", "M12,2 L14.2,9.8 L22,12 L14.2,14.2 L12,22 L9.8,14.2 L2,12 L9.8,9.8 Z", 0xFF8B5CF6)
+
     /** 词级严格匹配（避免 o1/step 之类的短词误命中） */
     private fun String.hasWord(w: String): Boolean =
         Regex("(?i)(^|[^a-z0-9])" + Regex.escape(w) + "([^a-z0-9]|${'$'})").containsMatchIn(this)
@@ -56,9 +65,13 @@ object ModelLogos {
         model.hasWord("kimi") || model.hasWord("moonshot") || model.hasWord("mimo") -> moonshotLogo
         model.hasWord("openrouter") -> openrouterLogo
         model.hasWord("qwen") || model.hasWord("qwq") || model.hasWord("qvq") -> qwenLogo
-        model.contains("glm", true) || model.contains("zhipu", true) -> qwenLogo  // GLM 暂用通义形
+        model.hasWord("gemma") || model.hasWord("google") || model.hasWord("palm") || model.hasWord("gemma") -> googleLogo
+        model.hasWord("glm") || model.hasWord("zhipu") || model.hasWord("chatglm") -> genericLogo
+        model.hasWord("grok") || model.hasWord("xai") -> genericLogo
         model.hasWord("llama") -> huggingfaceLogo
-        else -> qwenLogo
+        model.hasWord("nvidia") || model.hasWord("nemotron") || model.hasWord("nim") || model.hasWord("llama-3") && model.hasWord("nvidia") -> nvidiaLogo
+        model.hasWord("liquid") || model.hasWord("lfm") -> genericLogo
+        else -> genericLogo
     }
 }
 
