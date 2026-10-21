@@ -1,6 +1,10 @@
 package ai.devcodex.agent.ui.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -273,10 +277,18 @@ fun InputBar(
     onSend: () -> Unit,
     onStop: () -> Unit,
     running: Boolean,
+    modelId: String,
     modelLabel: String?,
+    curCtx: Int,
+    effort: String,
+    modelMaxCtx: Int,
+    onCtx: (Int) -> Unit,
+    onEffort: (String) -> Unit,
     onPickModel: () -> Unit,
     onAttach: () -> Unit = {},
 ) {
+    val effortLevels = listOf("", "low", "medium", "high", "xhigh", "max", "ultra")
+    val effortLabels = mapOf("" to "关", "low" to "低", "medium" to "中", "high" to "高", "xhigh" to "X高", "max" to "Max", "ultra" to "Ultra")
     // rikkahub 视觉：顶部大圆角浮层容器
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -293,15 +305,50 @@ fun InputBar(
                     .clickable { onPickModel() }
                     .padding(horizontal = 16.dp, vertical = 6.dp),
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(50),
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ai.devcodex.agent.ui.components.ModelLogo(modelId.ifBlank { "?" }, 18.dp)
+                    Spacer(Modifier.width(4.dp))
                     Text(
                         modelLabel ?: "＋ 选择模型",
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 100.dp),
                     )
+                    Icon(Icons.Filled.ArrowDropDown, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.width(8.dp))
+                // 上下文档位胶囊（模型旁）
+                Row(
+                    Modifier.background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)).padding(1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp),
+                ) {
+                    listOf(0 to "默认", 262144 to "256k", 1048576 to "1M").forEach { (opt, label) ->
+                        val support = opt == 0 || opt <= modelMaxCtx
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(if (curCtx == opt && support) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
+                                .clickable(enabled = support) { onCtx(opt) }
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) {
+                            Text(label, style = MaterialTheme.typography.labelSmall, color = if (curCtx == opt && support) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                Spacer(Modifier.width(6.dp))
+                // 推理档位胶囊（点击循环 7 档）
+                val effortIdx = effortLevels.indexOf(effort).coerceAtLeast(0)
+                val nextEffort = effortLevels[(effortIdx + 1) % effortLevels.size]
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier.clickable { onEffort(nextEffort) },
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)) {
+                        Icon(Icons.Filled.Bolt, null, Modifier.size(11.dp), tint = MaterialTheme.colorScheme.tertiary)
+                        Text(" ${effortLabels[effort] ?: "关"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
                 }
                 if (running) {
                     Spacer(Modifier.width(8.dp))

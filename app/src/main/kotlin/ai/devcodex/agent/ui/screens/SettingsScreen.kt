@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -702,16 +703,31 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
     }
     LaunchedEffect(Unit) { reload() }
 
+    val repo = ai.devcodex.agent.data.SkillRepo(context)
+    var ghUrl by remember { mutableStateOf("") }
+    var ghBusy by remember { mutableStateOf(false) }
+    val scope = kotlinx.coroutines.MainScope()
     val picker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            runCatching {
-                context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
-            }.getOrNull()?.let { text ->
-                ai.devcodex.agent.data.SkillRepo(context).install(text)
-                    .onSuccess { reload(); msg = "已安装技能：${it.name}" }
-                    .onFailure { msg = "安装失败：${it.message}" }
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val name = (uri.lastPathSegment ?: "").lowercase()
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw IllegalStateException("读取失败")
+                    if (name.endsWith(".zip") || name.endsWith(".skill")) {
+                        val tmp = java.io.File(context.cacheDir, "import_skill.zip")
+                        tmp.writeBytes(bytes)
+                        repo.installFromZipFile(tmp)
+                            .onSuccess { reload(); msg = "已安装技能（含附属文件）：${it.name}" }
+                            .onFailure { msg = "安装失败：${it.message}" }
+                        tmp.delete()
+                    } else {
+                        repo.install(String(bytes))
+                            .onSuccess { reload(); msg = "已安装技能：${it.name}" }
+                            .onFailure { msg = "安装失败：${it.message}" }
+                    }
+                }.onFailure { msg = "读取失败：${it.message}" }
             }
         }
     }
@@ -721,7 +737,7 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
             androidx.compose.material3.ExtendedFloatingActionButton(
                 onClick = { picker.launch("*/*") },
                 icon = { Icon(Icons.Filled.School, null) },
-                text = { Text("安装 SKILL.md") },
+                text = { Text("导入技能包/文件") },
             )
         },
     ) { pad ->
@@ -739,6 +755,35 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
                     )
+                }
+            }
+            // GitHub 导入卡
+            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("从 GitHub 导入", style = MaterialTheme.typography.titleSmall)
+                    Text("支持 owner/repo、/tree/分支、子目录路径（取该目录 SKILL.md + 附属文件）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                        OutlinedTextField(
+                            value = ghUrl, onValueChange = { ghUrl = it },
+                            placeholder = { Text("github.com/user/repo/tree/main/skills/foo") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                ghBusy = true
+                                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    repo.installFromGithub(ghUrl)
+                                        .onSuccess { reload(); msg = "已从 GitHub 安装：${it.name}" }
+                                        .onFailure { msg = "GitHub 导入失败：${it.message}" }
+                                    ghBusy = false
+                                }
+                            },
+                            enabled = ghUrl.isNotBlank() && !ghBusy,
+                        ) { Text("导入") }
+                    }
+                    if (ghBusy) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp))
                 }
             }
             msg?.let {

@@ -5,11 +5,10 @@ import java.io.File
 
 /**
  * 完整 Linux 沙盒（PRoot + 双发行版）：
- * - proot 二进制随 jniLibs 分发（nativeLibraryDir，Android 保留执行权限）
- * - Alpine 3.21 minirootfs（~5MB zip）内置 assets/linux/
- * - Ubuntu 24.04.3 base（~31MB zip，含执行位与符号链接）内置 assets/
- * - 发行版可切换：LinuxSandbox.distro = "alpine" / "ubuntu"（切换自动重解）
- * - exec 走 proot -r rootfs：apk / apt 包管理（有网时可装软件）
+ * - proot 随 jniLibs 分发（nativeLibraryDir 保留执行权限）
+ * - Alpine 3.21（8MB zip，busybox/apk）+ Ubuntu 24.04.3（31MB zip，bash/apt）
+ * - zip 含 unix mode（执行位）与 S_IFLNK 符号链接条目，解压时完整还原
+ * - 发行版切换自动重装；proot 不可用时自动降级 toybox（execSafe）
  */
 object LinuxSandbox {
 
@@ -49,7 +48,7 @@ object LinuxSandbox {
         } catch (e: Exception) { lastError = "proot 启动异常: ${e.message}"; false }
     }
 
-    /** 首次启动解压 rootfs（幂等；发行版切换自动重解） */
+    /** 首次启动解压 rootfs（幂等；统一 ZipFile 路径：执行位 + 符号链接还原） */
     @Synchronized
     fun ensure(context: Context): Boolean {
         if (ready) return true
@@ -57,94 +56,63 @@ object LinuxSandbox {
         val name = distroName()
         val marker = File(root, ".installed")
         val wantTag = if (name == "ubuntu") "ubuntu-24.04.3" else "alpine-3.21.3"
-        // 发行版切换：标记不符则清重解
+        // 发行版切换：标记不符则清掉重解
         if (marker.exists() && marker.readText().trim() != wantTag) {
             marker.delete()
-            File(root, name).deleteRecursively()
+            File(root, "alpine").deleteRecursively()
+            File(root, "ubuntu").deleteRecursively()
             ready = false
         }
         if (!marker.exists()) {
             val fs = File(root, name)
             fs.mkdirs()
             val asset = if (name == "ubuntu") "linux_ubuntu.zip" else "linux/alpine-rootfs.zip"
-            if (name == "ubuntu") {
-                // Ubuntu 24.04：ZipFile 读取（保执行位 + 还原符号链接）
-                try {
-                    val tmp = File(context.cacheDir, "ubuntu_rootfs.zip")
-                    context.assets.open(asset).use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
-                    java.util.zip.ZipFile(tmp).use { zf ->
-                        val entries = zf.entries()
-                        while (entries.hasMoreElements()) {
-                            val e = entries.nextElement()
-                            val out = File(fs, e.name)
-                            val extRaw = runCatching {
+            // 统一解压：ZipFile 读取（保 mode + 符号链接 S_IFLNK 条目）
+            try {
+                val tmp = File(context.cacheDir, "dc_rootfs.zip")
+                context.assets.open(asset).use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+                java.util.zip.ZipFile(tmp).use { zf ->
+                    val entries = zf.entries()
+                    while (entries.hasMoreElements()) {
+                        val e = entries.nextElement()
+                        val out = File(fs, e.name)
+                        val extRaw = runCatching {
                             e.javaClass.getMethod("getExternalAttributes").invoke(e) as? Long ?: 0L
                         }.getOrDefault(0L)
                         val ext = (extRaw shr 16).toInt()
-                            val isLink = (ext and 0xF000) == 0x1000
-                            if (e.isDirectory) {
-                                out.mkdirs()
-                            } else if (isLink) {
-                                val target = zf.getInputStream(e).readBytes().decodeToString()
-                                out.parentFile?.mkdirs()
-                                try {
-                                    if (out.exists()) out.delete()
-                                    android.system.Os.symlink(target, out.absolutePath)
-                                } catch (se: Exception) { /* 容忍个别链接失败 */ }
-                            } else {
-                                out.parentFile?.mkdirs()
-                                zf.getInputStream(e).use { i -> out.outputStream().use { o -> i.copyTo(o) } }
-                                if (ext and 0x49 != 0) out.setExecutable(true, false)
-                            }
+                        val isLink = (ext and 0xF000) == 0x1000
+                        if (e.isDirectory) {
+                            out.mkdirs()
+                        } else if (isLink) {
+                            val target = zf.getInputStream(e).readBytes().decodeToString()
+                            out.parentFile?.mkdirs()
+                            try {
+                                if (out.exists()) out.delete()
+                                android.system.Os.symlink(target, out.absolutePath)
+                            } catch (se: Exception) { /* 容忍个别链接失败 */ }
+                        } else {
+                            out.parentFile?.mkdirs()
+                            zf.getInputStream(e).use { i -> out.outputStream().use { o -> i.copyTo(o) } }
+                            if (ext and 0x49 != 0) out.setExecutable(true, false)
                         }
                     }
-                    tmp.delete()
-                } catch (e: Exception) {
-                    lastError = "Ubuntu 解压异常: ${e.message}"
                 }
-            } else {
-                // Alpine：zip 流解压（bin 目录恢复执行位）
-                try {
-                    context.assets.open(asset).use { input ->
-                        java.util.zip.ZipInputStream(input).use { zis ->
-                            var entry = zis.nextEntry
-                            val buf = ByteArray(65536)
-                            while (entry != null) {
-                                val out = File(fs, entry.name)
-                                if (entry.isDirectory) {
-                                    out.mkdirs()
-                                } else {
-                                    out.parentFile?.mkdirs()
-                                    out.outputStream().use { o ->
-                                        while (true) {
-                                            val n = zis.read(buf)
-                                            if (n < 0) break
-                                            o.write(buf, 0, n)
-                                        }
-                                    }
-                                    if (entry.name.startsWith("bin/") || entry.name.startsWith("usr/bin/") || entry.name.startsWith("usr/sbin/") || entry.name.startsWith("sbin/")) {
-                                        out.setExecutable(true, false)
-                                    }
-                                }
-                                entry = zis.nextEntry
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    lastError = "Alpine 解压异常: ${e.message}"
-                }
+                tmp.delete()
+            } catch (e: Exception) {
+                lastError = "解压异常: ${e.message}"
             }
-            // 自检：核心文件就位才标记成功（防半解压状态）
-            val ok = if (name == "ubuntu") File(fs, "usr/bin/bash").exists() else File(fs, "bin/busybox").exists()
+            // 自检：busybox（alpine）/ bash（ubuntu）+ sh 链接
+            val ok = (if (name == "ubuntu") File(fs, "usr/bin/bash").exists() else File(fs, "bin/busybox").exists()) &&
+                File(fs, if (name == "ubuntu") "bin/bash" else "bin/sh").exists()
             if (ok) marker.writeText(wantTag) else if (lastError.isBlank()) lastError = "自检失败（核心文件缺失）"
         }
         ready = marker.exists() && prootBin(context).exists()
         return ready
     }
 
-    /** 在完整 Linux 内执行命令（cwd 跟随，工作区挂载 /workspace） */
+    /** proot 沙盒内执行（绑定 /dev /proc /sys + 工作区） */
     fun exec(context: Context, command: String, cwd: String = "/root", timeoutSec: Long = 20): String {
-        if (!ensure(context)) return "ERROR: Linux 沙盒未就绪（rootfs 解压失败或 proot 缺陷，${lastError}）"
+        if (!ensure(context)) return "ERROR: Linux 沙盒未就绪（${lastError.ifBlank { "rootfs/proot 缺失" }}）"
         val root = root(context)
         val dname = distroName()
         val shellBin = if (dname == "ubuntu") "/bin/bash" else "/bin/sh"

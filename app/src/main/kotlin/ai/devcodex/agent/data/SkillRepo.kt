@@ -1,6 +1,7 @@
 package ai.devcodex.agent.data
 
 import android.content.Context
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
@@ -48,6 +49,70 @@ class SkillRepo(private val context: Context) {
         dir.mkdirs()
         File(dir, "SKILL.md").writeText(text.trim())
         parse(File(dir, "SKILL.md").readText(), dir) ?: throw IllegalStateException("解析失败")
+    }
+
+    /** 从 GitHub 仓库导入：支持 /owner/repo、/owner/repo/tree/branch/subdir
+     *  下载仓库 zip（codeload）→ 找根目录或指定子目录的 SKILL.md + 附属文件 */
+    fun installFromGithub(url: String): Result<Skill> = runCatching {
+        val clean = url.trim().removePrefix("https://").removePrefix("http://")
+            .removePrefix("github.com/").removeSuffix("/")
+        val parts = clean.split("/")
+        if (parts.size < 2) throw IllegalArgumentException("URL 需为 owner/repo 格式")
+        val owner = parts[0]; val repo = parts[1].removeSuffix(".git")
+        val (branch, subPath) = if (parts.size >= 4 && parts[2] == "tree")
+            (parts.getOrNull(3) ?: "main") to parts.drop(4).joinToString("/")
+        else "main" to ""
+        val zipUrl = "https://codeload.github.com/$owner/$repo/zip/refs/heads/$branch"
+        val bytes = java.net.URL(zipUrl).openStream().use { it.readBytes() }
+        // 解析 zip 内存流
+        val zin = java.util.zip.ZipInputStream(bytes.inputStream())
+        val prefix = "$repo-$branch/"
+        val targetDirPrefix = prefix + (if (subPath.isBlank()) "" else subPath.trim('/') + "/")
+        var skillText: String? = null
+        val extras = mutableListOf<Pair<String, ByteArray>>()
+        var e = zin.nextEntry
+        val buf = ByteArray(65536)
+        while (e != null) {
+            val n = e.name.removePrefix(prefix)
+            val inSkillDir = e.name.startsWith(targetDirPrefix) && !n.endsWith("/")
+            if (inSkillDir) {
+                val rel = n.removePrefix(if (subPath.isBlank()) "" else subPath.trim('/') + "/")
+                val data = ByteArrayOutputStream().use { o ->
+                    var r = zin.read(buf)
+                    while (r >= 0) { o.write(buf, 0, r); r = zin.read(buf) }
+                    o.toByteArray()
+                }
+                if (rel.equals("SKILL.md", true) || rel.equals("skill.md", true)) skillText = String(data)
+                else if (!rel.startsWith(".") && rel.isNotBlank()) extras.add(rel to data)
+            }
+            e = zin.nextEntry
+        }
+        val text = skillText ?: throw IllegalArgumentException("仓库${if (subPath.isBlank()) "根目录" else "路径 $subPath"}未找到 SKILL.md")
+        val sk = install(text).getOrThrow()
+        // 附属文件写入技能目录
+        extras.filter { it.first.isNotBlank() }.forEach { (rel, data) ->
+            val out = File(sk.dir, rel)
+            out.parentFile?.mkdirs()
+            out.writeBytes(data)
+        }
+        sk
+    }
+
+    /** 从 .skill 压缩包导入（zip：根含 SKILL.md + 附属文件） */
+    fun installFromZipFile(zipFile: File): Result<Skill> = runCatching {
+        java.util.zip.ZipFile(zipFile).use { zf ->
+            val entry = zf.entries().toList().firstOrNull {
+                it.name.equals("SKILL.md", true) || it.name.equals("skill.md", true)
+            } ?: throw IllegalArgumentException("压缩包根目录缺少 SKILL.md")
+            val text = zf.getInputStream(entry).readBytes().decodeToString()
+            val sk = install(text).getOrThrow()
+            zf.entries().toList().filter { !it.isDirectory && it.name != entry.name && !it.name.contains("..") }.forEach { ex ->
+                val out = File(sk.dir, ex.name)
+                out.parentFile?.mkdirs()
+                zf.getInputStream(ex).use { i -> out.outputStream().use { o -> i.copyTo(o) } }
+            }
+            sk
+        }
     }
 
     fun toggle(name: String) {

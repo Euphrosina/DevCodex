@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -65,6 +66,7 @@ internal fun CodeBlockView(code: String, info: String?, primaryTint: Color = Col
     val fenceLabel = info?.trim()?.substringBefore(' ').orEmpty()
     val normalizedLanguage = normalizeCodeLanguage(fenceLabel)
     val language = normalizedLanguage.takeIf { hasGrammar(context, it) }
+    val isDiff = fenceLabel.equals("diff", true) || normalizedLanguage.equals("diff", true)
     val codeLines = lines
     var blockCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
@@ -72,12 +74,25 @@ internal fun CodeBlockView(code: String, info: String?, primaryTint: Color = Col
     val maxLineNumberWidth = lineCount.toString().length
     val appContext = context.applicationContext
     val codeHScroll = rememberScrollState()
+    // Diff 渲染：+ 绿 / - 红 / @@ 蓝，其余默认色（不走 TextMate）
+    val diffLines: List<AnnotatedString>? = if (isDiff) codeLines.map { ln ->
+        buildAnnotatedString {
+            when {
+                ln.startsWith("+") -> withStyle(SpanStyle(color = Color(0xFF2EA043))) { append(ln) }
+                ln.startsWith("-") -> withStyle(SpanStyle(color = Color(0xFFD73A49))) { append(ln) }
+                ln.startsWith("@@") -> withStyle(SpanStyle(color = Color(0xFF58A6FF))) { append(ln) }
+                ln.startsWith("+++") || ln.startsWith("---") -> withStyle(SpanStyle(color = Color(0xFF8B949E))) { append(ln) }
+                else -> append(ln)
+            }
+        }
+    } else null
     val highlightedLines by produceState(
-        initialValue = codeLines.map { AnnotatedString(it) },
+        initialValue = diffLines ?: codeLines.map { AnnotatedString(it) },
         codeLines,
         language,
         darkCodeBlock
     ) {
+        if (diffLines != null) { value = diffLines; return@produceState }
         value = highlightCodeLinesAsync(codeLines, language, darkCodeBlock, appContext)
     }
 
