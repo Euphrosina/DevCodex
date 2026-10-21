@@ -104,6 +104,7 @@ private val Mono = FontFamily.Monospace
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(vm: AppViewModel) {
+    val cmdCtx = androidx.compose.ui.platform.LocalContext.current
     val session by vm.activeSession.collectAsState()
     val sessions by vm.sessions.collectAsState()
     val settings by vm.settings.collectAsState(initial = AppSettings())
@@ -311,17 +312,16 @@ fun ChatScreen(vm: AppViewModel) {
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Spacer(Modifier.weight(0.08f))
+                                Spacer(Modifier.weight(1f))
                                 Box(
                                     Modifier
-                                        .weight(0.92f, fill = false)
                                         .widthIn(max = 320.dp)
                                         .combinedClickable(
                                             onClick = {},
                                             onLongClick = { selectedMsg = msg },
                                         )
                                         .align(Alignment.Top)
-                                ) { UserBubble(msg) }
+                                ) { UserBubble(msg, settings.theme.userNick.ifBlank { "我" }) }
                                 Spacer(Modifier.width(6.dp))
                                 ai.devcodex.agent.ui.components.Avatar(
                                     name = settings.theme.userNick,
@@ -366,6 +366,12 @@ fun ChatScreen(vm: AppViewModel) {
                                                         shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
                                                         modifier = Modifier.fillMaxWidth(),
                                                     ) {
+                                                    Text(
+                                                        settings.theme.aiNick.ifBlank { "DevCodex" },
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                                                    )
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                     ai.devcodex.agent.m3l.LocalCodeBlockDark provides isSystemInDarkTheme(),
                                                         ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
@@ -431,10 +437,45 @@ fun ChatScreen(vm: AppViewModel) {
                 }
                 val curModelId = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: ""
                 val modelMaxCtx2 = ai.devcodex.agent.provider.ModelRegistry.lookup(curModelId).contextLength ?: Int.MAX_VALUE
+                // 斜杠命令建议浮层（输入以 / 开头）
+                if (input.startsWith("/") && input.length <= 24 && !input.contains(" ")) {
+                    val skills = remember { runCatching { ai.devcodex.agent.data.SkillRepo(cmdCtx).list() }.getOrDefault(emptyList()) }
+                    val cmds = SlashCommands.definitions.map { it.name to it.desc } +
+                        skills.map { "/${it.name}" to it.description }
+                    val matches = cmds.filter { it.first.startsWith(input.removePrefix("/").take(2).ifBlank { "" }.let { p -> "/" + p }) || it.first.startsWith(input) }.take(8)
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(14.dp),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
+                    ) {
+                        Column {
+                            matches.forEach { (name, desc) ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { input = name + " " }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                ) {
+                                    Text(name, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontFamily = Mono)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(desc, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
+                }
                 InputBar(
                     value = input,
                     onValueChange = { input = it },
-                    onSend = { vm.send(input); input = "" },
+                    onSend = {
+                        if (input.startsWith("/") && SlashCommands.execute(vm, input, { showModelPicker = true }, { }, { cmdCtx })) {
+                            input = ""
+                        } else {
+                            vm.send(input); input = ""
+                        }
+                    },
                     onStop = { vm.stop() },
                     running = isRunning,
                     modelId = curModelId,
@@ -707,7 +748,7 @@ private fun TypingDots() {
 
 @Composable
 private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true) {
-    var expanded by remember(text) { mutableStateOf(!autoCollapse) }
+    var expanded by remember(autoCollapse) { mutableStateOf(!autoCollapse) }
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(10.dp),

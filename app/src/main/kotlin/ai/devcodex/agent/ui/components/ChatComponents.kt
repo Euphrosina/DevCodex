@@ -64,7 +64,7 @@ private val Mono = FontFamily.Monospace
 
 // ============ 用户消息：rikkahub 式右侧主色气泡 ============
 @Composable
-fun UserBubble(msg: Message) {
+fun UserBubble(msg: Message, nick: String = "我") {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Surface(
             color = MaterialTheme.colorScheme.primary,
@@ -80,12 +80,21 @@ fun UserBubble(msg: Message) {
                     outlineVariant = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.4f),
                 ),
             ) {
+                androidx.compose.foundation.layout.Column {
+                Text(
+                    nick,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                )
                 ai.devcodex.agent.m3l.MixedMarkdownLatex(
                     text = msg.content,
                     textColor = MaterialTheme.colorScheme.onPrimary,
                     isStreaming = false,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 )
+                }
             }
         }
     }

@@ -83,6 +83,7 @@ data class ChatSession(
     val deepThink: Boolean = false,     // 会话级深度思考
     val webSearch: Boolean = false,     // 会话级联网搜索（注入搜索工具指引）
     val contextOverride: Int = 0,       // 上下文窗口覆盖（0=模型默认）
+    val summary: String? = null,        // 压缩摘要
 )
 
 // ============ 设置 ============

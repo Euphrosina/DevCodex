@@ -170,6 +170,63 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     @Volatile var pendingContext: Int = 0
 
+
+    fun clearMessages() {
+        val cur = _activeSession.value ?: return
+        val cleared = cur.copy(messages = emptyList(), summary = null)
+        _activeSession.value = cleared
+        sessionRepo.save(cleared)
+    }
+
+    fun compactNow() {
+        val cur = _activeSession.value ?: return
+        val msgs = cur.messages
+        if (msgs.size < 6) return
+        val keepHead = 2
+        val keepTail = 4
+        val dropped = msgs.subList(keepHead, msgs.size - keepTail)
+        val summary = buildString {
+            append("（前文摘要：较早对话已压缩）\n")
+            dropped.forEach { m ->
+                when (m.role) {
+                    "user" -> append("[用户] ").append(m.content.take(120)).append("\n")
+                    "assistant" -> append("[AI] ").append(m.content.take(150)).append("\n")
+                    "tool" -> append("[工具 ").append(m.toolName ?: "").append("] ").append((m.toolResult ?: "").take(80)).append("\n")
+                }
+            }
+        }
+        val kept = msgs.subList(0, keepHead) + msgs.subList(msgs.size - keepTail, msgs.size)
+        val compacted = cur.copy(messages = kept, summary = summary)
+        _activeSession.value = compacted
+        sessionRepo.save(compacted)
+    }
+
+    fun exportSession() {
+        val cur = _activeSession.value ?: return
+        val md = buildString {
+            append("# ${cur.title.ifBlank { "会话" }}\n\n")
+            cur.messages.filter { it.role != "tool" }.forEach { m ->
+                append(if (m.role == "user") "**我：**\n" else "**AI：**\n")
+                append(m.content).append("\n\n")
+            }
+        }
+        val ws = ai.devcodex.agent.tools.BuiltinTools.workspaceRoot()
+        java.io.File(ws, "session-${cur.id.take(6)}.md").writeText(md)
+    }
+
+    fun appendLocalNotice(text: String) {
+        val cur = _activeSession.value ?: return
+        val withNotice = cur.copy(messages = cur.messages + ai.devcodex.agent.data.Message(
+            id = java.util.UUID.randomUUID().toString(),
+            role = "assistant",
+            content = text,
+            model = "local",
+            timestamp = System.currentTimeMillis(),
+        ))
+        _activeSession.value = withNotice
+        sessionRepo.save(withNotice)
+    }
+
     fun setSessionContext(ctx: Int) {
         val cur = _activeSession.value
         if (cur == null) {

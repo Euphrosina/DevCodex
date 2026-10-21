@@ -249,6 +249,42 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.clickable { save { it.copy(presetId = preset.id) } },
                 ) {
+                    // MChat 式迷你界面预览卡（真实 preset 配色）
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(96.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(preset.light.surface)
+                            .border(
+                                width = if (t.presetId == preset.id) 2.dp else 0.5.dp,
+                                color = if (t.presetId == preset.id) MaterialTheme.colorScheme.primary else preset.light.outlineVariant,
+                                shape = RoundedCornerShape(12.dp),
+                            )
+                            .padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(preset.light.primary))
+                        Box(
+                            Modifier.align(Alignment.End).clip(RoundedCornerShape(6.dp, 6.dp, 2.dp, 6.dp))
+                                .background(preset.light.primary).padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) { Text("Hi", style = MaterialTheme.typography.labelSmall, color = preset.light.onPrimary) }
+                        Row {
+                            Box(Modifier.size(10.dp).clip(CircleShape).background(preset.light.secondary))
+                            Spacer(Modifier.width(4.dp))
+                            Box(Modifier.clip(RoundedCornerShape(6.dp)).background(preset.light.surfaceVariant).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                                Text("AI 回复", style = MaterialTheme.typography.labelSmall, color = preset.light.onSurface)
+                            }
+                        }
+                        Column(
+                            Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(4.dp))
+                                .background(androidx.compose.ui.graphics.Color(0xFF161B22)).padding(4.dp)
+                        ) {
+                            Text("fun main()", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = androidx.compose.ui.graphics.Color(0xFFC9D1D9))
+                            Text("  println(ok)", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = androidx.compose.ui.graphics.Color(0xFFC3E88D))
+                        }
+                    }
+                    // 旧色圈
                     Box(
                         Modifier.size(56.dp)
                             .clip(CircleShape)
@@ -269,6 +305,22 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         }
         Spacer(Modifier.padding(12.dp))
 
+        // 代码块配色预览（MChat 式）
+        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Column(Modifier.padding(12.dp)) {
+                Text("代码块配色预览", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(6.dp))
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                        .background(androidx.compose.ui.graphics.Color(0xFF161B22)).padding(10.dp)
+                ) {
+                    Text("fun bubble(msg: Message) {", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFC9D1D9))
+                    Text("    val color = Color(0xFF4285F4)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFC3E88D))
+                    Text("    // GitHub Dark 风格", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF8B949E))
+                }
+                Text("深色代码块 GitHub Dark · 浅色跟随主题", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Text("外观模式", style = MaterialTheme.typography.titleMedium)
         ListItem(
             headlineContent = { Text("思考内容自动折叠") },
@@ -561,13 +613,27 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         // ============ 思考推理等级 ============
         Text("思考推理等级", style = MaterialTheme.typography.titleMedium)
         Text("控制模型的思考深度（支持 OpenAI o/gpt-5 系与 Claude 3.7+）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
-            listOf("" to "默认", "low" to "低", "medium" to "中", "high" to "高").forEach { (v, label) ->
-                FilterChip(selected = settings.reasoningEffort == v, onClick = {
-                    vm.saveSettings { it.copy(reasoningEffort = v) }
-                }, label = { Text(label) })
-            }
+        val efforts = listOf("", "low", "medium", "high", "xhigh", "max", "ultra")
+        val eLabels = listOf("Off", "Low", "Medium", "High", "xHigh", "Max", "Ultra")
+        val eCur = efforts.indexOf(settings.reasoningEffort).coerceAtLeast(0)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Text("Faster", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            androidx.compose.material3.Slider(
+                value = eCur.toFloat(),
+                onValueChange = { v ->
+                    val idx = (v + 0.5f).toInt().coerceIn(0, 6)
+                    if (idx != eCur) vm.saveSettings { it.copy(reasoningEffort = efforts[idx]) }
+                },
+                valueRange = 0f..6f,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            )
+            Text("Smarter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Text(
+            "当前：${'$'}{eLabels[eCur]}（Faster 响应快 · Smarter 思考深）",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
         Spacer(Modifier.padding(8.dp))
 
         // ============ MCP 服务器 ============

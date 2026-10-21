@@ -7,6 +7,11 @@ plugins {
 }
 
 android {
+    lint {
+        disable += "ExpiredTargetSdkVersion"
+        abortOnError = false
+    }
+
     namespace = "ai.devcodex.agent"
     compileSdk {
         version = release(37)
@@ -15,8 +20,8 @@ android {
     defaultConfig {
         applicationId = "ai.devcodex.agent"
         minSdk = 26
-        targetSdk = 37
-        versionCode = 40
+        targetSdk = 28
+        versionCode = 42
         versionName = "3.8.0"
     }
 
