@@ -140,7 +140,10 @@ fun ProvidersScreen(vm: AppViewModel) {
                         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
                             items(ai.devcodex.agent.data.ProviderPresets) { preset ->
                                 ListItem(
-                                    headlineContent = { Text(preset.name) },
+                                    leadingContent = {
+                                        ai.devcodex.agent.ui.components.ModelLogo(preset.name, 32.dp)
+                                    },
+                                    headlineContent = { Text(preset.name, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium) },
                                     supportingContent = { Text(if (preset.baseUrl.isBlank()) preset.desc else preset.baseUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                     modifier = Modifier.clickable { presetChosen = preset },
                                 )

@@ -34,19 +34,19 @@ Daemon will be stopped at the end of the build
 > Task :app:generateReleaseAssets UP-TO-DATE
 > Task :app:mergeReleaseAssets
 > Task :app:compressReleaseAssets
-> Task :app:extractReleaseVersionControlInfo
-> Task :app:generateReleaseLintVitalReportModel
 > Task :app:produceReleaseComposeMapping
+> Task :app:extractReleaseVersionControlInfo
 > Task :app:reportReleaseComposeMappingErrors
 > Task :app:mergeReleaseComposeMapping
 > Task :app:compileReleaseArtProfile
+> Task :app:generateReleaseLintVitalReportModel
 > Task :app:convertShrunkResourcesToBinaryRelease
 > Task :app:optimizeReleaseResources
 > Task :app:collectReleaseDependencies UP-TO-DATE
 > Task :app:sdkReleaseDependencyData UP-TO-DATE
-> Task :app:mergeReleaseJniLibFolders UP-TO-DATE
-> Task :app:mergeReleaseNativeLibs UP-TO-DATE
-> Task :app:stripReleaseDebugSymbols UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :app:mergeReleaseNativeLibs
+> Task :app:stripReleaseDebugSymbols
 > Task :app:validateSigningRelease UP-TO-DATE
 > Task :app:writeReleaseAppMetadata UP-TO-DATE
 > Task :app:writeReleaseSigningConfigVersions UP-TO-DATE
@@ -56,6 +56,6 @@ Daemon will be stopped at the end of the build
 > Task :app:packageRelease
 > Task :app:createReleaseApkListingFileRedirect
 
-BUILD SUCCESSFUL in 2m 15s
-52 actionable tasks: 15 executed, 37 up-to-date
+BUILD SUCCESSFUL in 2m 28s
+52 actionable tasks: 18 executed, 34 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

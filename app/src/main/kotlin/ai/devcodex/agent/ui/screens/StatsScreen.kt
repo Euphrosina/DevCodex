@@ -264,10 +264,52 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     }
                 }
             }
-            // 活跃日历（近 12 周）
+            // 最近 7 天统计
             Card {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("活跃日历", style = MaterialTheme.typography.titleSmall)
+                    val cal = Calendar.getInstance()
+                    cal.add(Calendar.DAY_OF_YEAR, -6)
+                    val last7 = (0..6).map { d ->
+                        val c = Calendar.getInstance().apply { timeInMillis = cal.timeInMillis }
+                        c.add(Calendar.DAY_OF_YEAR, d)
+                        val key = c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
+                        st.byDay[key]?.let { (it.input + it.output).toInt() } ?: 0
+                    }
+                    Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.Bottom) {
+                        last7.forEachIndexed { i, v ->
+                            val maxV = (last7.max() ?: 1).coerceAtLeast(1)
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(0.62f)
+                                        .height((v.toFloat() / maxV * 34).coerceAtLeast(3f).dp)
+                                        .background(
+                                            if (v > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f + 0.6f * v / maxV)
+                                            else MaterialTheme.colorScheme.surfaceVariant,
+                                            RoundedCornerShape(4.dp)
+                                        )
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    listOf("一", "二", "三", "四", "五", "六", "日")[(cal.get(Calendar.DAY_OF_WEEK) + 5 + i) % 7],
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("最近 7 天 ${(last7.sum() / 1000)}k tokens · 活跃 ${last7.count { it > 0 }} 天", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            // 活跃日历（近 14 周）
+            Card {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("活跃日历", style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.weight(1f))
+                        Text("近 14 周", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Spacer(Modifier.padding(6.dp))
                     val empty = MaterialTheme.colorScheme.surfaceVariant
                     val primary = MaterialTheme.colorScheme.primary
@@ -278,9 +320,9 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                         add(Calendar.DAY_OF_YEAR, -(weeks * 7))
                         set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         for (w in 0 until weeks) {
-                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 for (d in 0..6) {
                                     val c = Calendar.getInstance().apply { timeInMillis = start.timeInMillis }
                                     c.add(Calendar.DAY_OF_YEAR, w * 7 + d)

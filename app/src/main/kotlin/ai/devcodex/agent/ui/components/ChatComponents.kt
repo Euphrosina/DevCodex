@@ -288,7 +288,7 @@ fun InputBar(
     onAttach: () -> Unit = {},
 ) {
     val effortLevels = listOf("", "low", "medium", "high", "xhigh", "max", "ultra")
-    val effortLabels = mapOf("" to "关", "low" to "低", "medium" to "中", "high" to "高", "xhigh" to "X高", "max" to "Max", "ultra" to "Ultra")
+    val effortLabels = mapOf("" to "Faster: Off", "low" to "Low", "medium" to "Medium", "high" to "High", "xhigh" to "xHigh", "max" to "Max", "ultra" to "Smarter: Ultra")
     // rikkahub 视觉：顶部大圆角浮层容器
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,

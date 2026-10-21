@@ -99,6 +99,7 @@ class AgentEngine(
         }
         val toolDefs = BuiltinTools.all.filter { s.enabledTools.contains(it.name) } +
             ai.devcodex.agent.tools.AdvancedFsTools.all.filter { s.enabledTools.contains(it.name) } +
+            ai.devcodex.agent.tools.ExtraTools.all.filter { s.enabledTools.contains(it.name) } +
             customToolDefs(s.customTools) +
             mcpTools.map { mt ->
                 ToolDef(

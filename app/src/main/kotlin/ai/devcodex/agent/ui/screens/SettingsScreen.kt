@@ -286,16 +286,40 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
 
         Text("字体", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.padding(6.dp))
-        Text("应用字体", style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-            listOf("gsf" to "Sans Flex", "anthropic" to "Anthropic", "oplus" to "Oplus Serif", "mono" to "JB Mono", "system" to "系统").forEach { (v, label) ->
-                FilterChip(selected = t.appFont == v, onClick = { save { it.copy(appFont = v) } }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+        // MChat 式：两行各带预览文字的字体选择
+        val appFonts = listOf("gsf" to "Sans Flex", "serif" to "衬线", "anthropic" to "Anthropic", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to "系统默认")
+        val chatFonts = listOf("gsf" to "Sans Flex", "serif" to "衬线", "anthropic" to "Anthropic Serif", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to "系统默认")
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            appFonts.forEach { (v, label) ->
+                FilterChip(
+                    selected = t.appFont == v,
+                    onClick = { save { it.copy(appFont = v) } },
+                    label = {
+                        Text(
+                            "Aa " + label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = ai.devcodex.agent.theme.FlexFonts.byId(v),
+                        )
+                    },
+                )
             }
         }
-        Text("对话字体", style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-            listOf("gsf" to "Google Sans Flex", "serif" to "衬线", "anthropic" to "Anthropic Serif", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to "系统默认").forEach { (v, label) ->
-                FilterChip(selected = t.chatFont == v, onClick = { save { it.copy(chatFont = v) } }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+        Spacer(Modifier.height(8.dp))
+        Text("对话字体（聊天气泡）", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(4.dp))
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            chatFonts.forEach { (v, label) ->
+                FilterChip(
+                    selected = t.chatFont == v,
+                    onClick = { save { it.copy(chatFont = v) } },
+                    label = {
+                        Text(
+                            "Aa " + label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = ai.devcodex.agent.theme.FlexFonts.byId(v),
+                        )
+                    },
+                )
             }
         }
         Spacer(Modifier.padding(12.dp))
@@ -403,23 +427,6 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             val am = sp2.getString("approval_mode", "ASSISTED") ?: "ASSISTED"
             listOf("FULL" to "全自动", "ASSISTED" to "辅助", "REQUEST" to "每步审").forEach { (v, label) ->
                 FilterChip(selected = am == v, onClick = { sp2.edit().putString("approval_mode", v).apply() }, label = { Text(label) })
-            }
-        }
-
-        // ============ Linux 沙盒发行版 ============
-        Text("Linux 沙盒发行版", style = MaterialTheme.typography.titleMedium)
-        Text("Ubuntu 24.04 完整 base（bash/apt，31MB）；Alpine 轻量（busybox/apk，5MB）。切换后首次进终端自动重装。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
-            val sp = vm.getPreferences()
-            val cur = sp.getString("linux_distro", "alpine") ?: "alpine"
-            listOf("alpine" to "Alpine 3.21", "ubuntu" to "Ubuntu 24.04").forEach { (v, label) ->
-                FilterChip(
-                    selected = cur == v,
-                    onClick = {
-                        sp.edit().putString("linux_distro", v).apply()
-                    },
-                    label = { Text(label) },
-                )
             }
         }
 

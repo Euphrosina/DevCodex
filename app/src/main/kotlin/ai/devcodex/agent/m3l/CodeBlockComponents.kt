@@ -400,9 +400,9 @@ data class CodeBlockPalette(
 )
 
 internal val DarkCodeBlockPalette = CodeBlockPalette(
-    background = Color.Black,
-    text = Color.White,
-    muted = Color.Gray,
+    background = Color(0xFF161B22),
+    text = Color(0xFFC9D1D9),
+    muted = Color(0xFF8B949E),
     keyword = Color(0xFFC792EA),
     string = Color(0xFFC3E88D),
     number = Color(0xFFF78C6C),

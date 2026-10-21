@@ -354,6 +354,15 @@ object ModelLogos {
         model.hasWord("fastgpt") -> fastgptLogo
         model.hasWord("metagpt") -> metagptLogo
         model.hasWord("llama") -> ollamaLogo
+        model.contains("智谱") || model.contains("月之暗面") || model.contains("深度求索") || model.contains("阶跃") || model.contains("百川") -> {
+            when {
+                model.contains("智谱") -> zhipuLogo
+                model.contains("月之暗面") -> kimiLogo
+                model.contains("深度求索") -> deepseekLogo
+                model.contains("阶跃") -> stepfunLogo
+                else -> baichuanLogo
+            }
+        }
         else -> robotLogo
     }
 }

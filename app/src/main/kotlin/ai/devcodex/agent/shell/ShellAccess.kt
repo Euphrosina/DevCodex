@@ -160,11 +160,11 @@ object ShellAccess {
         true
     } catch (e: Exception) { false }
 
-    /** 完整 Linux 沙盒执行（PRoot + Alpine，busybox 全套 + apk 装包） */
+    /** Linux 沙盒执行（内嵌 Termux 原生 bootstrap，bash/apt 全套） */
     fun linuxExec(command: String, cwd: String = "/root"): String {
         val c = ai.devcodex.agent.tools.BuiltinTools.appContext()
-        LinuxSandbox.distro = c.getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE).getString("linux_distro", "alpine") ?: "alpine"
-        return LinuxSandbox.exec(c, command, cwd)
+        if (!ai.devcodex.agent.shell.TermuxRuntime.ensure(c)) return "ERROR: Termux 原生引擎未就绪（" + ai.devcodex.agent.shell.TermuxRuntime.lastError + ")"
+        return ai.devcodex.agent.shell.TermuxRuntime.exec(c, command)
     }
 
     /** 本地沙盒执行（app uid，工作目录=工作区）：toybox 提供常规命令，可访问应用私有目录与自定义工作区 */
@@ -227,12 +227,19 @@ object ShellAccess {
     suspend fun execSandbox(command: String): String = localExec(command)
 
     suspend fun exec(command: String): String {
+        // 唯一沙盒：内嵌 Termux 原生（bootstrap，无 ptrace 依赖）
+        val ctx = ai.devcodex.agent.tools.BuiltinTools.appContext()
+        if (runCatching { ai.devcodex.agent.shell.TermuxRuntime.ensure(ctx) }.getOrDefault(false)) {
+            return ai.devcodex.agent.shell.TermuxRuntime.exec(ctx, command)
+        }
+        // 2. Shizuku（ADB 权限）
         shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
         if (rootAvailable()) return rootExec(command)
+        // 3. 外部 Termux
         if (termuxAvailable()) return termuxExec(command)
         if (axsUrl.isNotBlank()) return axsExec(command)
-        // 无特权通道 → 完整 Linux 沙盒（proot 失败自动降级 toybox，不崩）
-        return LinuxSandbox.execSafe(ai.devcodex.agent.tools.BuiltinTools.appContext(), command)
+        // 4. 本地 toybox 兜底（app uid 工作区）
+        return localExec(command)
     }
 
     suspend fun readFile(path: String): String {

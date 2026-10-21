@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -310,9 +311,10 @@ fun ChatScreen(vm: AppViewModel) {
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
+                                Spacer(Modifier.weight(0.08f))
                                 Box(
                                     Modifier
-                                        .weight(1f, fill = false)
+                                        .weight(0.92f, fill = false)
                                         .widthIn(max = 320.dp)
                                         .combinedClickable(
                                             onClick = {},
@@ -320,6 +322,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         )
                                         .align(Alignment.Top)
                                 ) { UserBubble(msg) }
+                                Spacer(Modifier.width(6.dp))
                                 ai.devcodex.agent.ui.components.Avatar(
                                     name = settings.theme.userNick,
                                     avatarFile = settings.theme.userAvatar,
@@ -364,6 +367,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                         modifier = Modifier.fillMaxWidth(),
                                                     ) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
+                                                    ai.devcodex.agent.m3l.LocalCodeBlockDark provides isSystemInDarkTheme(),
                                                         ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
                                                             primary = MaterialTheme.colorScheme.primary,
                                                             surface = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -488,7 +492,7 @@ fun ChatScreen(vm: AppViewModel) {
                             )
                         }
                         val filtered = p.enabledModels.filter { it.contains(query, ignoreCase = true) }
-                        items(filtered.size, key = { "${p.id}-" + filtered[it] }) { i ->
+                        items(filtered.size, key = { p.id + '-' + filtered[it] + '-' + it }) { i ->
                             val m = filtered[i]
                             val selected = session?.modelId == m && session?.providerId == p.id
                             // MChat 紧凑行：左侧选中色条 + 模型名 + 能力小字 + 右侧勾
@@ -703,13 +707,14 @@ private fun TypingDots() {
 
 @Composable
 private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true) {
-    var expanded by remember { mutableStateOf(!autoCollapse) }
+    var expanded by remember(text) { mutableStateOf(!autoCollapse) }
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(10.dp),
+        onClick = { expanded = !expanded },
         modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 6.dp),
     ) {
-        Column(Modifier.clickable { expanded = !expanded }.padding(horizontal = 10.dp, vertical = 6.dp)) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("✻", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
                 Text(if (expanded) "思考过程" else "已深度思考", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
