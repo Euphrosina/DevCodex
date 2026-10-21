@@ -37,6 +37,7 @@ data class FullStats(
     val peakDayTokens: Long,
     val curStreak: Int,
     val maxStreak: Int,
+    val toolCalls: Int = 0,
 ) {
     val totalTokens get() = inputTokens + outputTokens
     val cacheHitRate: Int get() = if (inputTokens > 0) (cachedTokens * 100 / inputTokens).toInt() else 0
@@ -128,11 +129,12 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                 if (run > maxS) maxS = run
                 prev = d
             }
-            var inTok = 0L; var outTok = 0L; var cacheTok = 0L
+            var inTok = 0L; var outTok = 0L; var cacheTok = 0L; var tools = 0
             byDay.values.forEach { inTok += it.input; outTok += it.output; cacheTok += it.cached }
             var peak = 0L
             byDay.values.forEach { val t = it.input + it.output; if (t > peak) peak = t }
-            FullStats(byDay, byModel, total, sessions.size, inTok, outTok, cacheTok, peak, cur, maxS)
+            sessions.forEach { s -> s.messages.forEach { m -> tools += m.toolCalls.size + if (m.role == "tool") 1 else 0 } }
+            FullStats(byDay, byModel, total, sessions.size, inTok, outTok, cacheTok, peak, cur, maxS, tools)
         }
     }
 
@@ -203,10 +205,28 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         StatSmall("请求", "$fReq")
+                        StatSmall("工具调用", "${st.toolCalls}")
                         StatSmall("缓存命中", if (fIn > 0) "${fCached * 100 / fIn}%" else "-")
-                        StatSmall("费用≈", if (fCost > 0) "$${"%.2f".format(fCost)}" else "未知价")
+                    }
+                    if (fCost > 0) {
+                        Text(
+                            "周期费用 ≈ ${'$'}${"%.2f".format(fCost)}（按公开价目估算）",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        )
                     }
                 }
+            }
+            // 缓存节省 + 输出
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
+                    Text("缓存节省", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(fmtTok(st.cachedTokens), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color(0xFF9E9E24))
+                } }
+                Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
+                    Text("累计输出", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(fmtTok(st.outputTokens), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color(0xFFEA8600))
+                } }
             }
             // 连续/峰值
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -252,7 +272,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     val empty = MaterialTheme.colorScheme.surfaceVariant
                     val primary = MaterialTheme.colorScheme.primary
                     val weeks = 12
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         val today = Calendar.getInstance()
                         val start = Calendar.getInstance().apply {
                             add(Calendar.DAY_OF_YEAR, -(weeks * 7))
@@ -264,7 +284,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                                     val c = Calendar.getInstance().apply { timeInMillis = start.timeInMillis }
                                     c.add(Calendar.DAY_OF_YEAR, w * 7 + d)
                                     if (c.timeInMillis > today.timeInMillis) {
-                                        Box(Modifier.size(13.dp))
+                                        Box(Modifier.size(18.dp))
                                     } else {
                                         val key = c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
                                         val usage = st.byDay[key]?.let { it.input + it.output } ?: 0
@@ -275,7 +295,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                                             usage < 1_000_000 -> primary.copy(alpha = 0.75f)
                                             else -> primary
                                         }
-                                        Box(Modifier.size(13.dp).background(color, RoundedCornerShape(3.dp)))
+                                        Box(Modifier.size(18.dp).background(color, RoundedCornerShape(4.dp)))
                                     }
                                 }
                             }
@@ -307,8 +327,32 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     }
                 }
             }
+            // 设备与应用信息
+            Card {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("设备信息", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.padding(4.dp))
+                    val sp = vm.getPreferences()
+                    val launches = sp.getInt("launch_count", 0) + 1
+                    sp.edit().putInt("launch_count", launches).apply()
+                    InfoRow("应用版本", "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} (${ai.devcodex.agent.BuildConfig.VERSION_CODE})")
+                    InfoRow("启动次数", "$launches 次")
+                    InfoRow("会话总数", "${st.totalSessions} 个")
+                    InfoRow("设备", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                    InfoRow("系统", "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+                    InfoRow("架构", android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "-")
+                }
+            }
             Spacer(Modifier.padding(20.dp))
         }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodySmall, fontFamily = Mono)
     }
 }
 

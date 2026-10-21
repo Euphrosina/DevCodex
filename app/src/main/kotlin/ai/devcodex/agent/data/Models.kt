@@ -129,8 +129,8 @@ data class ThemePrefsData(
     val colorMode: String = "SYSTEM",    // SYSTEM LIGHT DARK
     val dynamicColor: Boolean = false,
     val amoled: Boolean = false,
-    val appFont: String = "gsf",
-    val chatFont: String = "gsf",
+    val appFont: String = "anthropic",   // Anthropic Serif（英文），中文回退系统
+    val chatFont: String = "anthropic",
     val navPosition: String = "bottom",    // bottom | rail（左侧）
     val immersive: Boolean = false,        // 沉浸模式：隐藏导航栏（聊天页全屏）
     val userNick: String = "我",

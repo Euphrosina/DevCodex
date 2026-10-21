@@ -280,14 +280,14 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         Spacer(Modifier.padding(6.dp))
         Text("应用字体", style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-            listOf("gsf" to "Google Sans Flex", "system" to "系统默认").forEach { (v, label) ->
-                FilterChip(selected = t.appFont == v, onClick = { save { it.copy(appFont = v) } }, label = { Text(label) })
+            listOf("gsf" to "Sans Flex", "anthropic" to "Anthropic", "oplus" to "Oplus Serif", "mono" to "JB Mono", "system" to "系统").forEach { (v, label) ->
+                FilterChip(selected = t.appFont == v, onClick = { save { it.copy(appFont = v) } }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
             }
         }
         Text("对话字体", style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
             listOf("gsf" to "Google Sans Flex", "serif" to "衬线", "anthropic" to "Anthropic Serif", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to "系统默认").forEach { (v, label) ->
-                FilterChip(selected = t.chatFont == v, onClick = { save { it.copy(chatFont = v) } }, label = { Text(label) })
+                FilterChip(selected = t.chatFont == v, onClick = { save { it.copy(chatFont = v) } }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
             }
         }
         Spacer(Modifier.padding(12.dp))

@@ -356,6 +356,11 @@ fun ChatScreen(vm: AppViewModel) {
                                                         style = MaterialTheme.typography.bodyLarge,
                                                     )
                                                 } else {
+                                                    Surface(
+                                                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                                        shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                    ) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                         ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
                                                             primary = MaterialTheme.colorScheme.primary,
@@ -388,6 +393,8 @@ fun ChatScreen(vm: AppViewModel) {
                                                         )
                                                     }
                                                 }
+                                                    }
+
                                             }
                                         }
                                         msg.toolCalls.forEach { tc ->
@@ -416,147 +423,60 @@ fun ChatScreen(vm: AppViewModel) {
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
                 }
-                // 上下文窗口切换（显式按钮行：跟随当前模型检测上限）
-                val curModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: ""
-                if (curModel.isNotBlank()) {
-                    val modelMax = ai.devcodex.agent.provider.ModelRegistry.lookup(curModel).contextLength ?: 131072
-                    val curCtx = session?.contextOverride ?: 0
-                    val ctxOptions = listOf(0, 131072, 262144, 524288, 1048576, 2097152)
-                    val ctxLabels = mapOf(0 to "默认", 131072 to "128k", 262144 to "256k", 524288 to "512k", 1048576 to "1M", 2097152 to "2M")
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 1.dp),
-                    ) {
-                        Icon(Icons.Filled.Memory, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(" 上下文", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        ctxOptions.forEach { opt ->
-                            val support = opt == 0 || opt <= modelMax
-                            FilterChip(
-                                selected = curCtx == opt,
-                                onClick = { if (support) vm.setSessionContext(opt) },
-                                label = { Text(ctxLabels[opt] ?: "?", style = MaterialTheme.typography.labelSmall) },
-                                enabled = support,
-                                modifier = Modifier.padding(start = 4.dp).height(24.dp),
-                            )
-                        }
-                    }
-                }
-                // 思考推理等级（Codex effort-slider：胶囊徽标 + Thinking 渐变）
-                val levels = listOf("", "low", "medium", "high")
-                val labels = listOf("关", "低", "中", "高")
-                val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
+                // MD3 胶囊工具行：上下文 + Thinking（紧凑，贴输入框）
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 1.dp),
                 ) {
-                    // Thinking 渐变图标（低→高：灰→主色）
+                    // 上下文胶囊组
+                    val curModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: ""
+                    if (curModel.isNotBlank()) {
+                        val modelMax = ai.devcodex.agent.provider.ModelRegistry.lookup(curModel).contextLength ?: 131072
+                        val curCtx = session?.contextOverride ?: 0
+                        Row(
+                            Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50)).padding(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(1.dp),
+                        ) {
+                            listOf(0 to "默认", 524288 to "512k", 1048576 to "1M").forEach { (opt, label) ->
+                                val support = opt == 0 || opt <= modelMax
+                                Box(
+                                    Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(if (curCtx == opt && support) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
+                                        .clickable(enabled = support) { vm.setSessionContext(opt) }
+                                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                                ) {
+                                    Text(label, style = MaterialTheme.typography.labelSmall, color = if (curCtx == opt && support) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    // Thinking 胶囊组（MD3 分段）
+                    val levels = listOf("", "low", "medium", "high")
+                    val labels = listOf("关", "低", "中", "高")
+                    val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
                     val effortColors = listOf(
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         MaterialTheme.colorScheme.tertiary,
                         MaterialTheme.colorScheme.secondary,
                         MaterialTheme.colorScheme.primary,
                     )
-                    Icon(
-                        Icons.Filled.Bolt, null, Modifier.size(13.dp),
-                        tint = effortColors[cur.coerceIn(0, 3)],
-                    )
-                    Text(" Thinking", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = effortColors[cur.coerceIn(0, 3)])
-                    // 渐变轨道 Slider
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .height(24.dp)
-                            .padding(horizontal = 8.dp),
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50)).padding(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(1.dp),
                     ) {
-                        // 渐变背景轨道（关→高：灰→主色渐变）
-                        val trackColors = listOf(
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
-                            MaterialTheme.colorScheme.secondary,
-                            MaterialTheme.colorScheme.primary,
-                        )
-                        androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(6.dp)) {
-                            drawRoundRect(
-                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(trackColors.map { it }),
-                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()),
-                            )
-                        }
-                        androidx.compose.material3.Slider(
-                            value = cur.toFloat(),
-                            onValueChange = { v ->
-                                val idx = v.toInt().coerceIn(0, 3)
-                                if (idx != cur) vm.saveSettings { s -> s.copy(reasoningEffort = levels[idx]) }
-                            },
-                            valueRange = 0f..3f,
-                            steps = 2,
-                            colors = androidx.compose.material3.SliderColors(
-                                thumbColor = androidx.compose.ui.graphics.Color.White,
-                                activeTrackColor = androidx.compose.ui.graphics.Color.Transparent,
-                                inactiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
-                                activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                                inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                                disabledThumbColor = androidx.compose.ui.graphics.Color.White,
-                                disabledActiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
-                                disabledInactiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
-                                disabledActiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                                disabledInactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    // 当前档位徽标（椭圆胶囊渐变）
-                    Box(
-                        Modifier
-                            .background(
-                                androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                    listOf(effortColors[cur].copy(alpha = 0.85f), effortColors[cur])
-                                ),
-                                RoundedCornerShape(50),
-                            )
-                            .padding(horizontal = 10.dp, vertical = 3.dp),
-                    ) {
-                        Text(labels[cur], style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Medium)
-                    }
-                }
-                // 斜杠命令面板（opencode/Claude Code 式）
-                if (input.startsWith("/") && !input.contains(" ")) {
-                    val cmds = listOf(
-                        "/new" to "新建会话", "/clear" to "清空本会话",
-                        "/compact" to "立即压缩上下文", "/model" to "选择模型",
-                        "/deep" to "切换深度思考", "/web" to "切换联网搜索",
-                        "/terminal" to "打开终端", "/stats" to "使用统计",
-                    ).filter { it.first.startsWith(input) }
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(14.dp),
-                        shadowElevation = 4.dp,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
-                    ) {
-                        Column {
-                            cmds.forEach { (c, desc) ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            input = ""
-                                            when (c) {
-                                                "/new" -> vm.openSession(null)
-                                                "/clear" -> vm.clearActiveSession()
-                                                "/compact" -> vm.toast.value = "已开启自动压缩（上下文超限时自动执行）"
-                                                "/model" -> showModelPicker = true
-                                                "/deep" -> vm.toggleSessionFlag("deepThink")
-                                                "/web" -> vm.toggleSessionFlag("webSearch")
-                                                "/terminal" -> vm.navRequest.value = "terminal"
-                                                "/stats" -> vm.navRequest.value = "stats"
-                                            }
-                                        }
-                                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                                ) {
-                                    Text(c, fontFamily = Mono, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(90.dp))
-                                    Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                        labels.forEachIndexed { i, label ->
+                            val selected = cur == i
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (selected) effortColors[i] else androidx.compose.ui.graphics.Color.Transparent)
+                                    .clickable { vm.saveSettings { s2 -> s2.copy(reasoningEffort = levels[i]) } }
+                                    .padding(horizontal = 10.dp, vertical = 3.dp),
+                            ) {
+                                Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
