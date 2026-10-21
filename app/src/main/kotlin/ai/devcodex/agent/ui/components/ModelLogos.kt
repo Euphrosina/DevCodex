@@ -66,7 +66,7 @@ object ModelLogos {
         model.hasWord("gemini") -> geminiLogo
         model.hasWord("ollama") -> ollamaLogo
         model.hasWord("kimi") || model.hasWord("moonshot") -> moonshotLogo
-        model.hasWord("minimax") || model.hasWord("mimo") || model.hasWord("abab") -> minimaxLogo
+        model.hasWord("minimax") || model.hasWord("abab") -> minimaxLogo
         model.hasWord("openrouter") -> openrouterLogo
         model.hasWord("qwen") || model.hasWord("qwq") || model.hasWord("qvq") -> qwenLogo
         model.hasWord("gemma") || model.hasWord("google") || model.hasWord("palm") || model.hasWord("gemma") -> googleLogo

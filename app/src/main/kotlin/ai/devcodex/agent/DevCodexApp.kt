@@ -31,10 +31,11 @@ class DevCodexApp : Application() {
         BuiltinTools.init(this)
         seedPlugins()
         seedSkills()
-        // 工作区目录同步（自定义工作区生效）
+        // 工作区目录 + AXS 服务同步
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             settingsRepo.settings.collect { s ->
                 ai.devcodex.agent.data.WorkspaceConfig.dir = s.workspaceDir
+                ShellAccess.axsUrl = s.axsUrl
             }
         }
 

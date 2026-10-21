@@ -1,5 +1,8 @@
 package ai.devcodex.agent.shell
 
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+
 import ai.devcodex.agent.MainActivity
 import android.content.ComponentName
 import android.content.Context
@@ -83,12 +86,32 @@ object ShellAccess {
     } catch (e: Exception) { false }
 
     // ============ 统一操作接口（优先 Shizuku，其次 Root） ============
-    enum class Mode { SHIZUKU, ROOT, LINUX, SANDBOX }
+    enum class Mode { SHIZUKU, ROOT, AXS, LINUX, SANDBOX }
+
+    @Volatile
+    var axsUrl: String = ""   // AXS/Termux HTTP shell 服务地址（设置页配置）
 
     fun availableMode(): Mode = when {
         shizukuService != null || (shizukuAvailable() && shizukuPermissionGranted()) -> Mode.SHIZUKU
         rootAvailable() -> Mode.ROOT
+        axsUrl.isNotBlank() -> Mode.AXS
         else -> Mode.LINUX   // 完整 Linux 沙盒（PRoot+Alpine）
+    }
+
+    /** AXS/Termux 服务执行：POST {url} body=命令，响应纯文本即输出 */
+    fun axsExec(command: String, timeoutSec: Long = 15): String {
+        val url = axsUrl.takeIf { it.isNotBlank() } ?: return "ERROR: AXS 未配置（设置→工具与权限）"
+        return runCatching {
+            val body = command.toRequestBody("text/plain; charset=utf-8".toMediaType())
+            val req = okhttp3.Request.Builder().url(url).post(body).build()
+            okhttp3.OkHttpClient.Builder()
+                .connectTimeout(java.time.Duration.ofSeconds(5))
+                .readTimeout(java.time.Duration.ofSeconds(timeoutSec))
+                .build().newCall(req).execute().use { resp ->
+                    if (resp.code !in 200..299) "ERROR(axs): HTTP ${resp.code}"
+                    else resp.body?.string()?.take(30000) ?: "(空响应)"
+                }
+        }.getOrElse { "ERROR(axs): ${it.message}" }
     }
 
     /** 完整 Linux 沙盒执行（PRoot + Alpine，busybox 全套 + apk 装包） */
@@ -157,6 +180,7 @@ object ShellAccess {
     suspend fun exec(command: String): String {
         shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
         if (rootAvailable()) return rootExec(command)
+        if (axsUrl.isNotBlank()) return axsExec(command)
         // 无特权通道 → 完整 Linux 沙盒（PRoot+Alpine）
         return linuxExec(command)
     }

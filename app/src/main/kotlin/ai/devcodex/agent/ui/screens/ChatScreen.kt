@@ -75,6 +75,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import ai.devcodex.agent.AppViewModel
 import ai.devcodex.agent.data.AppSettings
@@ -348,39 +349,41 @@ fun ChatScreen(vm: AppViewModel) {
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
                 }
-                // 思考推理等级滑块（MChat 风格：拖动选择）
+                // 思考推理等级（Codex 式分段胶囊）
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
                 ) {
-                    Icon(Icons.Filled.Psychology, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(" 推理 ", style = MaterialTheme.typography.labelSmall)
+                    Icon(Icons.Filled.Psychology, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(" 推理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(8.dp))
                     val levels = listOf("", "low", "medium", "high")
                     val labels = listOf("关", "低", "中", "高")
                     val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
-                    androidx.compose.material3.Slider(
-                        value = cur.toFloat(),
-                        onValueChange = { v ->
-                            val idx = v.toInt().coerceIn(0, 3)
-                            vm.saveSettings { s -> s.copy(reasoningEffort = levels[idx]) }
-                        },
-                        valueRange = 0f..3f,
-                        steps = 2,
-                        colors = androidx.compose.material3.SliderColors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            activeTickColor = MaterialTheme.colorScheme.primary,
-                            inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                            disabledThumbColor = MaterialTheme.colorScheme.primary,
-                            disabledActiveTrackColor = MaterialTheme.colorScheme.primary,
-                            disabledInactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            disabledActiveTickColor = MaterialTheme.colorScheme.primary,
-                            disabledInactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                    )
-                    Text(labels[cur], style = MaterialTheme.typography.labelSmall, fontFamily = Mono, modifier = Modifier.width(24.dp))
+                    Row(
+                        Modifier
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50))
+                            .padding(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        labels.forEachIndexed { i, label ->
+                            val selected = cur == i
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
+                                    .clickable { vm.saveSettings { s -> s.copy(reasoningEffort = levels[i]) } }
+                                    .padding(horizontal = 14.dp, vertical = 3.dp),
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) androidx.compose.ui.graphics.Color.White
+                                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
                 // 斜杠命令面板（opencode/Claude Code 式）
                 if (input.startsWith("/") && !input.contains(" ")) {

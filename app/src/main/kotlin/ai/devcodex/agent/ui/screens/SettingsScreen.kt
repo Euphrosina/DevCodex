@@ -316,6 +316,33 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
 
+        // ============ AXS / Termux 服务 ============
+        Text("AXS / Termux 服务", style = MaterialTheme.typography.titleMedium)
+        Text("在 Termux 里启动 AXS 等 HTTP shell 服务后填地址，本应用获得 ADB 级特权通道（优先于沙盒）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        var axsInput by remember { mutableStateOf(settings.axsUrl) }
+        OutlinedTextField(
+            value = axsInput, onValueChange = { axsInput = it },
+            label = { Text("服务地址（如 http://127.0.0.1:8912）") },
+            singleLine = true, textStyle = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = {
+                vm.saveSettings { it.copy(axsUrl = axsInput.trim()) }
+                ai.devcodex.agent.shell.ShellAccess.axsUrl = axsInput.trim()
+            }) { Text("应用") }
+            TextButton(onClick = {
+                kotlinx.coroutines.GlobalScope.launch {
+                    ai.devcodex.agent.shell.ShellAccess.axsUrl = axsInput.trim()
+                    val test = ai.devcodex.agent.shell.ShellAccess.axsExec("id")
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        axsInput = axsInput  // 触发重绘
+                    }
+                }
+            }) { Text("测试(id)") }
+        }
+        Spacer(Modifier.padding(10.dp))
+
         // ============ 工作区（Operit 式自定义） ============
         Text("工作区", style = MaterialTheme.typography.titleMedium)
         val curWs = settings.workspaceDir.ifBlank {

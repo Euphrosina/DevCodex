@@ -28,7 +28,8 @@ object LinuxSandbox {
         if (!marker.exists()) {
             val fs = File(root, "alpine")
             fs.mkdirs()
-            context.assets.open("linux/alpine.tar.gz").use { input ->
+            // 注意：资产后缀必须为 .bin（aapt2 会把 assets 里 .gz 后缀自动解压并改名，导致找不到文件）
+            context.assets.open("linux/alpine-rootfs.bin").use { input ->
                 java.util.zip.GZIPInputStream(input).use { gz ->
                     TarExtractor.extract(gz, fs)
                 }
