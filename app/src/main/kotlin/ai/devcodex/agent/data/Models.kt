@@ -109,7 +109,7 @@ data class AppSettings(
             "app_list", "device_info", "ui_snapshot", "ui_tap", "ui_back", "ui_home", "ui_scroll", "notify",
             "skill_read", "skill_list",
             "fs_copy", "fs_move", "fs_mkdir", "fs_rename", "fs_grep", "fs_find",
-            "fs_chmod", "fs_tail", "fs_head", "fs_stat", "fs_wc", "app_open",
+            "fs_chmod", "fs_tail", "fs_head", "fs_stat", "fs_wc", "app_open", "linux_exec",
         )
     }
 }

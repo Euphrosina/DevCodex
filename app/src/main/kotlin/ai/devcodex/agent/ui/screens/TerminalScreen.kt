@@ -29,11 +29,13 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
     var histIdx by remember { mutableStateOf(-1) }
     val scope = rememberCoroutineScope()
 
-    fun banner() {
-        emulator.feed("DevCodex VT 终端（OpenMinis 模拟器内核）\r\n通道: Shizuku / Root / 内置沙盒 自动选择\r\n工作目录: ${ai.devcodex.agent.tools.BuiltinTools.workspaceRoot().absolutePath}\r\n\u001b[90m↑↓ 历史 · 回车执行 · 沙盒输出带 [sandbox] 前缀\u001b[0m\r\n$ ".toByteArray())
+    fun banner(ctx: android.content.Context) {
+        val linuxReady = ai.devcodex.agent.shell.LinuxSandbox.ensure(ctx)
+        emulator.feed("DevCodex VT 终端（OpenMinis 模拟器内核）\r\n\u001b[32mLinux 沙盒: ${if (linuxReady) "Alpine 就绪（/workspace 挂载工作区，apk 可装包）" else "未就绪"}\u001b[0m\r\n通道: Shizuku / Root / Linux 沙盒 自动选择\r\n\u001b[90m↑↓ 历史 · 回车执行\u001b[0m\r\n$ ".toByteArray())
         rev++
     }
-    LaunchedEffect(Unit) { banner() }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) { banner(ctx) }
 
     fun runCommand(c: String) {
         if (busy) return
@@ -76,7 +78,8 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
             val modeLabel = when (mode) {
                 ai.devcodex.agent.shell.ShellAccess.Mode.SHIZUKU -> "Shizuku（特权）"
                 ai.devcodex.agent.shell.ShellAccess.Mode.ROOT -> "Root（特权）"
-                ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX -> "内置沙盒（应用权限）"
+                ai.devcodex.agent.shell.ShellAccess.Mode.LINUX -> "Linux 沙盒（Alpine·PRoot，busybox 全套 + /workspace 挂载）"
+                ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX -> "备用 toybox 沙盒"
             }
             Text(
                 "通道: $modeLabel",
@@ -92,6 +95,44 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
                         modifier = Modifier.fillMaxSize(),
                         onResize = { _, _ -> },
                     )
+                }
+            }
+            // 快捷键栏（终端专用键）
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val keys = listOf(
+                    "ESC" to "\u001b", "TAB" to "\t", "↑" to "\u001b[A", "↓" to "\u001b[B",
+                    "←" to "\u001b[D", "→" to "\u001b[C", "HOME" to "\u001b[H", "END" to "\u001b[F",
+                    "|" to "|", "/" to "/", "~" to "~", "-" to "-", "''" to "''", "&&" to "&&",
+                )
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(keys.size) { i ->
+                        val (label, seq) = keys[i]
+                        OutlinedButton(
+                            onClick = {
+                                if (busy) return@OutlinedButton
+                                if (label == "↑" || label == "↓") {
+                                    // 历史导航
+                                    if (history.isNotEmpty()) {
+                                        histIdx = if (label == "↑")
+                                            (if (histIdx < 0) history.size - 1 else (histIdx - 1).coerceAtLeast(0))
+                                        else (if (histIdx < 0) -1 else (histIdx + 1).coerceAtMost(history.size - 1))
+                                        cmd = if (histIdx >= 0) history[histIdx] else ""
+                                    }
+                                } else if (label == "ESC" || label == "TAB") {
+                                    // 控制序列直接发到模拟器
+                                    emulator.feed(seq.toByteArray())
+                                    rev++
+                                } else {
+                                    cmd += seq
+                                }
+                            },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp),
+                        ) { Text(label, style = MaterialTheme.typography.labelSmall) }
+                    }
                 }
             }
             // 输入行（等宽）

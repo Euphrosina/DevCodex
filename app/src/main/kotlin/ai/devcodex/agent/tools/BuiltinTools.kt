@@ -123,6 +123,22 @@ object BuiltinTools {
         "OK: 已打开 $page"
     }
 
+    val linuxExec = ToolDef(
+        name = "linux_exec",
+        description = "在完整 Linux 沙盒（Alpine，PRoot）内执行命令。busybox 全套（ls/grep/sed/awk/wget/curl/tar 等），可用 apk add 装软件包。工作区挂载在 /workspace。适合写脚本、处理文件、跑 Linux 工具链",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("command", obj { put("type", "string"); put("description", "要执行的 shell 命令") })
+            })
+            put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("command")) })
+        },
+        risk = ToolDef.Risk.LOW,
+    ) { args ->
+        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef "ERROR: 缺少 command"
+        ShellAccess.linuxExec(cmd).take(30000)
+    }
+
     val shellExec = ToolDef(
         name = "shell_exec",
         description = "执行 shell 命令（Shizuku 提供ADB权限，或Root）。可执行 pm/am/ls/cat 等任意命令。危险操作，每次需用户确认（可选择本会话内记住）",
@@ -339,7 +355,7 @@ object BuiltinTools {
     }
 
     val all: List<ToolDef> = listOf(
-        fsRead, fsWrite, fsList, fsDelete, shellExec, httpRequest, appOpen,
+        fsRead, fsWrite, fsList, fsDelete, shellExec, httpRequest, appOpen, linuxExec,
         memorySave, memoryRead, appList, deviceInfo,
         uiSnapshot, uiTap, uiBack, uiHome, uiScroll, notify,
         skillRead, skillList,

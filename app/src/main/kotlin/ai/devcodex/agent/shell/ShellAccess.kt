@@ -83,13 +83,17 @@ object ShellAccess {
     } catch (e: Exception) { false }
 
     // ============ 统一操作接口（优先 Shizuku，其次 Root） ============
-    enum class Mode { SHIZUKU, ROOT, SANDBOX }
+    enum class Mode { SHIZUKU, ROOT, LINUX, SANDBOX }
 
     fun availableMode(): Mode = when {
         shizukuService != null || (shizukuAvailable() && shizukuPermissionGranted()) -> Mode.SHIZUKU
         rootAvailable() -> Mode.ROOT
-        else -> Mode.SANDBOX   // 内置沙盒：app uid 的本地 sh，永远可用
+        else -> Mode.LINUX   // 完整 Linux 沙盒（PRoot+Alpine）
     }
+
+    /** 完整 Linux 沙盒执行（PRoot + Alpine，busybox 全套 + apk 装包） */
+    fun linuxExec(command: String, cwd: String = "/root"): String =
+        LinuxSandbox.exec(ai.devcodex.agent.tools.BuiltinTools.appContext(), command, cwd)
 
     /** 本地沙盒执行（app uid，工作目录=工作区）：toybox 提供常规命令，可访问应用私有目录与自定义工作区 */
     fun localExec(command: String, timeoutSec: Long = 15): String = try {
@@ -147,11 +151,14 @@ object ShellAccess {
         if (p.exitValue() == 0) "OK" else "ERROR(root write): $out"
     } catch (e: Exception) { "ERROR(root write): ${e.message}" }
 
+    /** 旧 toybox 沙盒（保留备用：Linux rootfs 损坏时兜底） */
+    suspend fun execSandbox(command: String): String = localExec(command)
+
     suspend fun exec(command: String): String {
         shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
         if (rootAvailable()) return rootExec(command)
-        // 无特权通道 → 内置沙盒（app uid 本地 sh，可操作工作区）
-        return localExec(command)
+        // 无特权通道 → 完整 Linux 沙盒（PRoot+Alpine）
+        return linuxExec(command)
     }
 
     suspend fun readFile(path: String): String {

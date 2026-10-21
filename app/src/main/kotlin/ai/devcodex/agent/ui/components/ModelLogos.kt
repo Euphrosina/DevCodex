@@ -49,12 +49,15 @@ object ModelLogos {
     /** Google（Gemma 等 Google 系模型） */
     val googleLogo = logo("google", "M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z", 0xFF4285F4)
 
-    /** 通用 fallback：四芒星（未识别模型用，不再错用千问） */
-    val genericLogo = logo("generic", "M12,2 L14.2,9.8 L22,12 L14.2,14.2 L12,22 L9.8,14.2 L2,12 L9.8,9.8 Z", 0xFF8B5CF6)
+    /** MiniMax 官方图标 */
+    val minimaxLogo = logo("minimax", "M11.43 3.92a.86.86 0 1 0-1.718 0v14.236a1.999 1.999 0 0 1-3.997 0V9.022a.86.86 0 1 0-1.718 0v3.87a1.999 1.999 0 0 1-3.997 0V11.49a.57.57 0 0 1 1.139 0v1.404a.86.86 0 0 0 1.719 0V9.022a1.999 1.999 0 0 1 3.997 0v9.134a.86.86 0 0 0 1.719 0V3.92a1.998 1.998 0 1 1 3.996 0v11.788a.57.57 0 1 1-1.139 0zm10.572 3.105a2 2 0 0 0-1.999 1.997v7.63a.86.86 0 0 1-1.718 0V3.923a1.999 1.999 0 0 0-3.997 0v16.16a.86.86 0 0 1-1.719 0V18.08a.57.57 0 1 0-1.138 0v2a1.998 1.998 0 0 0 3.996 0V3.92a.86.86 0 0 1 1.719 0v12.73a1.999 1.999 0 0 0 3.996 0V9.023a.86.86 0 1 1 1.72 0v6.686a.57.57 0 0 0 1.138 0V9.022a2 2 0 0 0-1.998-1.997", 0xFFF53F3F)
+
+    /** 通用 fallback：机器人头（robotframework 形，未识别模型用） */
+    val genericLogo = logo("generic", "M4.9565 10.2246c0-1.8766 1.5257-3.4023 3.4-3.4023 1.8766 0 3.4024 1.5257 3.4024 3.4023 0 .6838-.5526 1.2364-1.2341 1.2364-.6818 0-1.2344-.5526-1.2344-1.2364 0-.513-.4185-.9296-.9338-.9296-.5129 0-.9317.4165-.9317.9296 0 .6838-.5523 1.2364-1.234 1.2364-.6818 0-1.2344-.5526-1.2344-1.2364m14.0868 5.717c0 .6842-.5524 1.2363-1.2341 1.2363H6.3575c-.6818 0-1.2344-.552-1.2344-1.2363 0-.6837.5526-1.2363 1.2344-1.2363h11.4517c.6817 0 1.234.5526 1.234 1.2363m-5.351-5.0244c-.3814-.5657-.2323-1.3328.3334-1.7143l2.8628-1.9334c.5613-.3902 1.3329-.2324 1.7144.3289.3815.5654.2323 1.3329-.3334 1.7144l-2.8628 1.9333c-.5442.3831-1.3348.2379-1.7144-.3289zm7.8393 7.6018a.8815.8815 0 0 1-.258.6227l-2.1277 2.1277a.8822.8822 0 0 1-.623.258H5.4772a.8822.8822 0 0 1-.623-.258l-2.1277-2.1277a.8815.8815 0 0 1-.258-.6227V5.4818a.8797.8797 0 0 1 .258-.6228l2.1277-2.1282a.8816.8816 0 0 1 .623-.2578h13.0456a.8816.8816 0 0 1 .623.2578l2.1277 2.1282a.8797.8797 0 0 1 .258.6228V18.519zm1.811-15.0835L20.5644.6577A2.2454 2.2454 0 0 0 18.9775 0H5.0207A2.2445 2.2445 0 0 0 3.433.658L.657 3.4359A2.2449 2.2449 0 0 0 0 5.0228v13.9547c0 .5953.2366 1.1667.6575 1.5872l2.778 2.7779c.421.421.9918.6573 1.5871.6573h13.9548a2.2448 2.2448 0 0 0 1.5872-.6573l2.7779-2.7779A2.2436 2.2436 0 0 0 24 18.9775V5.023a2.2451 2.2451 0 0 0-.6575-1.5875z", 0xFF8B5CF6)
 
     /** 词级严格匹配（避免 o1/step 之类的短词误命中） */
     private fun String.hasWord(w: String): Boolean =
-        Regex("(?i)(^|[^a-z0-9])" + Regex.escape(w) + "([^a-z0-9]|${'$'})").containsMatchIn(this)
+        Regex("(?i)(^|[^a-z])" + Regex.escape(w) + "([^a-z]|${'$'})").containsMatchIn(this)
 
     fun forModel(model: String): ImageVector = when {
         model.hasWord("gpt") || model.hasWord("openai") || Regex("(?i)\bo[134]\b").containsMatchIn(model) -> openaiLogo
@@ -62,7 +65,8 @@ object ModelLogos {
         model.hasWord("deepseek") -> deepseekLogo
         model.hasWord("gemini") -> geminiLogo
         model.hasWord("ollama") -> ollamaLogo
-        model.hasWord("kimi") || model.hasWord("moonshot") || model.hasWord("mimo") -> moonshotLogo
+        model.hasWord("kimi") || model.hasWord("moonshot") -> moonshotLogo
+        model.hasWord("minimax") || model.hasWord("mimo") || model.hasWord("abab") -> minimaxLogo
         model.hasWord("openrouter") -> openrouterLogo
         model.hasWord("qwen") || model.hasWord("qwq") || model.hasWord("qvq") -> qwenLogo
         model.hasWord("gemma") || model.hasWord("google") || model.hasWord("palm") || model.hasWord("gemma") -> googleLogo
@@ -82,6 +86,6 @@ fun ModelLogo(model: String, size: androidx.compose.ui.unit.Dp = 28.dp) {
         Modifier.size(size).background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(ModelLogos.forModel(model), model, Modifier.size(size * 0.62f))
+        Icon(ModelLogos.forModel(model), model, Modifier.size(size * 0.62f), tint = androidx.compose.ui.graphics.Color.Unspecified)
     }
 }
