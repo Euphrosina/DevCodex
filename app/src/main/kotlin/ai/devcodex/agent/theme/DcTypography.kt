@@ -25,10 +25,15 @@ object FlexFonts {
     )
     val System = FontFamily.Default
 
+    val AnthropicSerif by lazy { FontFamily(androidx.compose.ui.text.font.Font(R.font.anthropic_serif)) }
+    val OplusSerif by lazy { FontFamily(androidx.compose.ui.text.font.Font(R.font.oplus_serif)) }
+
     fun byId(id: String): FontFamily = when (id) {
         "gsf" -> GoogleSansFlex
         "mono" -> JetBrainsMono
         "serif" -> FontFamily.Serif
+        "anthropic" -> AnthropicSerif
+        "oplus" -> OplusSerif
         else -> System
     }
 }

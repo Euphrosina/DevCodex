@@ -286,7 +286,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         }
         Text("对话字体", style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-            listOf("gsf" to "Google Sans Flex", "mono" to "JetBrains Mono", "system" to "系统默认").forEach { (v, label) ->
+            listOf("gsf" to "Google Sans Flex", "serif" to "衬线", "anthropic" to "Anthropic Serif", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to "系统默认").forEach { (v, label) ->
                 FilterChip(selected = t.chatFont == v, onClick = { save { it.copy(chatFont = v) } }, label = { Text(label) })
             }
         }

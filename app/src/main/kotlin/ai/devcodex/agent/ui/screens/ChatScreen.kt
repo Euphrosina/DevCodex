@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.filled.Dvr
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -75,6 +76,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -304,29 +306,36 @@ fun ChatScreen(vm: AppViewModel) {
                         when {
                             msg.role == "user" -> Row(
                                 Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Box(Modifier.weight(1f).combinedClickable(
-                                    onClick = {},
-                                    onLongClick = { selectedMsg = msg },
-                                )) { UserBubble(msg) }
+                                Box(
+                                    Modifier
+                                        .weight(1f, fill = false)
+                                        .widthIn(max = 320.dp)
+                                        .combinedClickable(
+                                            onClick = {},
+                                            onLongClick = { selectedMsg = msg },
+                                        )
+                                        .align(Alignment.Top)
+                                ) { UserBubble(msg) }
+                                Spacer(Modifier.weight(0.35f))
                                 ai.devcodex.agent.ui.components.Avatar(
                                     name = settings.theme.userNick,
                                     avatarFile = settings.theme.userAvatar,
                                     defaultColor = androidx.compose.ui.graphics.Color(0xFF059669),
-                                    size = 28.dp,
+                                    size = 24.dp,
                                 )
                             }
                             // tool 消息内联渲染进 assistant 块
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     ai.devcodex.agent.ui.components.Avatar(
                                         name = settings.theme.aiNick,
                                         avatarFile = settings.theme.aiAvatar,
                                         defaultColor = androidx.compose.ui.graphics.Color(0xFF4F46E5),
                                         defaultIcon = Icons.Filled.AutoAwesome,
-                                        size = 28.dp,
+                                        size = 24.dp,
                                     )
                                     Column(Modifier.weight(1f)) {
                                         if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!)
@@ -407,7 +416,32 @@ fun ChatScreen(vm: AppViewModel) {
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
                 }
-                // 思考推理等级（Codex effort-slider 式：渐变滑块 + 档位标记）
+                // 上下文窗口切换（显式按钮行：跟随当前模型检测上限）
+                val curModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: ""
+                if (curModel.isNotBlank()) {
+                    val modelMax = ai.devcodex.agent.provider.ModelRegistry.lookup(curModel).contextLength ?: 131072
+                    val curCtx = session?.contextOverride ?: 0
+                    val ctxOptions = listOf(0, 131072, 262144, 524288, 1048576, 2097152)
+                    val ctxLabels = mapOf(0 to "默认", 131072 to "128k", 262144 to "256k", 524288 to "512k", 1048576 to "1M", 2097152 to "2M")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 1.dp),
+                    ) {
+                        Icon(Icons.Filled.Memory, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(" 上下文", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        ctxOptions.forEach { opt ->
+                            val support = opt == 0 || opt <= modelMax
+                            FilterChip(
+                                selected = curCtx == opt,
+                                onClick = { if (support) vm.setSessionContext(opt) },
+                                label = { Text(ctxLabels[opt] ?: "?", style = MaterialTheme.typography.labelSmall) },
+                                enabled = support,
+                                modifier = Modifier.padding(start = 4.dp).height(24.dp),
+                            )
+                        }
+                    }
+                }
+                // 思考推理等级（Codex effort-slider：胶囊徽标 + Thinking 渐变）
                 val levels = listOf("", "low", "medium", "high")
                 val labels = listOf("关", "低", "中", "高")
                 val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
@@ -415,8 +449,18 @@ fun ChatScreen(vm: AppViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
                 ) {
-                    Icon(Icons.Filled.Psychology, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(" 推理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Thinking 渐变图标（低→高：灰→主色）
+                    val effortColors = listOf(
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.primary,
+                    )
+                    Icon(
+                        Icons.Filled.Bolt, null, Modifier.size(13.dp),
+                        tint = effortColors[cur.coerceIn(0, 3)],
+                    )
+                    Text(" Thinking", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = effortColors[cur.coerceIn(0, 3)])
                     // 渐变轨道 Slider
                     Box(
                         Modifier
@@ -451,7 +495,7 @@ fun ChatScreen(vm: AppViewModel) {
                                 activeTrackColor = androidx.compose.ui.graphics.Color.Transparent,
                                 inactiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
                                 activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                                inactiveTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                                inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
                                 disabledThumbColor = androidx.compose.ui.graphics.Color.White,
                                 disabledActiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
                                 disabledInactiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -461,15 +505,19 @@ fun ChatScreen(vm: AppViewModel) {
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                    // 当前档位徽标
-                    Text(
-                        labels[cur],
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(50))
-                            .padding(horizontal = 8.dp, vertical = 1.dp),
-                    )
+                    // 当前档位徽标（椭圆胶囊渐变）
+                    Box(
+                        Modifier
+                            .background(
+                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    listOf(effortColors[cur].copy(alpha = 0.85f), effortColors[cur])
+                                ),
+                                RoundedCornerShape(50),
+                            )
+                            .padding(horizontal = 10.dp, vertical = 3.dp),
+                    ) {
+                        Text(labels[cur], style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Medium)
+                    }
                 }
                 // 斜杠命令面板（opencode/Claude Code 式）
                 if (input.startsWith("/") && !input.contains(" ")) {

@@ -1,40 +1,20 @@
 package ai.devcodex.agent.ui.screens
 
-import ai.devcodex.agent.AppViewModel
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -45,52 +25,114 @@ import java.util.TreeMap
 
 private val Mono = FontFamily.Monospace
 
-/** 每日消息量统计（从会话 JSON 聚合） */
-data class DailyStats(
-    val byDay: Map<Long, Int>,   // key = yyyyMMdd
-    val totalMessages: Int,
+/** 聚合数据（从会话 JSON 全量统计） */
+data class FullStats(
+    val byDay: Map<Long, DayUsage>,
+    val byModel: Map<String, ModelUsage>,
+    val totalRequests: Int,
     val totalSessions: Int,
-    val activeDays: Int,
-    val inputTokens: Long = 0,
-    val outputTokens: Long = 0,
-    val cachedTokens: Long = 0,
+    val inputTokens: Long,
+    val outputTokens: Long,
+    val cachedTokens: Long,
+    val peakDayTokens: Long,
+    val curStreak: Int,
+    val maxStreak: Int,
+) {
+    val totalTokens get() = inputTokens + outputTokens
+    val cacheHitRate: Int get() = if (inputTokens > 0) (cachedTokens * 100 / inputTokens).toInt() else 0
+    val freshInput get() = inputTokens - cachedTokens
+}
+
+data class DayUsage(
+    val messages: Int = 0,
+    val input: Long = 0,
+    val output: Long = 0,
+    val cached: Long = 0,
+    val requests: Int = 0,
 )
+
+data class ModelUsage(
+    val input: Long = 0,
+    val output: Long = 0,
+    val requests: Int = 0,
+)
+
+/** 常见模型粗估价格（美元/百万 token：输入, 输出） */
+private fun modelPrice(model: String): Pair<Double, Double>? = when {
+    model.contains("gpt-4o", true) -> 2.5 to 10.0
+    model.contains("gpt-4.1", true) -> 2.0 to 8.0
+    model.contains("gpt-5", true) || Regex("(?i)\\bo[34]\\b").containsMatchIn(model) -> 1.25 to 10.0
+    model.contains("claude-opus", true) -> 15.0 to 75.0
+    model.contains("claude-sonnet", true) -> 3.0 to 15.0
+    model.contains("claude-3-5-haiku", true) || model.contains("haiku", true) -> 0.8 to 4.0
+    model.contains("deepseek-chat", true) || model.contains("deepseek-v3", true) -> 0.27 to 1.1
+    model.contains("deepseek", true) -> 0.55 to 2.19
+    model.contains("gemini-2.5-pro", true) -> 1.25 to 10.0
+    model.contains("gemini", true) -> 0.075 to 0.3
+    model.contains("glm-4", true) || model.contains("glm-5", true) -> 0.6 to 2.2
+    model.contains("qwen", true) -> 0.4 to 1.2
+    model.contains("kimi", true) -> 0.6 to 2.5
+    else -> null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatsScreen(vm: AppViewModel, onBack: () -> Unit) {
-    var stats by remember { mutableStateOf<DailyStats?>(null) }
-    val launchCount = remember { 
-        val sp = vm.getPreferences()
-        val n = sp.getInt("launch_count", 0) + 1
-        sp.edit().putInt("launch_count", n).putLong("first_use", sp.getLong("first_use", System.currentTimeMillis())).apply()
-        n
-    }
-    val firstUseDate = remember {
-        val sp = vm.getPreferences()
-        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(java.util.Date(sp.getLong("first_use", System.currentTimeMillis())))
-    }
+fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
+    var stats by remember { mutableStateOf<FullStats?>(null) }
+    var period by remember { mutableStateOf(4) }  // 0日 1周 2月 3年 4累计
+
     LaunchedEffect(Unit) {
         stats = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val sessions = vm.sessionRepo.list()
-            val byDay = TreeMap<Long, Int>()
+            val byDay = TreeMap<Long, DayUsage>()
+            val byModel = HashMap<String, ModelUsage>()
             var total = 0
             sessions.forEach { s ->
                 s.messages.forEach { m ->
+                    if (m.inputTokens + m.outputTokens == 0L && m.role != "user") return@forEach
                     total++
                     val c = Calendar.getInstance()
                     c.timeInMillis = if (m.timestamp > 0) m.timestamp else s.updatedAt
                     val key = c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
-                    byDay[key] = (byDay[key] ?: 0) + 1
+                    val day = byDay.getOrPut(key) { DayUsage() }
+                    byDay[key] = day.copy(
+                        messages = day.messages + 1,
+                        input = day.input + m.inputTokens,
+                        output = day.output + m.outputTokens,
+                        cached = day.cached + m.cachedTokens,
+                        requests = day.requests + if (m.outputTokens > 0) 1 else 0,
+                    )
+                    val mu = byModel.getOrPut(m.model ?: "未知") { ModelUsage() }
+                    byModel[m.model ?: "未知"] = mu.copy(
+                        input = mu.input + m.inputTokens,
+                        output = mu.output + m.outputTokens,
+                        requests = mu.requests + if (m.outputTokens > 0) 1 else 0,
+                    )
                 }
+            }
+            // 连续天数
+            val days = byDay.keys.sortedDescending()
+            var cur = 0
+            val today = Calendar.getInstance()
+            val tKey = today.get(Calendar.YEAR) * 10000L + (today.get(Calendar.MONTH) + 1) * 100 + today.get(Calendar.DAY_OF_MONTH)
+            if (days.isNotEmpty()) {
+                var probe = tKey
+                if (days[0] == probe || days[0] == prevDayKey(tKey)) {
+                    if (days[0] == prevDayKey(tKey)) probe = tKey
+                    while (byDay.containsKey(probe)) { cur++; probe = prevDayKey(probe) }
+                }
+            }
+            var maxS = 0; var run = 0; var prev = -1L
+            days.sorted().forEach { d ->
+                run = if (prev > 0 && d == nextDayKey(prev)) run + 1 else 1
+                if (run > maxS) maxS = run
+                prev = d
             }
             var inTok = 0L; var outTok = 0L; var cacheTok = 0L
-            sessions.forEach { s ->
-                s.messages.forEach { m ->
-                    inTok += m.inputTokens; outTok += m.outputTokens; cacheTok += m.cachedTokens
-                }
-            }
-            DailyStats(byDay, total, sessions.size, byDay.count { it.value > 0 }, inTok, outTok, cacheTok)
+            byDay.values.forEach { inTok += it.input; outTok += it.output; cacheTok += it.cached }
+            var peak = 0L
+            byDay.values.forEach { val t = it.input + it.output; if (t > peak) peak = t }
+            FullStats(byDay, byModel, total, sessions.size, inTok, outTok, cacheTok, peak, cur, maxS)
         }
     }
 
@@ -99,232 +141,212 @@ fun StatsScreen(vm: AppViewModel, onBack: () -> Unit) {
             TopAppBar(
                 title = { Text("使用统计") },
                 navigationIcon = {
-                    androidx.compose.material3.IconButton(onClick = onBack) {
-                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
                 },
             )
         },
     ) { padding ->
         val st = stats
+        if (st == null) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
+        // 周期过滤
+        val periodDays = when (period) { 0 -> 1; 1 -> 7; 2 -> 30; 3 -> 365; else -> -1 }
+        val filtered = if (periodDays < 0) st.byDay else {
+            val cal = Calendar.getInstance()
+            st.byDay.filter { (k, _) ->
+                cal.timeInMillis = System.currentTimeMillis()
+                cal.add(Calendar.DAY_OF_YEAR, -periodDays)
+                val from = cal.get(Calendar.YEAR) * 10000L + (cal.get(Calendar.MONTH) + 1) * 100 + cal.get(Calendar.DAY_OF_MONTH)
+                k >= from
+            }
+        }
+        val fIn = filtered.values.sumOf { it.input }
+        val fOut = filtered.values.sumOf { it.output }
+        val fCached = filtered.values.sumOf { it.cached }
+        val fReq = filtered.values.sumOf { it.requests }
+        val fCost = filtered.entries.sumOf { (k, _) -> 0.0 } + run {
+            // 按模型估算（周期内粗算：模型总额 × 周期占比）
+            val ratio = if (st.totalTokens > 0) (fIn + fOut).toDouble() / st.totalTokens else 0.0
+            st.byModel.entries.mapNotNull { (model, u) ->
+                val price = modelPrice(model) ?: return@mapNotNull null
+                (u.input / 1e6 * price.first + u.output / 1e6 * price.second) * ratio
+            }.sum()
+        }
+
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (st == null) {
-                Text("统计中…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                return@Column
-            }
-            // ===== 汇总卡 =====
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCard("消息总数", st.totalMessages.toString(), Modifier.weight(1f))
-                StatCard("会话数", st.totalSessions.toString(), Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCard("活跃天数", st.activeDays.toString(), Modifier.weight(1f))
-                StatCard("今日", todayCount(st).toString(), Modifier.weight(1f))
-            }
-            // ===== Token 用量 =====
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("Token 用量", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(8.dp))
-                    TokenRow("输入 Token", st.inputTokens)
-                    TokenRow("输出 Token", st.outputTokens)
-                    TokenRow("缓存节省 Token", st.cachedTokens)
-                    TokenRow("合计", st.inputTokens + st.outputTokens)
+            // 周期选择
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("每日", "每周", "每月", "每年", "累计").forEachIndexed { i, label ->
+                    FilterChip(selected = period == i, onClick = { period = i }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
                 }
             }
-            // ===== 启动次数 =====
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("应用启动", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        Text("$launchCount 次", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            // 总览卡
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("Token 使用", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(fmtTok(fIn + fOut), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("  tokens", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
                     }
-                    Text(
-                        "首次使用：$firstUseDate",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        StatSmall("请求", "$fReq")
+                        StatSmall("缓存命中", if (fIn > 0) "${fCached * 100 / fIn}%" else "-")
+                        StatSmall("费用≈", if (fCost > 0) "$${"%.2f".format(fCost)}" else "未知价")
+                    }
                 }
             }
-            // ===== 设备信息 =====
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("设备信息", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(2.dp))
-                    InfoRow("型号", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-                    InfoRow("系统", "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
-                    InfoRow("架构", android.os.Build.SUPPORTED_ABIS.joinToString())
-                    InfoRow("应用版本", "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} (${ai.devcodex.agent.BuildConfig.VERSION_CODE})")
+            // 连续/峰值
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
+                    Text("当前连续", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${st.curStreak} 天", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                } }
+                Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
+                    Text("最长连续", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${st.maxStreak} 天", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                } }
+                Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
+                    Text("单日峰值", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(fmtTok(st.peakDayTokens), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+                } }
+            }
+            // Token 构成（堆叠条）
+            Card {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("Token 构成", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.padding(6.dp))
+                    val totalF = (fIn + fOut).coerceAtLeast(1)
+                    val pFresh = (st.freshInputOf(fIn, fCached) * 100 / totalF).toInt().coerceIn(0, 100)
+                    val pCache = (fCached * 100 / totalF).toInt().coerceIn(0, 100)
+                    val pOut = (fOut * 100 / totalF).toInt().coerceIn(0, 100)
+                    Row(Modifier.fillMaxWidth().height(14.dp).clip0()) {
+                        Box(Modifier.weight(pFresh.coerceAtLeast(1).toFloat()).fillMaxHeight().background(Color(0xFF4285F4)))
+                        Box(Modifier.weight(pCache.coerceAtLeast(1).toFloat()).fillMaxHeight().background(Color(0xFF9E9E24)))
+                        Box(Modifier.weight(pOut.coerceAtLeast(1).toFloat()).fillMaxHeight().background(Color(0xFFEA8600)))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        LegendDot(Color(0xFF4285F4), "未缓存输入 ${fmtTok(fIn - fCached)}")
+                        LegendDot(Color(0xFF9E9E24), "缓存读取 ${fmtTok(fCached)}")
+                        LegendDot(Color(0xFFEA8600), "输出 ${fmtTok(fOut)}")
+                    }
                 }
             }
-
-            // ===== 热力图（最近 16 周，GitHub 风格）=====
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("消息热力图", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "最近 16 周",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    HeatmapGrid(st.byDay)
+            // 活跃日历（近 12 周）
+            Card {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("活跃日历", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.padding(6.dp))
+                    val empty = MaterialTheme.colorScheme.surfaceVariant
+                    val primary = MaterialTheme.colorScheme.primary
+                    val weeks = 12
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val today = Calendar.getInstance()
+                        val start = Calendar.getInstance().apply {
+                            add(Calendar.DAY_OF_YEAR, -(weeks * 7))
+                            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                        }
+                        for (w in 0 until weeks) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                for (d in 0..6) {
+                                    val c = Calendar.getInstance().apply { timeInMillis = start.timeInMillis }
+                                    c.add(Calendar.DAY_OF_YEAR, w * 7 + d)
+                                    if (c.timeInMillis > today.timeInMillis) {
+                                        Box(Modifier.size(13.dp))
+                                    } else {
+                                        val key = c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
+                                        val usage = st.byDay[key]?.let { it.input + it.output } ?: 0
+                                        val color = when {
+                                            usage <= 0 -> empty
+                                            usage < 10_000 -> primary.copy(alpha = 0.25f)
+                                            usage < 100_000 -> primary.copy(alpha = 0.5f)
+                                            usage < 1_000_000 -> primary.copy(alpha = 0.75f)
+                                            else -> primary
+                                        }
+                                        Box(Modifier.size(13.dp).background(color, RoundedCornerShape(3.dp)))
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-
-            // ===== 最近 7 天明细 =====
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("最近 7 天", style = MaterialTheme.typography.titleSmall)
-                    val fmt = SimpleDateFormat("MM-dd EEE", Locale.CHINESE)
-                    (6 downTo 0).forEach { ago ->
-                        val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -ago) }
-                        val key = dayKey(c)
-                        val n = st.byDay[key] ?: 0
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                fmt.format(c.time),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = Mono,
-                                modifier = Modifier.width(84.dp),
-                            )
+            // 模型累计排行
+            Card {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("模型累计", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.padding(6.dp))
+                    val models = st.byModel.entries.sortedByDescending { it.value.input + it.value.output }.take(10)
+                    val maxTok = (models.firstOrNull()?.let { it.value.input + it.value.output } ?: 1L).coerceAtLeast(1)
+                    models.forEach { (model, u) ->
+                        val tok = u.input + u.output
+                        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                            Row(Modifier.fillMaxWidth()) {
+                                Text(model.substringAfterLast('/'), style = MaterialTheme.typography.labelSmall, fontFamily = Mono, maxLines = 1, modifier = Modifier.weight(1f))
+                                Text("${fmtTok(tok)} · ${u.requests}次", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                             Box(
                                 Modifier
-                                    .weight(1f)
-                                    .height(8.dp)
-                                    .background(levelColor(n, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), MaterialTheme.colorScheme.primary), RoundedCornerShape(4.dp))
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "$n",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontFamily = Mono,
-                                modifier = Modifier.width(32.dp),
+                                    .fillMaxWidth(tok.toFloat() / maxTok)
+                                    .height(6.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
                             )
                         }
                     }
                 }
             }
+            Spacer(Modifier.padding(20.dp))
         }
     }
 }
 
-@Composable
-private fun TokenRow(label: String, value: Long) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-        Text(formatTokN(value), style = MaterialTheme.typography.bodyMedium, fontFamily = Mono, color = MaterialTheme.colorScheme.primary)
-    }
-}
-
-private fun formatTokN(n: Long): String = when {
-    n >= 1_000_000 -> "%.2fM".format(n / 1_000_000.0)
-    n >= 1000 -> "%.1fk".format(n / 1000.0)
-    else -> n.toString()
-}
+private fun FullStats.freshInputOf(fIn: Long, fCached: Long) = (fIn - fCached).coerceAtLeast(0)
+private fun Modifier.clip0(): Modifier = this
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(80.dp))
-        Text(value, style = MaterialTheme.typography.bodySmall, fontFamily = Mono, modifier = Modifier.weight(1f))
+private fun StatSmall(label: String, value: String) {
+    Column(Modifier.padding(vertical = 2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
-private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier,
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Text(value, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-/** GitHub 风格：7 行(周一~周日) × 16 列(周) */
-@Composable
-private fun HeatmapGrid(byDay: Map<Long, Int>) {
-    val primary = MaterialTheme.colorScheme.primary
-    val emptyColor = MaterialTheme.colorScheme.surfaceContainerHighest
-    val weeks = 16
-    // 对齐周一开头
-    val today = Calendar.getInstance()
-    val end = today.clone() as Calendar
-    val dow = (end.get(Calendar.DAY_OF_WEEK) + 5) % 7  // Mon=0
-    end.add(Calendar.DAY_OF_YEAR, 6 - dow)
-    val start = (end.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -(weeks * 7 - 1)) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        for (row in 0..6) {
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                for (col in 0 until weeks) {
-                    val c = (start.clone() as Calendar).apply {
-                        add(Calendar.DAY_OF_YEAR, col * 7 + row)
-                    }
-                    val inFuture = c.after(today)
-                    val n = if (inFuture) -1 else (byDay[dayKey(c)] ?: 0)
-                    Box(
-                        Modifier
-                            .size(18.dp)
-                            .background(
-                                when {
-                                    n < 0 -> emptyColor.copy(alpha = 0.3f)
-                                    else -> levelColor(n, emptyColor, primary)
-                                },
-                                RoundedCornerShape(3.dp),
-                            )
-                    )
-                }
-            }
-        }
-    }
-    Spacer(Modifier.height(6.dp))
+private fun LegendDot(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("少", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        listOf(0, 3, 8, 20, 50).forEach { n ->
-            Box(Modifier.size(13.dp).background(levelColor(n, emptyColor, primary), RoundedCornerShape(3.dp)))
-        }
-        Text("多", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(Modifier.size(8.dp).background(color, RoundedCornerShape(2.dp)))
+        Text(text, style = MaterialTheme.typography.labelSmall)
     }
 }
 
-private fun dayKey(c: Calendar): Long =
-    c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
+private fun fmtTok(n: Long): String = when {
+    n >= 1_000_000 -> "%.1fM".format(n / 1e6)
+    n >= 1_000 -> "%.1fk".format(n / 1e3)
+    else -> "$n"
+}
 
-private fun todayCount(st: DailyStats): Int = st.byDay[dayKey(Calendar.getInstance())] ?: 0
+private fun prevDayKey(key: Long): Long {
+    val c = Calendar.getInstance()
+    c.set(key.toString().substring(0, 4).toInt(), key.toString().substring(4, 6).toInt() - 1, key.toString().substring(6, 8).toInt())
+    c.add(Calendar.DAY_OF_YEAR, -1)
+    return c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
+}
 
-private fun levelColor(n: Int, empty: androidx.compose.ui.graphics.Color, primary: androidx.compose.ui.graphics.Color): androidx.compose.ui.graphics.Color = when {
-    n <= 0 -> empty
-    n < 3 -> primary.copy(alpha = 0.25f)
-    n < 8 -> primary.copy(alpha = 0.45f)
-    n < 20 -> primary.copy(alpha = 0.7f)
-    n < 50 -> primary.copy(alpha = 0.85f)
-    else -> primary
+private fun nextDayKey(key: Long): Long {
+    val c = Calendar.getInstance()
+    c.set(key.toString().substring(0, 4).toInt(), key.toString().substring(4, 6).toInt() - 1, key.toString().substring(6, 8).toInt())
+    c.add(Calendar.DAY_OF_YEAR, 1)
+    return c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
 }

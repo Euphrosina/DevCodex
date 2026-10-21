@@ -19,6 +19,28 @@ object LinuxSandbox {
     fun prootBin(context: Context): File =
         File(context.applicationInfo.nativeLibraryDir, "libproot.so")
 
+    /** 诊断信息（banner 显示失败原因） */
+    @Volatile
+    var lastError: String = ""
+
+    /** proot 可用性预检（部分 ROM 限制 ptrace） */
+    fun prootWorks(context: Context): Boolean {
+        val bin = prootBin(context)
+        if (!bin.exists()) { lastError = "proot 二进制缺失（安装异常）"; return false }
+        bin.setExecutable(true, false)
+        return try {
+            val p = ProcessBuilder(bin.absolutePath, "--version")
+                .redirectErrorStream(true)
+                .apply { environment()["LD_LIBRARY_PATH"] = context.applicationInfo.nativeLibraryDir }
+                .start()
+            val out = p.inputStream.bufferedReader().readText()
+            p.waitFor()
+            val ok = p.exitValue() == 0 || out.contains("proot", ignoreCase = true)
+            if (!ok) lastError = "proot 无法运行（此设备可能限制 ptrace）"
+            ok
+        } catch (e: Exception) { lastError = "proot 启动异常: ${e.message}"; false }
+    }
+
     /** 首次启动解压 Alpine rootfs（幂等） */
     @Synchronized
     fun ensure(context: Context): Boolean {

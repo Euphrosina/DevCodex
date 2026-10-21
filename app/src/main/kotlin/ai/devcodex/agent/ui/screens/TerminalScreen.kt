@@ -30,8 +30,15 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
     val scope = rememberCoroutineScope()
 
     fun banner(ctx: android.content.Context) {
-        val linuxReady = ai.devcodex.agent.shell.LinuxSandbox.ensure(ctx)
-        emulator.feed("DevCodex VT 终端（OpenMinis 模拟器内核）\r\n\u001b[32mLinux 沙盒: ${if (linuxReady) "Alpine 就绪（/workspace 挂载工作区，apk 可装包）" else "未就绪"}\u001b[0m\r\n通道: Shizuku / Root / Linux 沙盒 自动选择\r\n\u001b[90m↑↓ 历史 · 回车执行\u001b[0m\r\n$ ".toByteArray())
+        val ready = ai.devcodex.agent.shell.LinuxSandbox.ensure(ctx)
+        val prootOk = ready && ai.devcodex.agent.shell.LinuxSandbox.prootWorks(ctx)
+        val green = "\u001B[32m"; val yellow = "\u001B[33m"; val red = "\u001B[31m"; val reset = "\u001B[0m"; val grey = "\u001B[90m"
+        val status = when {
+            ready && prootOk -> green + "Linux 沙盒: Alpine 就绪（/workspace 挂载，apk 可装包）" + reset
+            ready -> yellow + "Linux 沙盒: " + ai.devcodex.agent.shell.LinuxSandbox.lastError + "，已降级 toybox" + reset
+            else -> red + "Linux 沙盒: rootfs 解压失败（" + ai.devcodex.agent.shell.LinuxSandbox.lastError.ifBlank { "自检未通过" } + "），使用 toybox" + reset
+        }
+        emulator.feed(("DevCodex VT 终端（OpenMinis 模拟器内核）\r\n" + status + "\r\n通道: Shizuku / Root / AXS / Linux→toybox\r\n" + grey + "↑↓ 历史 · 回车执行" + reset + "\r\n$ ").toByteArray())
         rev++
     }
     val ctx = androidx.compose.ui.platform.LocalContext.current
