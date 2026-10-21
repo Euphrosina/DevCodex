@@ -28,13 +28,36 @@ object LinuxSandbox {
         if (!marker.exists()) {
             val fs = File(root, "alpine")
             fs.mkdirs()
-            // 注意：资产后缀必须为 .bin（aapt2 会把 assets 里 .gz 后缀自动解压并改名，导致找不到文件）
-            context.assets.open("linux/alpine-rootfs.bin").use { input ->
-                java.util.zip.GZIPInputStream(input).use { gz ->
-                    TarExtractor.extract(gz, fs)
+            // zip 格式 rootfs（ZipInputStream 久经考验；bin 目录恢复执行位）
+            context.assets.open("linux/alpine-rootfs.zip").use { input ->
+                java.util.zip.ZipInputStream(input).use { zis ->
+                    var entry = zis.nextEntry
+                    val buf = ByteArray(65536)
+                    while (entry != null) {
+                        val out = File(fs, entry.name)
+                        if (entry.isDirectory) {
+                            out.mkdirs()
+                        } else {
+                            out.parentFile?.mkdirs()
+                            out.outputStream().use { o ->
+                                while (true) {
+                                    val n = zis.read(buf)
+                                    if (n < 0) break
+                                    o.write(buf, 0, n)
+                                }
+                            }
+                            if (entry.name.startsWith("bin/") || entry.name.startsWith("usr/bin/") || entry.name.startsWith("usr/sbin/") || entry.name.startsWith("sbin/")) {
+                                out.setExecutable(true, false)
+                            }
+                        }
+                        entry = zis.nextEntry
+                    }
                 }
             }
-            marker.writeText("alpine-3.21.3")
+            // 自检：核心文件就位才标记成功（防半解压状态）
+            if (File(fs, "bin/busybox").exists() && File(fs, "bin/sh").exists()) {
+                marker.writeText("alpine-3.21.3")
+            }
         }
         ready = marker.exists() && prootBin(context).exists()
         return ready
@@ -74,6 +97,15 @@ object LinuxSandbox {
             runCatching { p.destroyForcibly() }
             (out ?: "(Linux 超时 ${timeoutSec}s，已终止)").ifBlank { "(exit ok)" }
         } catch (e: Exception) { "ERROR(linux): ${e.message}" }
+    }
+
+    /** 带自动回退的执行：proot 失败/异常时退回 toybox 沙盒（不崩） */
+    fun execSafe(context: Context, command: String, cwd: String = "/root"): String {
+        val out = runCatching { exec(context, command, cwd) }.getOrElse { "ERROR: ${it.message}" }
+        if (out.startsWith("ERROR")) {
+            return ShellAccess.localExec(command).let { "[linux降级→toybox] $it" }
+        }
+        return out
     }
 }
 

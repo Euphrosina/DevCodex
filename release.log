@@ -42,8 +42,8 @@ Daemon will be stopped at the end of the build
 > Task :app:compileReleaseArtProfile
 > Task :app:convertShrunkResourcesToBinaryRelease
 > Task :app:optimizeReleaseResources
-> Task :app:collectReleaseDependencies UP-TO-DATE
-> Task :app:sdkReleaseDependencyData UP-TO-DATE
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
 > Task :app:mergeReleaseJniLibFolders UP-TO-DATE
 > Task :app:mergeReleaseNativeLibs UP-TO-DATE
 > Task :app:stripReleaseDebugSymbols UP-TO-DATE
@@ -56,6 +56,6 @@ Daemon will be stopped at the end of the build
 > Task :app:packageRelease
 > Task :app:createReleaseApkListingFileRedirect
 
-BUILD SUCCESSFUL in 2m 15s
-52 actionable tasks: 15 executed, 37 up-to-date
+BUILD SUCCESSFUL in 2m 18s
+52 actionable tasks: 17 executed, 35 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

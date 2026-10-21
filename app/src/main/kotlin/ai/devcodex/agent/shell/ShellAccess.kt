@@ -181,8 +181,8 @@ object ShellAccess {
         shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
         if (rootAvailable()) return rootExec(command)
         if (axsUrl.isNotBlank()) return axsExec(command)
-        // 无特权通道 → 完整 Linux 沙盒（PRoot+Alpine）
-        return linuxExec(command)
+        // 无特权通道 → 完整 Linux 沙盒（proot 失败自动降级 toybox，不崩）
+        return LinuxSandbox.execSafe(ai.devcodex.agent.tools.BuiltinTools.appContext(), command)
     }
 
     suspend fun readFile(path: String): String {

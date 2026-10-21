@@ -343,6 +343,50 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         }
         Spacer(Modifier.padding(10.dp))
 
+        // ============ SSH 隧道 ============
+        Text("SSH 隧道", style = MaterialTheme.typography.titleMedium)
+        Text("连接远程服务器：AI 可 ssh_exec 远程执行、ssh_forward 建本地端口转发隧道（映射内网 LLM API 等）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        var sshHost by remember { mutableStateOf(settings.sshHost) }
+        var sshPort by remember { mutableStateOf(settings.sshPort.toString()) }
+        var sshUser by remember { mutableStateOf(settings.sshUser) }
+        var sshPass by remember { mutableStateOf(settings.sshPassword) }
+        var sshKey by remember { mutableStateOf(settings.sshKeyPath) }
+        OutlinedTextField(value = sshHost, onValueChange = { sshHost = it }, label = { Text("主机") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = sshPort, onValueChange = { sshPort = it }, label = { Text("端口") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.3f))
+            OutlinedTextField(value = sshUser, onValueChange = { sshUser = it }, label = { Text("用户名") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.7f))
+        }
+        OutlinedTextField(value = sshPass, onValueChange = { sshPass = it }, label = { Text("密码（或留空用密钥）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = sshKey, onValueChange = { sshKey = it }, label = { Text("私钥路径（可选，如 /sdcard/id_rsa）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = {
+                vm.saveSettings { it.copy(sshHost = sshHost.trim(), sshPort = sshPort.toIntOrNull() ?: 22, sshUser = sshUser.trim(), sshPassword = sshPass, sshKeyPath = sshKey.trim()) }
+                ai.devcodex.agent.shell.SshClient.config = if (sshHost.isNotBlank()) ai.devcodex.agent.shell.SshClient.SshConfig(sshHost.trim(), sshPort.toIntOrNull() ?: 22, sshUser.trim(), sshPass, sshKey.trim()) else null
+            }) { Text("保存") }
+            TextButton(onClick = {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    ai.devcodex.agent.shell.SshClient.config = ai.devcodex.agent.shell.SshClient.SshConfig(sshHost.trim(), sshPort.toIntOrNull() ?: 22, sshUser.trim(), sshPass, sshKey.trim())
+                    val r = ai.devcodex.agent.shell.SshClient.exec("echo ok && uname -n")
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { sshHost = sshHost }
+                }
+            }) { Text("测试连接") }
+        }
+        Spacer(Modifier.padding(10.dp))
+
+        // ============ 后台保护 ============
+        Text("后台保护", style = MaterialTheme.typography.titleMedium)
+        ListItem(
+            headlineContent = { Text("电池优化豁免") },
+            supportingContent = { Text("长对话/后台任务不被系统杀（跳系统设置，需手动允许）") },
+            modifier = Modifier.clickable {
+                runCatching {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        android.net.Uri.parse("package:ai.devcodex.agent")))
+                }
+            },
+        )
+        Spacer(Modifier.padding(10.dp))
+
         // ============ 工作区（Operit 式自定义） ============
         Text("工作区", style = MaterialTheme.typography.titleMedium)
         val curWs = settings.workspaceDir.ifBlank {

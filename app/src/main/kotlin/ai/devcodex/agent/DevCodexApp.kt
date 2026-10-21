@@ -7,6 +7,7 @@ import ai.devcodex.agent.data.SessionRepo
 import ai.devcodex.agent.data.SettingsRepo
 import ai.devcodex.agent.data.WorkspaceRepo
 import ai.devcodex.agent.shell.ShellAccess
+import ai.devcodex.agent.shell.SshClient
 import ai.devcodex.agent.tools.BuiltinTools
 import ai.devcodex.agent.util.CrashHandler
 import rikka.shizuku.Shizuku
@@ -36,6 +37,7 @@ class DevCodexApp : Application() {
             settingsRepo.settings.collect { s ->
                 ai.devcodex.agent.data.WorkspaceConfig.dir = s.workspaceDir
                 ShellAccess.axsUrl = s.axsUrl
+                SshClient.config = if (s.sshHost.isNotBlank()) SshClient.SshConfig(s.sshHost, s.sshPort, s.sshUser, s.sshPassword, s.sshKeyPath) else null
             }
         }
 

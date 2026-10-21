@@ -6,6 +6,7 @@ import ai.devcodex.agent.data.PluginTool
 import ai.devcodex.agent.plugin.PluginExecutor
 import ai.devcodex.agent.service.DcAccessibilityService
 import ai.devcodex.agent.shell.ShellAccess
+import ai.devcodex.agent.shell.SshClient
 import android.content.Context
 import android.os.Build
 import kotlinx.serialization.json.buildJsonObject
@@ -121,6 +122,42 @@ object BuiltinTools {
         if (page !in valid) return@ToolDef "ERROR: page 须为 ${valid.joinToString("/")}"
         navigateCallback?.invoke(page) ?: return@ToolDef "ERROR: 界面未就绪"
         "OK: 已打开 $page"
+    }
+
+    val sshExec = ToolDef(
+        name = "ssh_exec",
+        description = "通过 SSH 在远程服务器上执行命令（需在设置→SSH 隧道配置）。适合运维、远程文件、跑服务端脚本",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("command", obj { put("type", "string"); put("description", "远程 shell 命令") })
+            })
+            put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("command")) })
+        },
+        risk = ToolDef.Risk.MEDIUM,
+    ) { args ->
+        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef "ERROR: 缺少 command"
+        SshClient.exec(cmd)
+    }
+
+    val sshForward = ToolDef(
+        name = "ssh_forward",
+        description = "建立 SSH 本地端口转发隧道（把远程内网服务映射到 127.0.0.1）。local_port=本地端口, remote_host/remote_port=远端目标（如内网 LLM API）",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("local_port", obj { put("type", "integer") })
+                put("remote_host", obj { put("type", "string") })
+                put("remote_port", obj { put("type", "integer") })
+            })
+            put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("local_port")); add(kotlinx.serialization.json.JsonPrimitive("remote_host")); add(kotlinx.serialization.json.JsonPrimitive("remote_port")) })
+        },
+        risk = ToolDef.Risk.LOW,
+    ) { args ->
+        val lp = ai.devcodex.agent.util.JsonArg.int(args, "local_port") ?: return@ToolDef "ERROR: 缺少 local_port"
+        val rh = ai.devcodex.agent.util.JsonArg.string(args, "remote_host") ?: return@ToolDef "ERROR: 缺少 remote_host"
+        val rp = ai.devcodex.agent.util.JsonArg.int(args, "remote_port") ?: return@ToolDef "ERROR: 缺少 remote_port"
+        SshClient.forward(lp, rh, rp)
     }
 
     val linuxExec = ToolDef(
@@ -355,7 +392,7 @@ object BuiltinTools {
     }
 
     val all: List<ToolDef> = listOf(
-        fsRead, fsWrite, fsList, fsDelete, shellExec, httpRequest, appOpen, linuxExec,
+        fsRead, fsWrite, fsList, fsDelete, shellExec, httpRequest, appOpen, linuxExec, sshExec, sshForward,
         memorySave, memoryRead, appList, deviceInfo,
         uiSnapshot, uiTap, uiBack, uiHome, uiScroll, notify,
         skillRead, skillList,

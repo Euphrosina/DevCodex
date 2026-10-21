@@ -161,6 +161,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sessionRepo.save(cleared)
     }
 
+    fun setSessionContext(ctx: Int) {
+        val cur = _activeSession.value ?: return
+        val updated = cur.copy(contextOverride = ctx)
+        _activeSession.value = updated
+        sessionRepo.save(updated)
+    }
+
     fun toggleSessionFlag(flag: String) {
         val cur = _activeSession.value ?: return
         val updated = when (flag) {

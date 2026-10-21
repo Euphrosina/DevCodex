@@ -51,6 +51,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -78,6 +79,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import ai.devcodex.agent.AppViewModel
+import ai.devcodex.agent.data.ChatSession
 import ai.devcodex.agent.data.AppSettings
 import ai.devcodex.agent.data.Message
 import ai.devcodex.agent.data.ToolStatus
@@ -158,31 +160,87 @@ fun ChatScreen(vm: AppViewModel) {
                     }) { Icon(Icons.Filled.Add, "新建") }
                 }
                 HorizontalDivider()
-                // 修复：weight 约束高度，避免无界测量崩溃
-                LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false)) {
-                    items(sessions, key = { it.id }) { s ->
-                        ListItem(
-                            headlineContent = { Text(s.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            supportingContent = {
-                                Text(SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(s.updatedAt)),
-                                    style = MaterialTheme.typography.labelSmall)
-                            },
-                            trailingContent = {
-                                IconButton(onClick = { vm.deleteSession(s.id) }) {
-                                    Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp))
+                // 会话列表（重设计）：日期分组 + 最后消息预览 + 相对时间 + 选中卡
+                fun relTime(ts: Long): String {
+                    val diff = (System.currentTimeMillis() - ts) / 1000
+                    return when {
+                        diff < 60 -> "刚刚"
+                        diff < 3600 -> "${diff / 60} 分钟前"
+                        diff < 86400 -> "${diff / 3600} 小时前"
+                        diff < 86400 * 7 -> "${diff / 86400} 天前"
+                        else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(Date(ts))
+                    }
+                }
+                fun groupOf(ts: Long): String {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0); cal.set(java.util.Calendar.SECOND, 0)
+                    val today = cal.timeInMillis
+                    return when {
+                        ts >= today -> "今天"
+                        ts >= today - 86400000L -> "昨天"
+                        ts >= today - 86400000L * 7 -> "7 天内"
+                        else -> "更早"
+                    }
+                }
+                val grouped = sessions.sortedByDescending { it.updatedAt }.groupBy { groupOf(it.updatedAt) }
+                LazyColumn(
+                    Modifier.fillMaxWidth().weight(1f, fill = false),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+                ) {
+                    grouped.forEach { (group, items) ->
+                        item(key = "grp-$group") {
+                            Text(
+                                group,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 20.dp, top = 10.dp, bottom = 2.dp),
+                            )
+                        }
+                        items(items, key = { it.id }) { s ->
+                            val selected = s.id == session?.id
+                            val preview = s.messages.lastOrNull { it.content.isNotBlank() }?.content?.replace('\n', ' ') ?: ""
+                            Surface(
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                        else androidx.compose.ui.graphics.Color.Transparent,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 2.dp)
+                                    .clickable {
+                                        vm.openSession(s.id)
+                                        scope.launch { drawerState.close() }
+                                    },
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f).padding(start = 12.dp, top = 6.dp, bottom = 6.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                s.title.ifBlank { "新会话" },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            Text(
+                                                relTime(s.updatedAt),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        if (preview.isNotBlank()) {
+                                            Text(
+                                                preview,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                    }
+                                    IconButton(onClick = { vm.deleteSession(s.id) }) {
+                                        Icon(Icons.Filled.Delete, "删除", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                    }
                                 }
-                            },
-                            leadingContent = {
-                                Box(Modifier.size(8.dp).background(
-                                    if (s.id == session?.id) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                ))
-                            },
-                            modifier = Modifier.clickable {
-                                vm.openSession(s.id)
-                                scope.launch { drawerState.close() }
-                            },
-                        )
+                            }
+                        }
                     }
                 }
             }
@@ -330,7 +388,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                 toolName = tc.name, toolStatus = ToolStatus.RUNNING,
                                             ))
                                         }
-                                        MessageStats(msg)
+                                        MessageStats(msg, session)
                                     }
                                 }
                             }
@@ -349,41 +407,69 @@ fun ChatScreen(vm: AppViewModel) {
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
                 }
-                // 思考推理等级（Codex 式分段胶囊）
+                // 思考推理等级（Codex effort-slider 式：渐变滑块 + 档位标记）
+                val levels = listOf("", "low", "medium", "high")
+                val labels = listOf("关", "低", "中", "高")
+                val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
                 ) {
                     Icon(Icons.Filled.Psychology, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(" 推理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(8.dp))
-                    val levels = listOf("", "low", "medium", "high")
-                    val labels = listOf("关", "低", "中", "高")
-                    val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
-                    Row(
+                    // 渐变轨道 Slider
+                    Box(
                         Modifier
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50))
-                            .padding(2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            .weight(1f)
+                            .height(24.dp)
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        labels.forEachIndexed { i, label ->
-                            val selected = cur == i
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
-                                    .clickable { vm.saveSettings { s -> s.copy(reasoningEffort = levels[i]) } }
-                                    .padding(horizontal = 14.dp, vertical = 3.dp),
-                            ) {
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (selected) androidx.compose.ui.graphics.Color.White
-                                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                        // 渐变背景轨道（关→高：灰→主色渐变）
+                        val trackColors = listOf(
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.primary,
+                        )
+                        androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(6.dp)) {
+                            drawRoundRect(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(trackColors.map { it }),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()),
+                            )
                         }
+                        androidx.compose.material3.Slider(
+                            value = cur.toFloat(),
+                            onValueChange = { v ->
+                                val idx = v.toInt().coerceIn(0, 3)
+                                if (idx != cur) vm.saveSettings { s -> s.copy(reasoningEffort = levels[idx]) }
+                            },
+                            valueRange = 0f..3f,
+                            steps = 2,
+                            colors = androidx.compose.material3.SliderColors(
+                                thumbColor = androidx.compose.ui.graphics.Color.White,
+                                activeTrackColor = androidx.compose.ui.graphics.Color.Transparent,
+                                inactiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
+                                activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                                inactiveTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                                disabledThumbColor = androidx.compose.ui.graphics.Color.White,
+                                disabledActiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
+                                disabledInactiveTrackColor = androidx.compose.ui.graphics.Color.Transparent,
+                                disabledActiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                                disabledInactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
+                    // 当前档位徽标
+                    Text(
+                        labels[cur],
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(50))
+                            .padding(horizontal = 8.dp, vertical = 1.dp),
+                    )
                 }
                 // 斜杠命令面板（opencode/Claude Code 式）
                 if (input.startsWith("/") && !input.contains(" ")) {
@@ -535,6 +621,29 @@ fun ChatScreen(vm: AppViewModel) {
                                 }
                                 if (selected) {
                                     Icon(Icons.Filled.CheckCircle, "已选", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
+                                // 选中模型：上下文窗口档位（检测模型支持上限）
+                                if (selected) {
+                                    val modelMax = ai.devcodex.agent.provider.ModelRegistry.lookup(m).contextLength ?: 131072
+                                    val curCtx = session?.contextOverride ?: 0
+                                    val options = listOf(0, 131072, 262144, 524288, 1048576, 2097152)
+                                    val labels = mapOf(0 to "默认(${modelMax / 1024}k)", 131072 to "128k", 262144 to "256k", 524288 to "512k", 1048576 to "1M", 2097152 to "2M")
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.padding(start = 15.dp, top = 2.dp, bottom = 6.dp),
+                                    ) {
+                                        Text("上下文 ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                                        options.forEach { opt ->
+                                            val support = opt == 0 || opt <= modelMax
+                                            FilterChip(
+                                                selected = curCtx == opt,
+                                                onClick = { if (support) vm.setSessionContext(opt) },
+                                                label = { Text(labels[opt] ?: "?", style = MaterialTheme.typography.labelSmall) },
+                                                enabled = support,
+                                                modifier = Modifier.height(26.dp),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -688,7 +797,7 @@ private fun ThinkingBlockInline(text: String) {
 
 /** 消息统计行：模型 · 首包 · 速度 · 上下文 · 缓存命中 */
 @Composable
-private fun MessageStats(msg: Message) {
+private fun MessageStats(msg: Message, session: ChatSession? = null) {
     if (msg.totalMs <= 0) return
     val speed = if (msg.totalMs > 0 && msg.outputTokens > 0) msg.outputTokens * 1000 / msg.totalMs else 0
     val ctx = msg.inputTokens + msg.outputTokens
@@ -709,7 +818,9 @@ private fun MessageStats(msg: Message) {
         if (msg.totalMs > 0) StatIcon(Icons.Filled.Schedule, "%.1fs".format(msg.totalMs / 1000.0))
         // 上下文窗口圆圈：输入/模型上下文上限（默认 128k）
         if (ctx > 0) {
-            val limit = ai.devcodex.agent.provider.ModelRegistry.lookup(msg.model ?: "").contextLength ?: 128_000
+            val limit = (session?.contextOverride?.takeIf { it > 0 }
+                ?: ai.devcodex.agent.provider.ModelRegistry.lookup(msg.model ?: "").contextLength
+                ?: 128_000)
             val pct = (ctx.toFloat() / limit).coerceIn(0f, 1f)
             androidx.compose.foundation.Canvas(Modifier.size(14.dp)) {
                 drawArc(

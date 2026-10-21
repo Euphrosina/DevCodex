@@ -16,7 +16,7 @@ android {
         applicationId = "ai.devcodex.agent"
         minSdk = 26
         targetSdk = 37
-        versionCode = 30
+        versionCode = 33
         versionName = "3.8.0"
     }
 
@@ -106,4 +106,5 @@ dependencies {
     implementation("io.coil-kt:coil:2.7.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.github.ivan-magda:kotlin-textmate-core:0.3.0")
+    implementation("com.github.mwiede:jsch:0.2.18")
 }

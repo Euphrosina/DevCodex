@@ -78,6 +78,7 @@ fun AppRoot(vm: AppViewModel) {
         vm.navRequest.collect { req ->
             if (req != null) {
                 when {
+                    req == "back" -> runCatching { nav.popBackStack() }
                     req == "terminal" -> runCatching { nav.navigate("terminal") { launchSingleTop = true } }
                     req in listOf("stats", "about", "skills", "theme", "tools") -> {
                         // 设置子页：跳设置 tab 并请求对应子页

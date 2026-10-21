@@ -57,7 +57,7 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
             TopAppBar(
                 title = { Text("终端", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
-                    IconButton(onClick = { vm.navRequest.value = "chat" }) {
+                    IconButton(onClick = { vm.navRequest.value = "back" }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
                 },

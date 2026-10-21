@@ -161,10 +161,13 @@ class AgentEngine(
                         }
                     }
                 }
-                // 自动压缩：粗估 token（字符/2.5 中文比）超 24k 时折叠中段旧对话
+                // 自动压缩：按会话上下文档位（覆盖或模型上限）的 60% 触发
                 if (s.autoCompact) {
+                    val ctxLimit = (session.contextOverride.takeIf { it > 0 }
+                        ?: ai.devcodex.agent.provider.ModelRegistry.lookup(model).contextLength
+                        ?: 128_000)
                     val estTokens = turns.sumOf { (it.content.length / 2.5 + it.toolCalls.size * 50).toLong() }
-                    if (estTokens > 24_000 && turns.size > 8) {
+                    if (estTokens > (ctxLimit * 0.6).toLong() && turns.size > 8) {
                         val keepHead = 2
                         val keepTail = 6
                         val dropped = turns.subList(keepHead, turns.size - keepTail)

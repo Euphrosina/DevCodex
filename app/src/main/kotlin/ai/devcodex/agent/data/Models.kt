@@ -82,6 +82,7 @@ data class ChatSession(
     val systemPrompt: String? = null,
     val deepThink: Boolean = false,     // 会话级深度思考
     val webSearch: Boolean = false,     // 会话级联网搜索（注入搜索工具指引）
+    val contextOverride: Int = 0,       // 上下文窗口覆盖（0=模型默认）
 )
 
 // ============ 设置 ============
@@ -103,6 +104,12 @@ data class AppSettings(
     val workspaceDir: String = "",
     // AXS/Termux HTTP shell 服务（如 http://127.0.0.1:8912）
     val axsUrl: String = "",
+    // SSH 隧道（host/port/user/password/keyPath）
+    val sshHost: String = "",
+    val sshPort: Int = 22,
+    val sshUser: String = "",
+    val sshPassword: String = "",
+    val sshKeyPath: String = "",
 ) {
     companion object {
         fun defaultTools(): Set<String> = setOf(
@@ -111,7 +118,7 @@ data class AppSettings(
             "app_list", "device_info", "ui_snapshot", "ui_tap", "ui_back", "ui_home", "ui_scroll", "notify",
             "skill_read", "skill_list",
             "fs_copy", "fs_move", "fs_mkdir", "fs_rename", "fs_grep", "fs_find",
-            "fs_chmod", "fs_tail", "fs_head", "fs_stat", "fs_wc", "app_open", "linux_exec",
+            "fs_chmod", "fs_tail", "fs_head", "fs_stat", "fs_wc", "app_open", "linux_exec", "ssh_exec", "ssh_forward",
         )
     }
 }
