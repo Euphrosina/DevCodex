@@ -114,9 +114,58 @@ object ShellAccess {
         }.getOrElse { "ERROR(axs): ${it.message}" }
     }
 
+    /** Termux 原生环境执行（RUN_COMMAND intent，需 Termux 开启 allow-external-apps）
+     *  输出经 /sdcard/DevCodex/termux_out.txt 中转（Termux uid 可写、app 可读） */
+    fun termuxExec(command: String, timeoutSec: Long = 20): String {
+        val out = java.io.File("/sdcard/DevCodex/termux_out.txt")
+        return try {
+            out.parentFile?.mkdirs()
+            out.delete()
+            val esc = command.replace("'", "'\\''")
+            val args = "-c '$esc > /sdcard/DevCodex/termux_out.txt 2>&1'"
+            val p = ProcessBuilder(
+                "am", "startservice",
+                "--user", "0",
+                "-n", "com.termux/com.termux.app.RunCommandService",
+                "-a", "com.termux.RUN_COMMAND",
+                "--es", "com.termux.RUN_COMMAND_PATH", "/data/data/com.termux/files/usr/bin/sh",
+                "--es", "com.termux.RUN_COMMAND_ARGUMENTS", args,
+                "--es", "com.termux.RUN_COMMAND_WORKDIR", "/sdcard",
+            ).redirectErrorStream(true).start()
+            p.inputStream.readBytes()
+            p.waitFor()
+            // 轮询输出文件（Termux 异步执行）
+            val deadline = System.currentTimeMillis() + timeoutSec * 1000
+            while (!out.exists() && System.currentTimeMillis() < deadline) Thread.sleep(150)
+            var content: String
+            while (true) {
+                Thread.sleep(300)
+                content = out.readText()
+                if (System.currentTimeMillis() > deadline) break
+                // 文件稳定（300ms 无增长）即认为完成
+                val len1 = out.length()
+                Thread.sleep(300)
+                if (out.length() == len1 || System.currentTimeMillis() > deadline) { content = out.readText(); break }
+            }
+            content.take(30000).ifBlank { "(Termux: 无输出/超时，请确认 Termux 已装且 ~/.termux/termux.properties 开启 allow-external-apps=true)" }
+        } catch (e: Exception) {
+            "ERROR(termux): ${e.message}（未安装 Termux 或未授权 RUN_COMMAND）"
+        }
+    }
+
+    /** Termux 是否可用（安装检测） */
+    fun termuxAvailable(): Boolean = try {
+        val pm = ai.devcodex.agent.tools.BuiltinTools.appContext().packageManager
+        pm.getPackageInfo("com.termux", 0)
+        true
+    } catch (e: Exception) { false }
+
     /** 完整 Linux 沙盒执行（PRoot + Alpine，busybox 全套 + apk 装包） */
-    fun linuxExec(command: String, cwd: String = "/root"): String =
-        LinuxSandbox.exec(ai.devcodex.agent.tools.BuiltinTools.appContext(), command, cwd)
+    fun linuxExec(command: String, cwd: String = "/root"): String {
+        val c = ai.devcodex.agent.tools.BuiltinTools.appContext()
+        LinuxSandbox.distro = c.getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE).getString("linux_distro", "alpine") ?: "alpine"
+        return LinuxSandbox.exec(c, command, cwd)
+    }
 
     /** 本地沙盒执行（app uid，工作目录=工作区）：toybox 提供常规命令，可访问应用私有目录与自定义工作区 */
     fun localExec(command: String, timeoutSec: Long = 15): String = try {
@@ -180,6 +229,7 @@ object ShellAccess {
     suspend fun exec(command: String): String {
         shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
         if (rootAvailable()) return rootExec(command)
+        if (termuxAvailable()) return termuxExec(command)
         if (axsUrl.isNotBlank()) return axsExec(command)
         // 无特权通道 → 完整 Linux 沙盒（proot 失败自动降级 toybox，不崩）
         return LinuxSandbox.execSafe(ai.devcodex.agent.tools.BuiltinTools.appContext(), command)

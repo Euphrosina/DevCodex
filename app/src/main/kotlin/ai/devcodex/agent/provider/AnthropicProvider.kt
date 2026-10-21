@@ -50,7 +50,7 @@ object AnthropicProvider {
             if (systemPrompt.isNotBlank()) put("system", systemPrompt)
             if (reasoningEffort.isNotBlank()) {
                 // Anthropic: thinking budget 映射 low=2048 / medium=8192 / high=16384
-                val budget = when (reasoningEffort) { "low" -> 2048; "medium" -> 8192; else -> 16384 }
+                val budget = when (reasoningEffort) { "low" -> 2048; "medium" -> 8192; "high" -> 16384; "xhigh" -> 24576; "max" -> 32768; else -> 65536 }
                 put("thinking", buildJsonObject { put("type", "enabled"); put("budget_tokens", budget) })
             }
             put("messages", turnsToBlocks(turns))

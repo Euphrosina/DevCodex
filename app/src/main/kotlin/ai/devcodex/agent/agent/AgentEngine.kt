@@ -171,6 +171,8 @@ class AgentEngine(
                         val keepHead = 2
                         val keepTail = 6
                         val dropped = turns.subList(keepHead, turns.size - keepTail)
+                        // taixu 式失败记忆：ERROR 工具结果全量保留（agent 不重复踩坑）
+                        val failures = dropped.filter { it.role == "tool" && it.content.startsWith("ERROR") }
                         val summary = buildString {
                             append("（前文摘要：以下为较早对话的压缩记录）\n")
                             dropped.forEach { t ->
@@ -178,6 +180,13 @@ class AgentEngine(
                                     "user" -> append("[用户] ").append(t.content.take(120)).append("\n")
                                     "assistant" -> append("[AI] ").append(t.content.take(150)).append("\n")
                                     "tool" -> append("[工具 ").append(t.name ?: "").append("] ").append((t.content).take(80)).append("\n")
+                                }
+                            }
+                            if (failures.isNotEmpty()) {
+                                append("\n（失败记录——注意规避同类错误）\n")
+                                failures.forEach { t ->
+                                    append("[工具 ").append(t.name ?: "").append("] ")
+                                        .append(t.content.take(400)).append("\n")
                                 }
                             }
                         }
@@ -265,9 +274,17 @@ class AgentEngine(
                     }
                     // 审批判定：用户已"总是允许"的直接放行；否则高危必审、fs_write 沙箱外必审
                     val alwaysAllowed = s.toolPerms[tc.name] == "ALLOW"
-                    val needApproval = !alwaysAllowed && (
-                        def.risk == ToolDef.Risk.HIGH ||
-                            (tc.name == "fs_write" && !tc.argsJson.contains(SANDBOX_MARK)))
+                    val mode = s.providers.let { _ -> s } // placeholder keep
+                    val approvalMode = ai.devcodex.agent.tools.BuiltinTools.appContext()
+                        .getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE)
+                        .getString("approval_mode", "ASSISTED") ?: "ASSISTED"
+                    val needApproval = when (approvalMode) {
+                        "FULL" -> false                                       // 全自动（终信任）
+                        "REQUEST" -> !alwaysAllowed                          // 每步必审（除非记忆允许）
+                        else -> !alwaysAllowed && (                          // ASSISTED：高危/沙箱外写必审
+                                def.risk == ToolDef.Risk.HIGH ||
+                                    (tc.name == "fs_write" && !tc.argsJson.contains(SANDBOX_MARK)))
+                    }
                     if (needApproval) {
                         val reason = when (def.risk) {
                             ToolDef.Risk.HIGH -> "高危操作，需确认：${def.description.take(50)}"

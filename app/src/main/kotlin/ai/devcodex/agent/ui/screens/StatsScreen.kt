@@ -271,20 +271,21 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     Spacer(Modifier.padding(6.dp))
                     val empty = MaterialTheme.colorScheme.surfaceVariant
                     val primary = MaterialTheme.colorScheme.primary
-                    val weeks = 12
-                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        val today = Calendar.getInstance()
-                        val start = Calendar.getInstance().apply {
-                            add(Calendar.DAY_OF_YEAR, -(weeks * 7))
-                            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                        }
+                    // 列式日历：每列一周（周一至周日行），等宽
+                    val weeks = 14
+                    val today = Calendar.getInstance()
+                    val start = Calendar.getInstance().apply {
+                        add(Calendar.DAY_OF_YEAR, -(weeks * 7))
+                        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         for (w in 0 until weeks) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 for (d in 0..6) {
                                     val c = Calendar.getInstance().apply { timeInMillis = start.timeInMillis }
                                     c.add(Calendar.DAY_OF_YEAR, w * 7 + d)
                                     if (c.timeInMillis > today.timeInMillis) {
-                                        Box(Modifier.size(18.dp))
+                                        Box(Modifier.size(16.dp))
                                     } else {
                                         val key = c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
                                         val usage = st.byDay[key]?.let { it.input + it.output } ?: 0
@@ -295,7 +296,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                                             usage < 1_000_000 -> primary.copy(alpha = 0.75f)
                                             else -> primary
                                         }
-                                        Box(Modifier.size(18.dp).background(color, RoundedCornerShape(4.dp)))
+                                        Box(Modifier.size(16.dp).background(color, RoundedCornerShape(4.dp)))
                                     }
                                 }
                             }

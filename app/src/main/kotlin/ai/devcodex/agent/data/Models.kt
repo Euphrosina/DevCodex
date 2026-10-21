@@ -129,6 +129,8 @@ data class ThemePrefsData(
     val colorMode: String = "SYSTEM",    // SYSTEM LIGHT DARK
     val dynamicColor: Boolean = false,
     val amoled: Boolean = false,
+    val autoCollapseThinking: Boolean = true,   // 思考结束自动折叠思考内容
+    val approvalMode: String = "ASSISTED",   // 工具审批模式：FULL(全自动) / ASSISTED(高危审) / REQUEST(每步审)
     val appFont: String = "anthropic",   // Anthropic Serif（英文），中文回退系统
     val chatFont: String = "anthropic",
     val navPosition: String = "bottom",    // bottom | rail（左侧）

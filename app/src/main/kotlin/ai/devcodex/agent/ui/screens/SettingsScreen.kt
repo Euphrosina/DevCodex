@@ -269,6 +269,13 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         Spacer(Modifier.padding(12.dp))
 
         Text("外观模式", style = MaterialTheme.typography.titleMedium)
+        ListItem(
+            headlineContent = { Text("思考内容自动折叠") },
+            supportingContent = { Text("开启后，思考结束将自动折叠思考内容") },
+            trailingContent = {
+                Switch(checked = t.autoCollapseThinking, onCheckedChange = { on -> save { it.copy(autoCollapseThinking = on) } })
+            },
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
             listOf("SYSTEM" to "跟随系统", "LIGHT" to "浅色", "DARK" to "深色").forEach { (v, label) ->
                 FilterChip(selected = t.colorMode == v, onClick = { save { it.copy(colorMode = v) } }, label = { Text(label) })
@@ -386,6 +393,34 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             },
         )
         Spacer(Modifier.padding(10.dp))
+
+        // ============ 工具审批模式 ============
+        Text("工具审批模式", style = MaterialTheme.typography.titleMedium)
+        Text("FULL 全自动 · ASSISTED 高危才审（默认） · REQUEST 每步确认。单工具的「总是允许」记忆优先于模式。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+            val sp2 = vm.getPreferences()
+            val am = sp2.getString("approval_mode", "ASSISTED") ?: "ASSISTED"
+            listOf("FULL" to "全自动", "ASSISTED" to "辅助", "REQUEST" to "每步审").forEach { (v, label) ->
+                FilterChip(selected = am == v, onClick = { sp2.edit().putString("approval_mode", v).apply() }, label = { Text(label) })
+            }
+        }
+
+        // ============ Linux 沙盒发行版 ============
+        Text("Linux 沙盒发行版", style = MaterialTheme.typography.titleMedium)
+        Text("Ubuntu 24.04 完整 base（bash/apt，31MB）；Alpine 轻量（busybox/apk，5MB）。切换后首次进终端自动重装。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+            val sp = vm.getPreferences()
+            val cur = sp.getString("linux_distro", "alpine") ?: "alpine"
+            listOf("alpine" to "Alpine 3.21", "ubuntu" to "Ubuntu 24.04").forEach { (v, label) ->
+                FilterChip(
+                    selected = cur == v,
+                    onClick = {
+                        sp.edit().putString("linux_distro", v).apply()
+                    },
+                    label = { Text(label) },
+                )
+            }
+        }
 
         // ============ 工作区（Operit 式自定义） ============
         Text("工作区", style = MaterialTheme.typography.titleMedium)

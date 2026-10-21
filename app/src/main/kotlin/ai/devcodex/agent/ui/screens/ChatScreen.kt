@@ -54,6 +54,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -80,6 +81,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ai.devcodex.agent.AppViewModel
 import ai.devcodex.agent.data.ChatSession
 import ai.devcodex.agent.data.AppSettings
@@ -318,7 +320,6 @@ fun ChatScreen(vm: AppViewModel) {
                                         )
                                         .align(Alignment.Top)
                                 ) { UserBubble(msg) }
-                                Spacer(Modifier.weight(0.35f))
                                 ai.devcodex.agent.ui.components.Avatar(
                                     name = settings.theme.userNick,
                                     avatarFile = settings.theme.userAvatar,
@@ -329,7 +330,7 @@ fun ChatScreen(vm: AppViewModel) {
                             // tool 消息内联渲染进 assistant 块
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(Modifier.fillMaxWidth()) {
                                     ai.devcodex.agent.ui.components.Avatar(
                                         name = settings.theme.aiNick,
                                         avatarFile = settings.theme.aiAvatar,
@@ -337,8 +338,9 @@ fun ChatScreen(vm: AppViewModel) {
                                         defaultIcon = Icons.Filled.AutoAwesome,
                                         size = 24.dp,
                                     )
+                                    Spacer(Modifier.width(6.dp))
                                     Column(Modifier.weight(1f)) {
-                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!)
+                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking)
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             TypingDots()
                                         } else if (msg.content.isNotBlank()) {
@@ -423,63 +425,85 @@ fun ChatScreen(vm: AppViewModel) {
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
                 }
-                // MD3 胶囊工具行：上下文 + Thinking（紧凑，贴输入框）
+                // 输入框工具行：模型选择 + MD3 六档推理滑块（Faster↔Smarter）
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 1.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
                 ) {
-                    // 上下文胶囊组
-                    val curModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: ""
-                    if (curModel.isNotBlank()) {
-                        val modelMax = ai.devcodex.agent.provider.ModelRegistry.lookup(curModel).contextLength ?: 131072
-                        val curCtx = session?.contextOverride ?: 0
-                        Row(
-                            Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50)).padding(2.dp),
-                            horizontalArrangement = Arrangement.spacedBy(1.dp),
-                        ) {
-                            listOf(0 to "默认", 524288 to "512k", 1048576 to "1M").forEach { (opt, label) ->
-                                val support = opt == 0 || opt <= modelMax
-                                Box(
-                                    Modifier
-                                        .clip(RoundedCornerShape(50))
-                                        .background(if (curCtx == opt && support) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
-                                        .clickable(enabled = support) { vm.setSessionContext(opt) }
-                                        .padding(horizontal = 10.dp, vertical = 3.dp),
-                                ) {
-                                    Text(label, style = MaterialTheme.typography.labelSmall, color = if (curCtx == opt && support) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
+                    // 模型 chip（开选择器）
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.clickable { showModelPicker = true },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
+                            val displayModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: "选模型"
+                            ai.devcodex.agent.ui.components.ModelLogo(displayModel, 16.dp)
+                            Spacer(Modifier.width(4.dp))
+                            Text(displayModel.substringAfterLast('/'), style = MaterialTheme.typography.labelSmall, fontFamily = Mono, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 90.dp))
+                            Icon(Icons.Filled.ArrowDropDown, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Spacer(Modifier.weight(1f))
-                    // Thinking 胶囊组（MD3 分段）
-                    val levels = listOf("", "low", "medium", "high")
-                    val labels = listOf("关", "低", "中", "高")
-                    val cur = levels.indexOf(settings.reasoningEffort).coerceAtLeast(0)
-                    val effortColors = listOf(
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        MaterialTheme.colorScheme.tertiary,
-                        MaterialTheme.colorScheme.secondary,
-                        MaterialTheme.colorScheme.primary,
-                    )
+                    Spacer(Modifier.width(6.dp))
+                    // 上下文窗口 chip（模型旁，进输入框）
+                    val curModel2 = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: ""
+                    val modelMax2 = ai.devcodex.agent.provider.ModelRegistry.lookup(curModel2).contextLength ?: 131072
+                    val curCtx = session?.contextOverride ?: vm.pendingContext
+                    val ctxOpts = listOf(0, 262144, 1048576)
+                    val ctxLabels = mapOf(0 to "默认", 262144 to "256k", 1048576 to "1M")
                     Row(
                         Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50)).padding(2.dp),
                         horizontalArrangement = Arrangement.spacedBy(1.dp),
                     ) {
-                        labels.forEachIndexed { i, label ->
-                            val selected = cur == i
+                        ctxOpts.forEach { opt ->
+                            val support = opt == 0 || opt <= modelMax2
                             Box(
                                 Modifier
                                     .clip(RoundedCornerShape(50))
-                                    .background(if (selected) effortColors[i] else androidx.compose.ui.graphics.Color.Transparent)
-                                    .clickable { vm.saveSettings { s2 -> s2.copy(reasoningEffort = levels[i]) } }
-                                    .padding(horizontal = 10.dp, vertical = 3.dp),
+                                    .background(if (curCtx == opt && support) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
+                                    .clickable(enabled = support) { vm.setSessionContext(opt) }
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
                             ) {
-                                Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(ctxLabels[opt] ?: "?", style = MaterialTheme.typography.labelSmall, color = if (curCtx == opt && support) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
+                    Spacer(Modifier.width(6.dp))
+                    // MD3 迷你滑块：Faster(Low/Med/High) ↔ Smarter(Xhigh/Max/Ultra)
+                    val efforts = listOf("", "low", "medium", "high", "xhigh", "max", "ultra")
+                    val cur = efforts.indexOf(settings.reasoningEffort).coerceAtLeast(0)
+                    val effortColors = listOf(
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.primary,
+                    )
+                    Text("Faster", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                    Slider(
+                        value = cur.toFloat(),
+                        onValueChange = { v ->
+                            val idx = (v + 0.5f).toInt().coerceIn(0, 6)
+                            if (idx != cur) vm.saveSettings { s2 -> s2.copy(reasoningEffort = efforts[idx]) }
+                        },
+                        valueRange = 0f..6f,
+                        colors = androidx.compose.material3.SliderColors(
+                            thumbColor = effortColors[cur],
+                            activeTrackColor = effortColors[cur].copy(alpha = 0.6f),
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            disabledThumbColor = effortColors[cur],
+                            disabledActiveTrackColor = effortColors[cur],
+                            disabledInactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            disabledActiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                            disabledInactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
+                        ),
+                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp).height(24.dp),
+                    )
+                    Text("Smarter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
                 }
                 InputBar(
                     value = input,
@@ -745,8 +769,8 @@ private fun TypingDots() {
 }
 
 @Composable
-private fun ThinkingBlockInline(text: String) {
-    var expanded by remember { mutableStateOf(false) }
+private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true) {
+    var expanded by remember { mutableStateOf(!autoCollapse) }
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(10.dp),

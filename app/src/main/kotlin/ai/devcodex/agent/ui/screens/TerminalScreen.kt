@@ -30,6 +30,7 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
     val scope = rememberCoroutineScope()
 
     fun banner(ctx: android.content.Context) {
+        ai.devcodex.agent.shell.LinuxSandbox.distro = ctx.getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE).getString("linux_distro", "alpine") ?: "alpine"
         val ready = ai.devcodex.agent.shell.LinuxSandbox.ensure(ctx)
         val prootOk = ready && ai.devcodex.agent.shell.LinuxSandbox.prootWorks(ctx)
         val green = "\u001B[32m"; val yellow = "\u001B[33m"; val red = "\u001B[31m"; val reset = "\u001B[0m"; val grey = "\u001B[90m"
@@ -38,7 +39,8 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
             ready -> yellow + "Linux 沙盒: " + ai.devcodex.agent.shell.LinuxSandbox.lastError + "，已降级 toybox" + reset
             else -> red + "Linux 沙盒: rootfs 解压失败（" + ai.devcodex.agent.shell.LinuxSandbox.lastError.ifBlank { "自检未通过" } + "），使用 toybox" + reset
         }
-        emulator.feed(("DevCodex VT 终端（OpenMinis 模拟器内核）\r\n" + status + "\r\n通道: Shizuku / Root / AXS / Linux→toybox\r\n" + grey + "↑↓ 历史 · 回车执行" + reset + "\r\n$ ").toByteArray())
+        val termux = ai.devcodex.agent.shell.ShellAccess.termuxAvailable()
+        emulator.feed(("DevCodex VT 终端（OpenMinis 模拟器内核）\r\n" + status + "\r\n通道: " + (if (termux) "Termux 原生" else "Shizuku / Root / Linux→toybox") + "\r\n" + grey + "↑↓ 历史 · 回车执行" + reset + "\r\n$ ").toByteArray())
         rev++
     }
     val ctx = androidx.compose.ui.platform.LocalContext.current

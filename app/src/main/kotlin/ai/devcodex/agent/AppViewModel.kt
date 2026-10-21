@@ -85,7 +85,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openSession(id: String?) {
         val s = id?.let { sessionRepo.get(it) } ?: sessionRepo.newSession()
-        _activeSession.value = s
+        if (id == null && pendingContext > 0) {
+            val withCtx = s.copy(contextOverride = pendingContext)
+            sessionRepo.save(withCtx)
+            pendingContext = 0
+            _activeSession.value = withCtx
+        } else {
+            _activeSession.value = s
+        }
         reloadSessions()
     }
 
@@ -161,8 +168,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sessionRepo.save(cleared)
     }
 
+    @Volatile var pendingContext: Int = 0
+
     fun setSessionContext(ctx: Int) {
-        val cur = _activeSession.value ?: return
+        val cur = _activeSession.value
+        if (cur == null) {
+            // 会话未创建：挂起，新会话继承
+            pendingContext = ctx
+            return
+        }
         val updated = cur.copy(contextOverride = ctx)
         _activeSession.value = updated
         sessionRepo.save(updated)
