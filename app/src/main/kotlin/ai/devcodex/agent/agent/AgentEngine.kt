@@ -56,6 +56,10 @@ class AgentEngine(
                 is StreamEvent.Usage -> onUsage(ev.inputTokens, ev.outputTokens, ev.cachedTokens)
                 is StreamEvent.Delta -> {
                     onFirstDelta()
+                    if (think.isNotEmpty() && thinkStart > 0) {
+                        val settleMs = System.currentTimeMillis() - thinkStart
+                        current = current.patch(assistantId) { it.copy(thinkingMs = if (settleMs in 1..3600000L) settleMs else 0) }
+                    }
                     text.append(ev.text)
                     current = current.patch(assistantId) { it.copy(content = text.toString()) }
                     onUpdate(current)

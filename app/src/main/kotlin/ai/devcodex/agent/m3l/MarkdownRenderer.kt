@@ -111,7 +111,7 @@ fun MixedMarkdownLatex(
                     }
                 }
                 ContentType.TABLE -> {
-                    Box(modifier = Modifier.padding(vertical = 12.dp)) {
+                    Box(modifier = Modifier.padding(vertical = 5.dp)) {
                         MarkdownTableView(
                             markdown = segment.content,
                             textColor = textColor
@@ -160,7 +160,7 @@ private fun QuoteBlockView(
         modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .padding(vertical = 6.dp)
+            .padding(vertical = 3.dp)
     ) {
         Box(
             modifier = Modifier
@@ -183,7 +183,7 @@ private fun HrView() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 4.dp)
     ) {
         Box(
             modifier = Modifier

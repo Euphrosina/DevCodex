@@ -407,8 +407,8 @@ fun ChatScreen(vm: AppViewModel) {
                                                 } else {
                                                     Surface(
                                                         color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                                        shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
-                                                        modifier = Modifier.widthIn(max = 340.dp),
+                                                        shape = RoundedCornerShape(12.dp),
+                                                        modifier = Modifier.fillMaxWidth(),
                                                     ) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                     ai.devcodex.agent.m3l.LocalCodeTheme provides settings.theme.codeTheme,
@@ -560,7 +560,7 @@ fun ChatScreen(vm: AppViewModel) {
                 }
                 LazyColumn(
                     Modifier.fillMaxWidth().weight(1f, fill = false),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 4.dp, bottom = 28.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 2.dp, bottom = 20.dp, start = 6.dp, end = 6.dp),
                 ) {
                     activeProviders.forEach { p ->
                         item(key = "hdr-${p.id}") {
