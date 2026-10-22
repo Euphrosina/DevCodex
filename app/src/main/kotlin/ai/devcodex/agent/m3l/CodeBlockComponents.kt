@@ -87,14 +87,16 @@ internal fun CodeBlockView(code: String, info: String?, primaryTint: Color = Col
             }
         }
     } else null
+    val codeTheme = LocalCodeTheme.current
     val highlightedLines by produceState(
         initialValue = diffLines ?: codeLines.map { AnnotatedString(it) },
         codeLines,
         language,
-        darkCodeBlock
+        darkCodeBlock,
+        codeTheme
     ) {
         if (diffLines != null) { value = diffLines; return@produceState }
-        value = highlightCodeLinesAsync(codeLines, language, darkCodeBlock, appContext)
+        value = highlightCodeLinesAsync(codeLines, language, darkCodeBlock, codeTheme, appContext)
     }
 
     val header = LocalCodeBlockHeader.current
@@ -139,10 +141,11 @@ private suspend fun highlightCodeLinesAsync(
     lines: List<String>,
     language: String?,
     dark: Boolean,
-    context: Context
+    codeTheme: String,
+    context: Context,
 ): List<AnnotatedString> = withContext(Dispatchers.Default) {
     try {
-        highlightCodeLines(lines, language, dark, context)
+        highlightCodeLines(lines, language, dark, codeTheme, context)
     } catch (error: Throwable) {
         lines.map { AnnotatedString(it) }
     }
@@ -408,6 +411,27 @@ internal object CodeThemeHolder {
     @Volatile var current: String = "github"
 }
 
+
+/** 深色调色板按主题字符串（非 Composable：协程高亮里用） */
+internal fun darkPaletteForTheme(theme: String): CodeBlockPalette = when (theme) {
+    "dracula" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF282A36), text = Color(0xFFF8F8F2),
+        keyword = Color(0xFFFF79C6), string = Color(0xFFF1FA8C), number = Color(0xFFBD93F9),
+        comment = Color(0xFF6272A4), type = Color(0xFFFFB86C),
+    )
+    "onedark" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF282C34), text = Color(0xFFABB2BF),
+        keyword = Color(0xFFC678DD), string = Color(0xFF98C379), number = Color(0xFFD19A66),
+        comment = Color(0xFF5C6370), type = Color(0xFFE5C07B),
+    )
+    "solar" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF002B36), text = Color(0xFF839496),
+        keyword = Color(0xFF859900), string = Color(0xFF2AA198), number = Color(0xFFD33682),
+        comment = Color(0xFF586E75), type = Color(0xFFB58900),
+    )
+    else -> DarkCodeBlockPalette
+}
+
 internal val DarkCodeBlockPalette = CodeBlockPalette(
     background = Color(0xFF161B22),
     text = Color(0xFFC9D1D9),
@@ -474,12 +498,13 @@ private fun highlightCodeLines(
     lines: List<String>,
     language: String?,
     dark: Boolean,
-    context: Context
+    codeTheme: String,
+    context: Context,
 ): List<AnnotatedString> {
     val plain = lines.map { AnnotatedString(it) }
     if (language == null) return plain
     return try {
-        val palette = if (dark) DarkCodeBlockPalette else LightCodeBlockPalette
+        val palette = if (dark) darkPaletteForTheme(codeTheme) else LightCodeBlockPalette
         val grammar = codeGrammar(context, language) ?: return plain
         val tokens = codeTokens(grammar, lines)
         val theme = codeTheme(dark, palette)

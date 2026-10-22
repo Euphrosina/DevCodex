@@ -33,10 +33,10 @@ Daemon will be stopped at the end of the build
 > Task :app:minifyReleaseWithR8 UP-TO-DATE
 > Task :app:generateReleaseAssets UP-TO-DATE
 > Task :app:mergeReleaseAssets UP-TO-DATE
-> Task :app:compressReleaseAssets
+> Task :app:compressReleaseAssets FROM-CACHE
 > Task :app:extractReleaseVersionControlInfo
-> Task :app:produceReleaseComposeMapping
 > Task :app:generateReleaseLintVitalReportModel
+> Task :app:produceReleaseComposeMapping
 > Task :app:reportReleaseComposeMappingErrors
 > Task :app:mergeReleaseComposeMapping
 > Task :app:compileReleaseArtProfile SKIPPED
@@ -55,6 +55,6 @@ Daemon will be stopped at the end of the build
 > Task :app:packageRelease
 > Task :app:createReleaseApkListingFileRedirect
 
-BUILD SUCCESSFUL in 2m 21s
-50 actionable tasks: 12 executed, 38 up-to-date
+BUILD SUCCESSFUL in 2m 17s
+50 actionable tasks: 11 executed, 1 from cache, 38 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

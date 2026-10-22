@@ -389,17 +389,20 @@ object ModelLogos {
     private fun String.hasWord(w: String): Boolean =
         Regex("(?i)(^|[^a-z])" + Regex.escape(w) + "([^a-z]|$)").containsMatchIn(this)
 
+    private fun String.hasBrand(b: String): Boolean =
+        contains(b, ignoreCase = true) || hasWord(b.replace(" ", "").replace("-", ""))
+
     fun forModel(model: String): ImageVector = when {
         model.hasWord("xiaomimimo") || model.hasWord("mimo") -> xiaomimimoLogo
         model.hasWord("gpt") || model.hasWord("openai") || Regex("(?i)\bo[1345]\b").containsMatchIn(model) -> openaiLogo
         model.hasWord("claude") || model.hasWord("anthropic") -> anthropicLogo
-        model.hasWord("deepseek") -> deepseekLogo
+        model.hasWord("deepseek") || model.contains("深度求索") || model.contains("深度") -> deepseekLogo
         model.hasWord("gemini") || model.hasWord("google") || model.contains("google/") -> geminiLogo
-        model.hasWord("glm") || model.hasWord("zhipu") || model.hasWord("chatglm") -> zhipuLogo
-        model.hasWord("qwen") || model.hasWord("qwq") || model.hasWord("alibaba") || model.contains("通义") || model.hasWord("qvq") -> qwenLogo
-        model.hasWord("siliconcloud") || model.hasWord("siliconflow") -> siliconcloudLogo
-        model.hasWord("lmstudio") || model.hasWord("lm_studio") || model.hasWord("lm-studio") -> lmstudioLogo
-        model.hasWord("kimi") || model.hasWord("moonshot") || model.hasWord("moonshotai") -> kimiLogo
+        model.hasWord("glm") || model.hasWord("zhipu") || model.hasWord("chatglm") || model.contains("智谱") -> zhipuLogo
+        model.hasWord("qwen") || model.hasWord("qwq") || model.hasWord("alibaba") || model.contains("通义") || model.contains("千问") || model.hasWord("qvq") || model.hasBrand("dash scope") -> qwenLogo
+        model.hasBrand("silicon cloud") || model.hasWord("siliconcloud") || model.hasWord("siliconflow") -> siliconcloudLogo
+        model.hasBrand("lm studio") || model.hasBrand("lmstudio") -> lmstudioLogo
+        model.hasWord("kimi") || model.hasWord("moonshot") || model.hasWord("moonshotai") || model.contains("月之暗面") -> kimiLogo
         model.hasWord("doubao") || model.hasWord("bytedance") || model.contains("豆包") -> doubaoLogo
         model.hasWord("step") -> stepfunLogo
         model.hasWord("minimax") || model.hasWord("abab") || model.hasWord("minimax-m") -> minimaxLogo

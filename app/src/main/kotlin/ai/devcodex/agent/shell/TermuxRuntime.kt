@@ -132,8 +132,15 @@ object TermuxRuntime {
                     sb.toString()
                 }
             }
+            val code = runCatching { p.waitFor() }.getOrDefault(-1)
             runCatching { p.destroyForcibly() }
-            (out ?: "(Termux 超时 ${timeoutSec}s)").ifBlank { "(exit ok)" }
+            val result = (out ?: "(Termux 超时 ${timeoutSec}s)")
+            if (result.isBlank()) {
+                // busybox 输出空（真机异常兜底）：降级系统 toybox 并带诊断标记
+                val tb = ShellAccess.localExec(command, 15)
+                if (tb.isNotBlank() && !tb.startsWith("ERROR")) "[busybox空输出·exit=$code→toybox] $tb"
+                else "[busybox exit=$code 无输出；stderr 请导调试包]"
+            } else result
         } catch (e: Exception) { "ERROR(termux): ${e.message}" }
     }
 }

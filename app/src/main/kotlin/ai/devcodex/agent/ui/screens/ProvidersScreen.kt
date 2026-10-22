@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
@@ -249,10 +252,21 @@ private fun ProviderEditDialog(
                             Text("接入信息", style = MaterialTheme.typography.titleSmall)
                         }
                         Spacer(Modifier.height(6.dp))
+                        var keyVisible by remember { mutableStateOf(false) }
                         OutlinedTextField(
                             value = apiKey, onValueChange = { apiKey = it },
-                            label = { Text("API Key（多行支持）") },
-                            maxLines = 3, minLines = 1,
+                            label = { Text("API Key") },
+                            maxLines = if (keyVisible) 3 else 1,
+                            visualTransformation = if (keyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                            trailingIcon = {
+                                androidx.compose.material3.IconButton(onClick = { keyVisible = !keyVisible }) {
+                                    Icon(
+                                        if (keyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                        if (keyVisible) "隐藏" else "显示",
+                                        Modifier.size(18.dp),
+                                    )
+                                }
+                            },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -264,6 +278,33 @@ private fun ProviderEditDialog(
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                         )
+                        Spacer(Modifier.height(8.dp))
+                        // 连接测试（rikkahub ProviderConnectionTester 式）
+                        var testing by remember { mutableStateOf(false) }
+                        var testResult by remember { mutableStateOf<String?>(null) }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.OutlinedButton(
+                                onClick = {
+                                    testing = true; testResult = null
+                                    kotlinx.coroutines.MainScope().launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        testResult = runCatching {
+                                            val url = baseUrl.trim().trimEnd('/') + "/models"
+                                            val req = okhttp3.Request.Builder().url(url)
+                                                .header("Authorization", "Bearer ${apiKey.trim()}")
+                                                .build()
+                                            okhttp3.OkHttpClient.Builder().callTimeout(10, java.util.concurrent.TimeUnit.SECONDS).build()
+                                                .newCall(req).execute().use { resp ->
+                                                    if (resp.isSuccessful) "✓ 连接成功（HTTP ${resp.code}）" else "✗ HTTP ${resp.code}"
+                                                }
+                                        }.getOrElse { "✗ ${it.message}" }
+                                        testing = false
+                                    }
+                                },
+                                enabled = baseUrl.isNotBlank() && !testing,
+                            ) { Text(if (testing) "测试中…" else "测试连接") }
+                            Spacer(Modifier.width(8.dp))
+                            testResult?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = if (it.startsWith("✓")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error) }
+                        }
                     }
                 }
 
