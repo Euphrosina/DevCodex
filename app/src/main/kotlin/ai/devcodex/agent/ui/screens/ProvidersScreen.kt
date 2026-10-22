@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
@@ -139,16 +141,37 @@ fun ProvidersScreen(vm: AppViewModel) {
                 text = {
                     Column {
                         Text("选一个快速开始（Base URL 已填好，只需填 Key）；或拉到底选「自定义」", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
-                            items(ai.devcodex.agent.data.ProviderPresets) { preset ->
-                                ListItem(
-                                    leadingContent = {
-                                        ai.devcodex.agent.ui.components.ModelLogo(preset.name, 32.dp)
-                                    },
-                                    headlineContent = { Text(preset.name, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium) },
-                                    supportingContent = { Text(if (preset.baseUrl.isBlank()) preset.desc else preset.baseUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                    modifier = Modifier.clickable { presetChosen = preset },
-                                )
+                        // 双列卡片（Operit 式）
+                        LazyVerticalGrid(
+                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(ai.devcodex.agent.data.ProviderPresets.size) { i ->
+                                val preset = ai.devcodex.agent.data.ProviderPresets[i]
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { presetChosen = preset },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                                ) {
+                                    Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        ai.devcodex.agent.ui.components.ModelLogo(preset.name, 44.dp)
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(preset.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(
+                                            preset.desc,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

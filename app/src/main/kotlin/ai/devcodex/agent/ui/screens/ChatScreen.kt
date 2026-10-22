@@ -108,6 +108,7 @@ fun ChatScreen(vm: AppViewModel) {
     val session by vm.activeSession.collectAsState()
     val sessions by vm.sessions.collectAsState()
     val settings by vm.settings.collectAsState(initial = AppSettings())
+    LaunchedEffect(settings.theme.codeTheme) { ai.devcodex.agent.m3l.CodeThemeHolder.current = settings.theme.codeTheme }
     val isRunning by vm.isRunning.collectAsState()
     val pendingApproval by vm.pendingApproval.collectAsState()
     val drawerState = rememberDrawerState(DrawerValue.Closed)

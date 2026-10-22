@@ -21,7 +21,7 @@ android {
         applicationId = "ai.devcodex.agent"
         minSdk = 26
         targetSdk = 28
-        versionCode = 43
+        versionCode = 44
         versionName = "3.9.0"
     }
 
@@ -112,4 +112,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.github.ivan-magda:kotlin-textmate-core:0.3.0")
     implementation("com.github.mwiede:jsch:0.2.18")
+}
+
+tasks.matching { it.name == "compileReleaseArtProfile" }.configureEach {
+    enabled = false
 }

@@ -326,10 +326,11 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                     Text("    // GitHub Dark 风格", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF8B949E))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-                    val sp3 = vm.getPreferences()
-                    val cur3 = sp3.getString("code_theme", "github") ?: "github"
                     listOf("github" to "GitHub", "dracula" to "Dracula", "onedark" to "One Dark", "solar" to "Solarized").forEach { (v, label) ->
-                        FilterChip(selected = cur3 == v, onClick = { sp3.edit().putString("code_theme", v).apply() }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+                        FilterChip(selected = t.codeTheme == v, onClick = {
+                            save { it.copy(codeTheme = v) }
+                            ai.devcodex.agent.m3l.CodeThemeHolder.current = v
+                        }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
                     }
                 }
             }

@@ -4,10 +4,12 @@ import android.content.Context
 import java.io.File
 
 /**
- * Termux 原生运行时（IQ-Code 方案，MIT）：
- * - Termux 官方 bootstrap-aarch64（32MB zip）内置 assets
- * - 首次解压到 filesDir/termux/usr + SYMLINKS.txt 符号链接 + bin 执行位
- * - ProcessBuilder 直接 exec bash（原生 bionic，无 proot/无 ptrace——限制设备可用）
+ * Termux 原生沙盒（双保险架构）：
+ * - 主 shell：静态 busybox（musl 三件套：busybox+ld-musl+libc.musl，零外部依赖）
+ *   → 任何设备都能跑（不依赖 bootstrap 的动态库完整性）
+ * - 完整环境：Termux 官方 bootstrap（bash/apt 工具链）
+ *   bash 若缺库（如 readline），提示用户联网 apt 补包，不影响 busybox sh
+ * - exec 走 ld-musl 显式加载 busybox（设备无 /lib/ld-musl，必须 loader 起步）
  */
 object TermuxRuntime {
 
@@ -19,90 +21,100 @@ object TermuxRuntime {
 
     fun prefix(context: Context): File = File(context.filesDir, "termux/usr")
 
+    fun busybox(context: Context): File = File(prefix(context), "bin/busybox_static")
+
+    fun muslDir(context: Context): File = File(prefix(context), "musl-lib")
+
     fun bash(context: Context): File = File(prefix(context), "bin/bash")
 
     fun isReady(context: Context): Boolean =
-        bash(context).isFile && bash(context).canExecute()
+        busybox(context).isFile && busybox(context).canExecute()
 
     @Synchronized
     fun ensure(context: Context): Boolean {
         if (ready) return true
         val usr = prefix(context)
         val marker = File(usr.parentFile, ".installed")
-        if (marker.exists() && isReady(context)) { ready = true; return true }
-        if (marker.exists() && !isReady(context)) {
-            // 半安装状态：清了重来
-            File(usr.parentFile, "usr").deleteRecursively()
-            marker.delete()
-        }
         try {
-            usr.mkdirs()
-            val t0 = System.currentTimeMillis()
-            // 解压 bootstrap（entries: bin/ lib/ share/ etc/ → usr/）
-            val tmp = File(context.cacheDir, "termux_bootstrap.zip")
-            context.assets.open("termux-bootstrap.zip").use { i ->
-                tmp.outputStream().use { o -> i.copyTo(o) }
+            // ---- 1. busybox 三件套（零依赖主 shell） ----
+            val bb = busybox(context)
+            val mDir = muslDir(context)
+            mDir.mkdirs()
+            File(usr, "bin").mkdirs()
+            if (!bb.isFile) {
+                context.assets.open("busybox").use { i -> bb.outputStream().use { o -> i.copyTo(o) } }
             }
-            java.util.zip.ZipFile(tmp).use { zf ->
-                val entries = zf.entries()
-                while (entries.hasMoreElements()) {
-                    val e = entries.nextElement()
-                    if (e.name == "SYMLINKS.txt" || e.name.isBlank()) continue
-                    val out = File(usr, e.name)
-                    if (e.isDirectory) {
-                        out.mkdirs()
-                    } else {
-                        out.parentFile?.mkdirs()
-                        zf.getInputStream(e).use { i -> out.outputStream().use { o -> i.copyTo(o) } }
+            bb.setExecutable(true, false)
+            for (n in listOf("ld-musl-aarch64.so.1", "libc.musl-aarch64.so.1")) {
+                val f = File(mDir, n)
+                if (!f.isFile) {
+                    context.assets.open("busybox_lib/$n").use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+                }
+                f.setExecutable(true, false)
+            }
+            if (!isReady(context)) {
+                lastError = "busybox 解压失败"
+                return false
+            }
+            // ---- 2. bootstrap 完整环境（可失败，不阻塞 busybox） ----
+            if (!marker.exists() && !bash(context).isFile) {
+                try {
+                    val tmp = File(context.cacheDir, "bootstrap.zip")
+                    context.assets.open("termux-bootstrap.zip").use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+                    java.util.zip.ZipFile(tmp).use { zf ->
+                        val entries = zf.entries()
+                        while (entries.hasMoreElements()) {
+                            val e = entries.nextElement()
+                            val out = File(usr, e.name)
+                            if (e.isDirectory) out.mkdirs()
+                            else {
+                                out.parentFile?.mkdirs()
+                                if (!out.exists()) {
+                                    zf.getInputStream(e).use { i -> out.outputStream().use { o -> i.copyTo(o) } }
+                                }
+                            }
+                        }
                     }
-                }
-                // SYMLINKS.txt: 绝对路径←相对目标（Termux 前缀替换为本包路径）
-                val myPrefix = usr.absolutePath
-                val symlText = runCatching { zf.getInputStream(zf.getEntry("SYMLINKS.txt")).readBytes().decodeToString() }.getOrDefault("")
-                symlText.lines().filter { it.contains("←") }.forEach { line ->
-                    val (left, right) = line.split("←", limit = 2)
-                    val linkPath = left.trim().replace("/data/data/com.termux/files/usr", myPrefix)
-                    val target = right.trim()  // 相对链接父目录
-                    try {
-                        val lf = File(linkPath)
-                        lf.parentFile?.mkdirs()
-                        if (lf.exists()) lf.delete()
-                        android.system.Os.symlink(target, linkPath)
-                    } catch (se: Exception) { /* 容忍个别 */ }
+                    // bin 全可执行 + bin/sh 指向 busybox（稳妥 shell）
+                    File(usr, "bin").listFiles()?.forEach { if (it.isFile) it.setExecutable(true, false) }
+                    tmp.delete()
+                    marker.writeText("bootstrap-1")
+                } catch (e: Exception) {
+                    // bash 工具链失败不致命（busybox 已可用）
+                    if (bash(context).isFile) bash(context).setExecutable(true, false)
                 }
             }
-            tmp.delete()
-            // bin 下全部执行位（bootstrap zip 不带 mode）
-            File(usr, "bin")?.takeIf { it.isDirectory }?.listFiles()?.forEach { it.setExecutable(true, false) }
-            // 环境目录
-            File(usr, "home").mkdirs()
-            File(usr, "tmp").mkdirs()
-            val ok = isReady(context)
-            if (ok) marker.writeText("termux-bootstrap") else lastError = "bootstrap 自检失败（bash 缺失）"
-            ready = ok
-            return ok
+            ready = true
+            lastError = ""
+            return true
         } catch (e: Exception) {
-            lastError = "bootstrap 解压异常: ${e.message}"
+            lastError = "初始化异常: ${e.message}"
             return false
         }
     }
 
-    /** 原生执行（bash -lc，IQ-Code 同款环境变量） */
-    fun exec(context: Context, command: String, cwd: String? = null, timeoutSec: Long = 30): String {
-        if (!ensure(context)) return "ERROR(termux): 未安装（${lastError}）"
+    /** bash 可跑则提示（可选） */
+    fun bashReady(context: Context): Boolean = runCatching {
+        val p = exec(context, "command -v bash >/dev/null && bash -c 'echo ok'", 8)
+        p.contains("ok")
+    }.getOrDefault(false)
+
+    /** 执行（busybox ash 为主 shell） */
+    fun exec(context: Context, command: String, timeoutSec: Long = 30): String {
+        if (!ensure(context)) return "ERROR(termux): 引擎未就绪（$lastError）"
         val usr = prefix(context)
-        val workDir = cwd?.let { File(usr, it.removePrefix("/")) }?.takeIf { it.isDirectory } ?: File(usr, "home")
+        val loader = File(muslDir(context), "ld-musl-aarch64.so.1").absolutePath
+        val bb = busybox(context).absolutePath
         return try {
-            val p = ProcessBuilder(bash(context).absolutePath, "-lc", command)
+            val p = ProcessBuilder(loader, bb, "sh", "-c", command)
                 .redirectErrorStream(true)
                 .apply {
-                    directory(workDir)
                     val env = environment()
-                    env["HOME"] = File(usr, "home").absolutePath
-                    env["PREFIX"] = usr.absolutePath
-                    env["TMPDIR"] = File(usr, "tmp").absolutePath
                     env["PATH"] = File(usr, "bin").absolutePath + ":/system/bin:/system/xbin"
                     env["LD_LIBRARY_PATH"] = File(usr, "lib").absolutePath
+                    env["HOME"] = File(usr, "home").absolutePath
+                    File(usr, "home").mkdirs()
+                    env["TMPDIR"] = File(usr, "tmp").absolutePath
                     env["LANG"] = "en_US.UTF-8"
                     env["TERM"] = "xterm-256color"
                 }
