@@ -61,9 +61,11 @@ class AgentEngine(
                     onUpdate(current)
                 }
                 is StreamEvent.Reasoning -> {
-                    if (think.isEmpty()) thinkStart = System.currentTimeMillis()
+                    val now = System.currentTimeMillis()
+                    if (thinkStart == 0L) thinkStart = now
                     think.append(ev.text)
-                    val ms = System.currentTimeMillis() - thinkStart
+                    var ms = now - thinkStart
+                    if (ms < 0 || ms > 3_600_000L) ms = 0  // 防御：异常值置零
                     current = current.patch(assistantId) { it.copy(thinking = think.toString(), thinkingMs = ms) }
                     onUpdate(current)
                 }

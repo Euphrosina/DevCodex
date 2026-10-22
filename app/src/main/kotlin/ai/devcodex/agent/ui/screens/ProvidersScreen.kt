@@ -29,6 +29,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -231,18 +234,26 @@ private fun ProviderEditDialog(
     var fetching by remember { mutableStateOf(false) }
     var fetchError by remember { mutableStateOf<String?>(null) }
     var testing by remember { mutableStateOf<String?>(null) }
-    var manualModel by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf<Pair<String, ModelTestResult>?>(null) }
+    var manualModel by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
-    AlertDialog(
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial.name.isBlank()) "添加提供商" else "编辑提供商") },
-        text = {
-            Column(
-                Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).heightIn(max = 520.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        androidx.compose.material3.Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp).heightIn(max = 640.dp),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text(if (initial.name.isBlank()) "添加提供商" else "编辑提供商", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = type == ProviderType.OPENAI_COMPAT, onClick = { type = ProviderType.OPENAI_COMPAT; baseUrl = baseUrl.ifBlank { "https://api.openai.com/v1" } }, label = { Text("OpenAI 兼容") })
                     FilterChip(selected = type == ProviderType.ANTHROPIC, onClick = { type = ProviderType.ANTHROPIC; baseUrl = baseUrl.ifBlank { "https://api.anthropic.com" } }, label = { Text("Anthropic") })
@@ -292,12 +303,11 @@ private fun ProviderEditDialog(
                         )
                         Spacer(Modifier.height(8.dp))
                         // 连接测试（rikkahub ProviderConnectionTester 式）
-                        var testing by remember { mutableStateOf(false) }
                         var testResult by remember { mutableStateOf<String?>(null) }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             androidx.compose.material3.OutlinedButton(
                                 onClick = {
-                                    testing = true; testResult = null
+                                    testing = "__conn__"; testResult = null
                                     kotlinx.coroutines.MainScope().launch(kotlinx.coroutines.Dispatchers.IO) {
                                         testResult = runCatching {
                                             val url = baseUrl.trim().trimEnd('/') + "/models"
@@ -309,11 +319,11 @@ private fun ProviderEditDialog(
                                                     if (resp.isSuccessful) "✓ 连接成功（HTTP ${resp.code}）" else "✗ HTTP ${resp.code}"
                                                 }
                                         }.getOrElse { "✗ ${it.message}" }
-                                        testing = false
+                                        testing = null
                                     }
                                 },
-                                enabled = baseUrl.isNotBlank() && !testing,
-                            ) { Text(if (testing) "测试中…" else "测试连接") }
+                                enabled = baseUrl.isNotBlank() && testing == null,
+                            ) { Text(if (testing != null) "测试中…" else "测试连接") }
                             Spacer(Modifier.width(8.dp))
                             testResult?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = if (it.startsWith("✓")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error) }
                         }
@@ -443,19 +453,25 @@ private fun ProviderEditDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val cleaned = normalizeBaseUrl(baseUrl)
-                onSave(initial.copy(
-                    name = name.ifBlank { hostOf(cleaned) }, type = type, baseUrl = cleaned,
-                    apiKey = apiKey, models = models, enabledModels = enabledModels,
-                    enabled = true,
-                ))
-            }) { Text("保存") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
-    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = onDismiss) { Text("取消") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = {
+                        val cleaned = normalizeBaseUrl(baseUrl)
+                        onSave(initial.copy(
+                            name = name.ifBlank { hostOf(cleaned) }, type = type, baseUrl = cleaned,
+                            apiKey = apiKey, models = models, enabledModels = enabledModels,
+                            enabled = true,
+                        ))
+                    }) { Text("保存") }
+            }
+        }
+    }
 }
 
 private fun typeName(t: ProviderType): String = when (t) {

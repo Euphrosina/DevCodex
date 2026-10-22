@@ -408,7 +408,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                     Surface(
                                                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                                                         shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
-                                                        modifier = Modifier.fillMaxWidth(),
+                                                        modifier = Modifier.widthIn(max = 340.dp),
                                                     ) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                     ai.devcodex.agent.m3l.LocalCodeTheme provides settings.theme.codeTheme,

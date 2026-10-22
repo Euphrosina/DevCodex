@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.provider.CalendarContract
 import ai.devcodex.agent.agent.ToolDef
 import ai.devcodex.agent.util.JsonArg
+import ai.devcodex.agent.shell.ShellAccess
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.put
 import java.util.concurrent.CountDownLatch
@@ -411,9 +412,72 @@ object ExtraTools {
         }.getOrElse { "ERROR: ${it.message}" }
     }
 
+    // ============ 沙盒扩展工具（自动装包） ============
+    val sandboxPkgInstall = ToolDef(
+        name = "sandbox_pkg_install",
+        description = "Termux 沙盒联网安装软件包（apt）。如 python nodejs git ffmpeg rust golang openssh zip unzip 等。装完即可在 shell_exec 中使用。首次约 1-2 分钟",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("packages", obj { put("type", "string"); put("description", "空格分隔包名，如 \"python nodejs git\"") })
+            })
+            put("required", req("packages"))
+        },
+        risk = ToolDef.Risk.MEDIUM,
+    ) { args ->
+        val pkgs = JsonArg.string(args, "packages") ?: return@ToolDef "ERROR: 缺少 packages"
+        ShellAccess.execSandbox("pkg install -y $pkgs 2>&1 | tail -20").take(8000)
+    }
+
+    val pythonRun = ToolDef(
+        name = "python_run",
+        description = "在 Termux 沙盒运行 Python 脚本（首次自动安装 python）。适合数据处理/爬虫/算法",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("code", obj { put("type", "string") })
+                put("stdin", obj { put("type", "string") })
+            })
+            put("required", req("code"))
+        },
+        risk = ToolDef.Risk.MEDIUM,
+    ) { args ->
+        val code = JsonArg.string(args, "code") ?: return@ToolDef "ERROR: 缺少 code"
+        val script = java.io.File(ctx().cacheDir, "devcodex_py.py")
+        script.writeText(code)
+        val hasPy = ShellAccess.execSandbox("command -v python3")
+        if (!hasPy.contains("python3")) {
+            ShellAccess.execSandbox("pkg install -y python 2>&1 | tail -3")
+        }
+        ShellAccess.execSandbox("python3 ${script.absolutePath} 2>&1").take(20000)
+    }
+
+    val nodeRun = ToolDef(
+        name = "node_run",
+        description = "在 Termux 沙盒运行 Node.js 脚本（首次自动安装 nodejs）。适合 JSON 处理/工具脚本",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("code", obj { put("type", "string") })
+            })
+            put("required", req("code"))
+        },
+        risk = ToolDef.Risk.MEDIUM,
+    ) { args ->
+        val code = JsonArg.string(args, "code") ?: return@ToolDef "ERROR: 缺少 code"
+        val script = java.io.File(ctx().cacheDir, "devcodex_js.js")
+        script.writeText(code)
+        val hasNode = ShellAccess.execSandbox("command -v node")
+        if (!hasNode.contains("node")) {
+            ShellAccess.execSandbox("pkg install -y nodejs 2>&1 | tail -3")
+        }
+        ShellAccess.execSandbox("node ${script.absolutePath} 2>&1").take(20000)
+    }
+
     val all = listOf(
         webSearch, browserRender, imageInfo, imageConvert,
         pipelineRun, bgList, bgKill, calendarList, calendarAdd,
         clipboardWrite, notifyPost, alarmSet, shareContent, calendarOpen,
+        sandboxPkgInstall, pythonRun, nodeRun,
     )
 }
