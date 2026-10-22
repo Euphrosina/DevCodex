@@ -474,10 +474,126 @@ object ExtraTools {
         ShellAccess.execSandbox("node ${script.absolutePath} 2>&1").take(20000)
     }
 
+    // ============ Zafiro 式设备工具 ============
+    val deviceInfo = ToolDef(
+        name = "device_info",
+        description = "读取设备信息（型号/系统/API/屏幕/内存/电量/存储）",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("detail", obj { put("type", "string") }) })
+        },
+    ) { _ ->
+        val am = ctx().getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val mi = android.app.ActivityManager.MemoryInfo()
+        am.getMemoryInfo(mi)
+        val bat = ctx().registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+        val level = bat?.getIntExtra("level", -1) ?: -1
+        val scale = bat?.getIntExtra("scale", 100) ?: 100
+        val dm = ctx().resources.displayMetrics
+        buildString {
+            appendLine("型号: ${android.os.Build.MODEL}（${android.os.Build.BRAND}）")
+            appendLine("系统: Android ${android.os.Build.VERSION.RELEASE}（API ${android.os.Build.VERSION.SDK_INT}）")
+            appendLine("屏幕: ${dm.widthPixels}x${dm.heightPixels} @${dm.densityDpi}dpi")
+            appendLine("内存: 总 ${mi.totalMem / 1048576}MB / 可用 ${mi.availMem / 1048576}MB")
+            appendLine("电量: ${if (level >= 0) "${level * 100 / scale}%" else "未知"}")
+            append("存储: 可用 ${android.os.Environment.getDataDirectory().usableSpace / 1048576}MB")
+        }
+    }
+
+    val vibrate = ToolDef(
+        name = "vibrate",
+        description = "振动设备（ms 毫秒）",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("ms", obj { put("type", "integer") }) })
+        },
+    ) { args ->
+        val ms = ai.devcodex.agent.util.JsonArg.int(args, "ms") ?: 300
+        runCatching {
+            val v = ctx().getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                v.vibrate(android.os.VibrationEffect.createOneShot(ms.coerceIn(50, 5000).toLong(), android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+            } else @Suppress("DEPRECATION") v.vibrate(ms.coerceIn(50, 5000).toLong())
+            "OK: 已振动 ${ms}ms"
+        }.getOrElse { "ERROR: ${it.message}" }
+    }
+
+    val openUrl = ToolDef(
+        name = "open_url",
+        description = "用系统浏览器打开链接",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("url", obj { put("type", "string") }) })
+        },
+    ) { args ->
+        val url = ai.devcodex.agent.util.JsonArg.string(args, "url") ?: return@ToolDef "ERROR: 缺少 url"
+        runCatching {
+            ctx().startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            "OK: 已打开 $url"
+        }.getOrElse { "ERROR: ${it.message}" }
+    }
+
+    // ============ Zafiro 精华设备工具（二批） ============
+    val screenshotTake = ToolDef(
+        name = "screenshot_take",
+        description = "截取当前屏幕（需 Shizuku/ADB 权限），保存到工作区并返回文件名",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("name", obj { put("type", "string") }) })
+        },
+        risk = ToolDef.Risk.MEDIUM,
+    ) { args ->
+        val name = ai.devcodex.agent.util.JsonArg.string(args, "name") ?: ("shot_" + System.currentTimeMillis())
+        val out = java.io.File(ctx().filesDir, "workspace/" + name + ".png")
+        out.parentFile.mkdirs()
+        val r = ShellAccess.exec("screencap -p " + out.absolutePath + " && echo OK || echo FAIL")
+        if (out.exists() && out.length() > 1000) "OK: 截屏已保存 workspace/" + name + ".png（" + (out.length() / 1024) + "KB）"
+        else "ERROR: 截屏失败（需 Shizuku/ADB 授权）——" + r.take(100)
+    }
+
+    val clipboardGet = ToolDef(
+        name = "clipboard_get",
+        description = "读取系统剪贴板文本（Android 10+ 前台可用）",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("dummy", obj { put("type", "string") }) })
+        },
+    ) { _ ->
+        runCatching {
+            val cm = ctx().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val t = cm.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+            if (t.isBlank()) "剪贴板为空" else t.take(5000)
+        }.getOrElse { "ERROR: " + it.message }
+    }
+
+    val wifiState = ToolDef(
+        name = "wifi_state",
+        description = "读取 WiFi 连接状态（SSID/信号/IP）",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("dummy", obj { put("type", "string") }) })
+        },
+    ) { _ ->
+        runCatching {
+            val wm = ctx().applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            val info = wm.connectionInfo
+            val ssid = info.ssid.removePrefix("\"").removeSuffix("\"")
+            buildString {
+                append("WiFi: ")
+                append(if (ssid.isBlank() || ssid == "<unknown ssid>") "未连接或读取受限" else ssid)
+                append(" / 信号 ")
+                append(android.net.wifi.WifiManager.calculateSignalLevel(info.rssi, 100))
+                append("/100 / IP ")
+                append(if (info.ipAddress != 0) android.text.format.Formatter.formatIpAddress(info.ipAddress) else "无")
+            }
+        }.getOrElse { "ERROR: " + it.message }
+    }
+
     val all = listOf(
         webSearch, browserRender, imageInfo, imageConvert,
         pipelineRun, bgList, bgKill, calendarList, calendarAdd,
         clipboardWrite, notifyPost, alarmSet, shareContent, calendarOpen,
-        sandboxPkgInstall, pythonRun, nodeRun,
+        sandboxPkgInstall, pythonRun, nodeRun, deviceInfo, vibrate, openUrl,
+        screenshotTake, clipboardGet, wifiState,
     )
 }

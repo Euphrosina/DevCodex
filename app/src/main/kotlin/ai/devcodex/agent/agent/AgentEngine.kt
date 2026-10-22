@@ -59,6 +59,12 @@ class AgentEngine(
                     if (think.isNotEmpty() && thinkStart > 0) {
                         val settleMs = System.currentTimeMillis() - thinkStart
                         current = current.patch(assistantId) { it.copy(thinkingMs = if (settleMs in 1..3600000L) settleMs else 0) }
+                    } else {
+                        // 跨轮：上一轮思考过（消息里已有 thinking）但计时停在 0 —— 估算结算
+                        val prev = current.messages.firstOrNull { it.id == assistantId }
+                        if (prev != null && !prev.thinking.isNullOrEmpty() && prev.thinkingMs == 0L) {
+                            current = current.patch(assistantId) { it.copy(thinkingMs = 1000L) }
+                        }
                     }
                     text.append(ev.text)
                     current = current.patch(assistantId) { it.copy(content = text.toString()) }

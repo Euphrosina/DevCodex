@@ -306,7 +306,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
             Card {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("活跃日历", style = MaterialTheme.typography.titleSmall)
+                        Text("消息热力图", style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.weight(1f))
                         Text("近 14 周", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -330,12 +330,12 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                                         Box(Modifier.size(16.dp))
                                     } else {
                                         val key = c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
-                                        val usage = st.byDay[key]?.let { it.input + it.output } ?: 0
+                                        val msgs = st.byDay[key]?.messages ?: 0
                                         val color = when {
-                                            usage <= 0 -> empty
-                                            usage < 10_000 -> primary.copy(alpha = 0.25f)
-                                            usage < 100_000 -> primary.copy(alpha = 0.5f)
-                                            usage < 1_000_000 -> primary.copy(alpha = 0.75f)
+                                            msgs <= 0 -> empty
+                                            msgs < 5 -> primary.copy(alpha = 0.25f)
+                                            msgs < 20 -> primary.copy(alpha = 0.5f)
+                                            msgs < 50 -> primary.copy(alpha = 0.75f)
                                             else -> primary
                                         }
                                         Box(Modifier.size(16.dp).background(color, RoundedCornerShape(4.dp)))

@@ -172,6 +172,13 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                 Switch(checked = t.showNick, onCheckedChange = { on -> save { it.copy(showNick = on) } })
             },
         )
+        ListItem(
+            headlineContent = { Text("显示头像") },
+            supportingContent = { Text("关闭后聊天两侧不显示头像（昵称开关独立）") },
+            trailingContent = {
+                Switch(checked = t.showAvatar, onCheckedChange = { on -> save { it.copy(showAvatar = on) } })
+            },
+        )
         var userNick by remember(settings) { mutableStateOf(t.userNick) }
         var aiNick by remember(settings) { mutableStateOf(t.aiNick) }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

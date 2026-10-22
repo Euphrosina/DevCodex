@@ -154,7 +154,7 @@ fun ChatScreen(vm: AppViewModel) {
     }
     // 自动滚动：新消息（发送/AI 输出）时跟随到底
     LaunchedEffect(messages.size, isRunning) {
-        if (messages.isNotEmpty() && (isRunning || listState.firstVisibleItemIndex >= messages.size - 3)) {
+        if (messages.isNotEmpty() && isRunning && listState.firstVisibleItemIndex >= messages.size - 3) {
             runCatching { listState.animateScrollToItem(messages.lastIndex) }
         }
     }
@@ -350,7 +350,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         .align(Alignment.Top)
                                 ) { UserBubble(msg) }
                                 Spacer(Modifier.width(6.dp))
-                                if (settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
+                                if (settings.theme.showAvatar && settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
                                     ai.devcodex.agent.ui.components.Avatar(
                                         name = settings.theme.userNick,
                                         avatarFile = settings.theme.userAvatar,
@@ -358,7 +358,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         size = 24.dp,
                                     )
                                     Text(settings.theme.userNick.ifBlank { "我" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                } else ai.devcodex.agent.ui.components.Avatar(
+                                } else if (settings.theme.showAvatar) ai.devcodex.agent.ui.components.Avatar(
                                     name = settings.theme.userNick,
                                     avatarFile = settings.theme.userAvatar,
                                     defaultColor = androidx.compose.ui.graphics.Color(0xFF059669),
@@ -369,7 +369,7 @@ fun ChatScreen(vm: AppViewModel) {
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
                                 Row(Modifier.fillMaxWidth()) {
-                                    if (settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
+                                    if (settings.theme.showAvatar && settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
                                         ai.devcodex.agent.ui.components.Avatar(
                                             name = settings.theme.aiNick,
                                             avatarFile = settings.theme.aiAvatar,
@@ -378,7 +378,7 @@ fun ChatScreen(vm: AppViewModel) {
                                             size = 24.dp,
                                         )
                                         Text(settings.theme.aiNick.ifBlank { "DevCodex" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    } else ai.devcodex.agent.ui.components.Avatar(
+                                    } else if (settings.theme.showAvatar) ai.devcodex.agent.ui.components.Avatar(
                                         name = settings.theme.aiNick,
                                         avatarFile = settings.theme.aiAvatar,
                                         defaultColor = androidx.compose.ui.graphics.Color(0xFF4F46E5),
@@ -405,11 +405,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                         style = MaterialTheme.typography.bodyLarge,
                                                     )
                                                 } else {
-                                                    Surface(
-                                                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                                        shape = RoundedCornerShape(12.dp),
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                    ) {
+                                                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                     ai.devcodex.agent.m3l.LocalCodeTheme provides settings.theme.codeTheme,
                                                     ai.devcodex.agent.m3l.LocalCodeBlockDark provides isSystemInDarkTheme(),
@@ -560,7 +556,7 @@ fun ChatScreen(vm: AppViewModel) {
                 }
                 LazyColumn(
                     Modifier.fillMaxWidth().weight(1f, fill = false),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 2.dp, bottom = 20.dp, start = 6.dp, end = 6.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 2.dp, bottom = 20.dp),
                 ) {
                     activeProviders.forEach { p ->
                         item(key = "hdr-${p.id}") {
