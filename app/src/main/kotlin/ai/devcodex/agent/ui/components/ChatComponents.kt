@@ -7,6 +7,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -173,6 +180,26 @@ fun ToolCard(msg: Message) {
     var expanded by remember { mutableStateOf(false) }
     val status = msg.toolStatus
     val result = msg.toolResult
+    // Operit 式流光边框：运行中渐变描边 + 呼吸
+    val running = status == ToolStatus.RUNNING || status == ToolStatus.PENDING
+    val tc1 = MaterialTheme.colorScheme.primary
+    val tc2 = MaterialTheme.colorScheme.tertiary
+    val breath = rememberInfiniteTransition(label = "tool")
+    val toff by breath.animateFloat(
+        initialValue = 0f, targetValue = 400f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "toff",
+    )
+    val tAlpha by breath.animateFloat(
+        initialValue = 0.6f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1200), androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "talpha",
+    )
+    val toolBrush = androidx.compose.ui.graphics.Brush.linearGradient(
+        colors = listOf(tc1, tc2, tc1),
+        start = androidx.compose.ui.geometry.Offset(toff - 400f, 0f),
+        end = androidx.compose.ui.geometry.Offset(toff, 0f),
+    )
     Card(
         colors = CardDefaults.cardColors(
             containerColor = when (status) {
@@ -181,6 +208,8 @@ fun ToolCard(msg: Message) {
                 else -> MaterialTheme.colorScheme.surfaceContainerHigh
             }
         ),
+        border = if (running) androidx.compose.foundation.BorderStroke(1.dp, toolBrush)
+                 else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth().animateContentSize().padding(vertical = 2.dp),
     ) {
@@ -207,7 +236,7 @@ fun ToolCard(msg: Message) {
                 )
                 when (status) {
                     ToolStatus.RUNNING, ToolStatus.PENDING ->
-                        CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.5.dp)
+                        CircularProgressIndicator(Modifier.size(13.dp).alpha(tAlpha), strokeWidth = 1.5.dp)
                     ToolStatus.DONE -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
                     ToolStatus.ERROR -> Icon(Icons.Filled.ErrorOutline, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.error)
                     else -> Icon(Icons.Filled.Close, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

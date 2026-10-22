@@ -429,6 +429,31 @@ internal fun darkPaletteForTheme(theme: String): CodeBlockPalette = when (theme)
         keyword = Color(0xFF859900), string = Color(0xFF2AA198), number = Color(0xFFD33682),
         comment = Color(0xFF586E75), type = Color(0xFFB58900),
     )
+    "monokai" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF272822), text = Color(0xFFF8F8F2),
+        keyword = Color(0xFFF92672), string = Color(0xFFE6DB74), number = Color(0xFFAE81FF),
+        comment = Color(0xFF75715E), type = Color(0xFF66D9EF),
+    )
+    "nord" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF2E3440), text = Color(0xFFD8DEE9),
+        keyword = Color(0xFF81A1C1), string = Color(0xFFA3BE8C), number = Color(0xFFB48EAD),
+        comment = Color(0xFF616E88), type = Color(0xFF8FBCBB),
+    )
+    "gruvbox" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF282828), text = Color(0xFFEBDBB2),
+        keyword = Color(0xFFFB4934), string = Color(0xFFB8BB26), number = Color(0xFFD3869B),
+        comment = Color(0xFF928374), type = Color(0xFFFABD2F),
+    )
+    "vscode" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF1E1E1E), text = Color(0xFFD4D4D4),
+        keyword = Color(0xFF569CD6), string = Color(0xFFCE9178), number = Color(0xFFB5CEA8),
+        comment = Color(0xFF6A9955), type = Color(0xFF4EC9B0),
+    )
+    "highcontrast" -> DarkCodeBlockPalette.copy(
+        background = Color(0xFF000000), text = Color(0xFFFFFFFF),
+        keyword = Color(0xFFFFFF00), string = Color(0xFF00FF00), number = Color(0xFFFFFF66),
+        comment = Color(0xFFAAAAAA), type = Color(0xFF00FFFF),
+    )
     else -> DarkCodeBlockPalette
 }
 

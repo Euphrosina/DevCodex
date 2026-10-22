@@ -77,7 +77,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             engine.events.collect { ev ->
                 when (ev) {
                     is AgentEngine.UiEvent.Error -> toast.value = ev.message
-                    is AgentEngine.UiEvent.Finished -> Unit
+                    is AgentEngine.UiEvent.Finished -> { _activeSession.value?.let { throttledUpdate(it, true) } }
                 }
             }
         }
@@ -94,6 +94,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             _activeSession.value = s
         }
         reloadSessions()
+    }
+
+    // 流式节流：80ms 合并 UI 更新（防 token 级全列表重组 → OOM/卡死闪退）
+    @Volatile private var lastUiEmit = 0L
+    private fun throttledUpdate(session: ai.devcodex.agent.data.ChatSession, force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (force || now - lastUiEmit > 80) {
+            lastUiEmit = now
+            _activeSession.value = session
+        }
     }
 
     fun send(text: String) {
@@ -138,7 +148,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var lastSave = 0L
             try {
                 engine.run(session) { s ->
-                    _activeSession.value = s
+                    // UI 节流 80ms：防 token 级全列表重组（聊久卡死/闪退根因）
+                    throttledUpdate(s)
                     // 节流存盘：流式期间最多 1 次/秒，防每 token 写盘卡顿
                     val now = System.currentTimeMillis()
                     if (now - lastSave > 1000) {

@@ -23,6 +23,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -782,6 +788,26 @@ private fun TypingDots() {
 @Composable
 private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true) {
     var expanded by remember(autoCollapse) { mutableStateOf(!autoCollapse) }
+    // Operit 渐变思考：呼吸流光渐变（tertiary→primary→secondary）
+    val c1 = MaterialTheme.colorScheme.tertiary
+    val c2 = MaterialTheme.colorScheme.primary
+    val c3 = MaterialTheme.colorScheme.secondary
+    val breath = rememberInfiniteTransition(label = "think")
+    val alpha by breath.animateFloat(
+        initialValue = 0.55f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1600), androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "breathe",
+    )
+    val offset by breath.animateFloat(
+        initialValue = 0f, targetValue = 600f,
+        animationSpec = infiniteRepeatable(tween(2600, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "flow",
+    )
+    val flowBrush = androidx.compose.ui.graphics.Brush.linearGradient(
+        colors = listOf(c1, c2, c3, c1),
+        start = androidx.compose.ui.geometry.Offset(offset - 600f, 0f),
+        end = androidx.compose.ui.geometry.Offset(offset, 0f),
+    )
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(10.dp),
@@ -790,10 +816,24 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true) {
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("✻", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
-                Text(if (expanded) "思考过程" else "已深度思考", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("✻", style = MaterialTheme.typography.labelLarge, color = c1.copy(alpha = alpha))
+                Text(
+                    if (expanded) "思考过程" else "已深度思考",
+                    style = MaterialTheme.typography.labelMedium.copy(brush = flowBrush),
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                )
             }
-            if (expanded) Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (expanded) {
+                Row {
+                    Box(
+                        Modifier
+                            .size(width = 3.dp, height = 200.dp)
+                            .background(flowBrush, RoundedCornerShape(2.dp))
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }
