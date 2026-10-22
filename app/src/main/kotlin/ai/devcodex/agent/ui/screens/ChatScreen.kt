@@ -387,7 +387,7 @@ fun ChatScreen(vm: AppViewModel) {
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Column(Modifier.weight(1f)) {
-                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking)
+                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking, msg.thinkingMs)
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             TypingDots()
                                         } else if (msg.content.isNotBlank()) {
@@ -786,7 +786,7 @@ private fun TypingDots() {
 }
 
 @Composable
-private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true) {
+private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thinkingMs: Long = 0) {
     var expanded by remember(autoCollapse) { mutableStateOf(!autoCollapse) }
     // Operit 渐变思考：呼吸流光渐变（tertiary→primary→secondary）
     val c1 = MaterialTheme.colorScheme.tertiary
@@ -818,7 +818,14 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("✻", style = MaterialTheme.typography.labelLarge, color = c1.copy(alpha = alpha))
                 Text(
-                    if (expanded) "思考过程" else "已深度思考",
+                    buildString {
+                        if (expanded) append("思考过程") else append("已深度思考")
+                        if (thinkingMs > 0) {
+                            val sec = thinkingMs / 1000.0
+                            append(if (sec >= 60) String.format("（%dm%ds）", sec.toInt() / 60, sec.toInt() % 60)
+                                   else String.format("（%.1fs）", sec))
+                        }
+                    },
                     style = MaterialTheme.typography.labelMedium.copy(brush = flowBrush),
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                 )

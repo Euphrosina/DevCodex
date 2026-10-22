@@ -58,6 +58,7 @@ data class Message(
     val toolStatus: ToolStatus = ToolStatus.DONE,
     val toolResult: String? = null,         // 工具输出（展示用）
     val thinking: String? = null,
+    val thinkingMs: Long = 0,
     val model: String? = null,
     val timestamp: Long = 0,
     val pendingApproval: PendingApproval? = null,

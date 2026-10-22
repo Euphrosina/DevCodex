@@ -45,6 +45,7 @@ object ModelLogos {
         model.hasWord("huggingface") || model.hasWord("hf") -> R.drawable.nm_huggingface
         model.hasWord("mistral") || model.hasWord("mixtral") -> R.drawable.nm_mistral
         model.hasWord("baichuan") -> R.drawable.nm_baichuan
+        model.hasWord("agnes") -> R.drawable.nm_agnes
         model.hasWord("perplexity") -> R.drawable.nm_perplexity
         model.hasWord("cohere") || model.hasWord("command") -> R.drawable.nm_cohere
         model.hasWord("yi") || model.hasWord("01ai") -> R.drawable.nm_yi

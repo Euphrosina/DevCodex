@@ -50,6 +50,7 @@ class AgentEngine(
         onFirstDelta: () -> Unit = {},
     ): ChatSession {
         var current = currentRef
+        var thinkStart = 0L
         ProviderGateway.parseSseLine(provider, line).forEach { ev ->
             when (ev) {
                 is StreamEvent.Usage -> onUsage(ev.inputTokens, ev.outputTokens, ev.cachedTokens)
@@ -60,8 +61,10 @@ class AgentEngine(
                     onUpdate(current)
                 }
                 is StreamEvent.Reasoning -> {
+                    if (think.isEmpty()) thinkStart = System.currentTimeMillis()
                     think.append(ev.text)
-                    current = current.patch(assistantId) { it.copy(thinking = think.toString()) }
+                    val ms = System.currentTimeMillis() - thinkStart
+                    current = current.patch(assistantId) { it.copy(thinking = think.toString(), thinkingMs = ms) }
                     onUpdate(current)
                 }
                 is StreamEvent.ToolCallDelta -> {

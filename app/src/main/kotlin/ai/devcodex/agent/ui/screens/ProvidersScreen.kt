@@ -159,7 +159,7 @@ fun ProvidersScreen(vm: AppViewModel) {
                         // 双列卡片（Operit 式）
                         LazyVerticalGrid(
                             columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
@@ -240,7 +240,7 @@ private fun ProviderEditDialog(
         title = { Text(if (initial.name.isBlank()) "添加提供商" else "编辑提供商") },
         text = {
             Column(
-                Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).heightIn(max = 420.dp),
+                Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).heightIn(max = 520.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -254,7 +254,7 @@ private fun ProviderEditDialog(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                OutlinedTextField(value = name, onValueChange = { name = it }, placeholder = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                 // 分区卡片：接入信息
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(10.dp)) {
@@ -267,7 +267,7 @@ private fun ProviderEditDialog(
                         var keyVisible by remember { mutableStateOf(false) }
                         OutlinedTextField(
                             value = apiKey, onValueChange = { apiKey = it },
-                            label = { Text("API Key") },
+                            placeholder = { Text("API Key（sk-…）") },
                             maxLines = if (keyVisible) 3 else 1,
                             visualTransformation = if (keyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
                             trailingIcon = {
@@ -285,7 +285,7 @@ private fun ProviderEditDialog(
                         Spacer(Modifier.height(6.dp))
                         OutlinedTextField(
                             value = baseUrl, onValueChange = { baseUrl = it },
-                            label = { Text("Base URL") },
+                            placeholder = { Text("Base URL（如 https://api.xxx.com/v1）") },
                             singleLine = true,
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
@@ -355,7 +355,7 @@ private fun ProviderEditDialog(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = manualModel, onValueChange = { manualModel = it },
-                        label = { Text("手动输入模型名") }, singleLine = true,
+                        placeholder = { Text("手动输入模型名，点 + 添加") }, singleLine = true,
                         modifier = Modifier.weight(1f),
                         textStyle = MaterialTheme.typography.bodySmall,
                     )
