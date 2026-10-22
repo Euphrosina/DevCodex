@@ -165,6 +165,13 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         // ===== 个性化：昵称与头像 =====
         Text("个性化", style = MaterialTheme.typography.titleMedium)
+        ListItem(
+            headlineContent = { Text("显示昵称") },
+            supportingContent = { Text("在头像上方显示 AI 与用户昵称") },
+            trailingContent = {
+                Switch(checked = t.showNick, onCheckedChange = { on -> save { it.copy(showNick = on) } })
+            },
+        )
         var userNick by remember(settings) { mutableStateOf(t.userNick) }
         var aiNick by remember(settings) { mutableStateOf(t.aiNick) }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -318,7 +325,13 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                     Text("    val color = Color(0xFF4285F4)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFC3E88D))
                     Text("    // GitHub Dark 风格", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF8B949E))
                 }
-                Text("深色代码块 GitHub Dark · 浅色跟随主题", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    val sp3 = vm.getPreferences()
+                    val cur3 = sp3.getString("code_theme", "github") ?: "github"
+                    listOf("github" to "GitHub", "dracula" to "Dracula", "onedark" to "One Dark", "solar" to "Solarized").forEach { (v, label) ->
+                        FilterChip(selected = cur3 == v, onClick = { sp3.edit().putString("code_theme", v).apply() }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+                    }
+                }
             }
         }
         Text("外观模式", style = MaterialTheme.typography.titleMedium)

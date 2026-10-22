@@ -321,9 +321,17 @@ fun ChatScreen(vm: AppViewModel) {
                                             onLongClick = { selectedMsg = msg },
                                         )
                                         .align(Alignment.Top)
-                                ) { UserBubble(msg, settings.theme.userNick.ifBlank { "我" }) }
+                                ) { UserBubble(msg) }
                                 Spacer(Modifier.width(6.dp))
-                                ai.devcodex.agent.ui.components.Avatar(
+                                if (settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
+                                    ai.devcodex.agent.ui.components.Avatar(
+                                        name = settings.theme.userNick,
+                                        avatarFile = settings.theme.userAvatar,
+                                        defaultColor = androidx.compose.ui.graphics.Color(0xFF059669),
+                                        size = 24.dp,
+                                    )
+                                    Text(settings.theme.userNick.ifBlank { "我" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                } else ai.devcodex.agent.ui.components.Avatar(
                                     name = settings.theme.userNick,
                                     avatarFile = settings.theme.userAvatar,
                                     defaultColor = androidx.compose.ui.graphics.Color(0xFF059669),
@@ -334,7 +342,16 @@ fun ChatScreen(vm: AppViewModel) {
                             msg.role == "tool" -> {}
                             msg.role == "assistant" -> {
                                 Row(Modifier.fillMaxWidth()) {
-                                    ai.devcodex.agent.ui.components.Avatar(
+                                    if (settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
+                                        ai.devcodex.agent.ui.components.Avatar(
+                                            name = settings.theme.aiNick,
+                                            avatarFile = settings.theme.aiAvatar,
+                                            defaultColor = androidx.compose.ui.graphics.Color(0xFF4F46E5),
+                                            defaultIcon = Icons.Filled.AutoAwesome,
+                                            size = 24.dp,
+                                        )
+                                        Text(settings.theme.aiNick.ifBlank { "DevCodex" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    } else ai.devcodex.agent.ui.components.Avatar(
                                         name = settings.theme.aiNick,
                                         avatarFile = settings.theme.aiAvatar,
                                         defaultColor = androidx.compose.ui.graphics.Color(0xFF4F46E5),
@@ -366,12 +383,6 @@ fun ChatScreen(vm: AppViewModel) {
                                                         shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
                                                         modifier = Modifier.fillMaxWidth(),
                                                     ) {
-                                                    Text(
-                                                        settings.theme.aiNick.ifBlank { "DevCodex" },
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
-                                                    )
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                     ai.devcodex.agent.m3l.LocalCodeBlockDark provides isSystemInDarkTheme(),
                                                         ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(

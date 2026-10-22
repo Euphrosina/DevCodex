@@ -320,8 +320,8 @@ object ModelLogos {
         model.hasWord("glm") || model.hasWord("zhipu") || model.hasWord("chatglm") -> zhipuLogo
         model.hasWord("step") -> stepfunLogo
         model.hasWord("minimax") || model.hasWord("abab") -> minimaxLogo
-        model.hasWord("kimi") || model.hasWord("moonshot") -> kimiLogo
-        model.hasWord("qwen") || model.hasWord("qwq") || model.hasWord("qvq") -> qwenLogo
+        model.hasWord("kimi") || model.hasWord("moonshot") || model.hasWord("moonshotai") -> kimiLogo
+        model.hasWord("qwen") || model.hasWord("qwq") || model.hasWord("qvq") || model.hasWord("alibaba") || model.contains("通义") -> qwenLogo
         model.hasWord("grok") -> grokLogo
         model.hasWord("xai") -> xaiLogo
         model.hasWord("nvidia") || model.hasWord("nemotron") || model.hasWord("nim") -> nvidiaLogo
@@ -329,7 +329,7 @@ object ModelLogos {
         model.hasWord("openrouter") -> openrouterLogo
         model.hasWord("huggingface") || model.hasWord("hf") -> huggingfaceLogo
         model.hasWord("mistral") || model.hasWord("mixtral") -> mistralLogo
-        model.hasWord("doubao") || model.contains("豆包") -> doubaoLogo
+        model.hasWord("doubao") || model.hasWord("bytedance") || model.contains("豆包") -> doubaoLogo
         model.hasWord("baichuan") -> baichuanLogo
         model.hasWord("agnes") -> agnesLogo
         model.hasWord("perplexity") -> perplexityLogo

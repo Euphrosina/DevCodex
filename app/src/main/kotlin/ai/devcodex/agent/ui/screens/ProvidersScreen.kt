@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -216,12 +218,32 @@ private fun ProviderEditDialog(
                 )
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true)
                 OutlinedTextField(value = baseUrl, onValueChange = { baseUrl = it }, label = { Text("Base URL") }, singleLine = true)
-                OutlinedTextField(
-                    value = apiKey, onValueChange = { apiKey = it },
-                    label = { Text("API Key") },
-                    maxLines = 3, minLines = 1,
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                )
+                // 分区卡片：接入信息
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ai.devcodex.agent.ui.components.ModelLogo(name, 24.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("接入信息", style = MaterialTheme.typography.titleSmall)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = apiKey, onValueChange = { apiKey = it },
+                            label = { Text("API Key（多行支持）") },
+                            maxLines = 3, minLines = 1,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = baseUrl, onValueChange = { baseUrl = it },
+                            label = { Text("Base URL") },
+                            singleLine = true,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(

@@ -102,9 +102,9 @@ object TermuxRuntime {
                     env["PREFIX"] = usr.absolutePath
                     env["TMPDIR"] = File(usr, "tmp").absolutePath
                     env["PATH"] = File(usr, "bin").absolutePath + ":/system/bin:/system/xbin"
+                    env["LD_LIBRARY_PATH"] = File(usr, "lib").absolutePath
                     env["LANG"] = "en_US.UTF-8"
                     env["TERM"] = "xterm-256color"
-                    env.remove("LD_LIBRARY_PATH")
                 }
                 .start()
             val out = kotlinx.coroutines.runBlocking {

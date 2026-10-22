@@ -61,6 +61,7 @@ data class CodeBlockContent(
 internal fun CodeBlockView(code: String, info: String?, primaryTint: Color = Color.Black) {
     val context = LocalContext.current
     val darkCodeBlock = LocalCodeBlockDark.current
+    CodeThemeHolder.apply(context)
     val palette = codeBlockPalette(darkCodeBlock, primaryTint)
     val lines = code.replace("\r\n", "\n").replace('\r', '\n').split("\n")
     val fenceLabel = info?.trim()?.substringBefore(' ').orEmpty()
@@ -399,6 +400,14 @@ data class CodeBlockPalette(
     val property: Color
 )
 
+/** 代码块配色方案持有者（设置页写入，渲染层读取；非 Compose 状态避免 runCatching 限制） */
+internal object CodeThemeHolder {
+    @Volatile var current: String = "github"
+    fun apply(c: android.content.Context) {
+        current = c.getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE).getString("code_theme", "github") ?: "github"
+    }
+}
+
 internal val DarkCodeBlockPalette = CodeBlockPalette(
     background = Color(0xFF161B22),
     text = Color(0xFFC9D1D9),
@@ -432,14 +441,32 @@ internal val LightCodeBlockPalette = CodeBlockPalette(
 // 浅色用 primary 6% 叠白而非纯白：跟主题联动，又不压过语法高亮
 @Composable
 fun codeBlockPalette(dark: Boolean, primaryTint: Color): CodeBlockPalette {
-    return if (dark) {
-        DarkCodeBlockPalette
-    } else {
-        LightCodeBlockPalette.copy(
+    if (!dark) {
+        return LightCodeBlockPalette.copy(
             background = primaryTint
                 .copy(alpha = 0.06f)
                 .compositeOver(Color.White)
         )
+    }
+    // 深色：按预设方案（MChat 式多方案）
+    val theme = CodeThemeHolder.current
+    return when (theme) {
+        "dracula" -> DarkCodeBlockPalette.copy(
+            background = Color(0xFF282A36), text = Color(0xFFF8F8F2),
+            keyword = Color(0xFFFF79C6), string = Color(0xFFF1FA8C), number = Color(0xFFBD93F9),
+            comment = Color(0xFF6272A4), type = Color(0xFFFFB86C),
+        )
+        "onedark" -> DarkCodeBlockPalette.copy(
+            background = Color(0xFF282C34), text = Color(0xFFABB2BF),
+            keyword = Color(0xFFC678DD), string = Color(0xFF98C379), number = Color(0xFFD19A66),
+            comment = Color(0xFF5C6370), type = Color(0xFFE5C07B),
+        )
+        "solar" -> DarkCodeBlockPalette.copy(
+            background = Color(0xFF002B36), text = Color(0xFF839496),
+            keyword = Color(0xFF859900), string = Color(0xFF2AA198), number = Color(0xFFD33682),
+            comment = Color(0xFF586E75), type = Color(0xFFB58900),
+        )
+        else -> DarkCodeBlockPalette  // github
     }
 }
 
