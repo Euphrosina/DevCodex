@@ -340,9 +340,80 @@ object ExtraTools {
         }.getOrElse { "ERROR: ${it.message}（Android 13+ 需通知权限）" }
     }
 
+    // ============ ccco 式设备工具 ============
+    val alarmSet = ToolDef(
+        name = "alarm_set",
+        description = "设置系统闹钟（跳系统闹钟预填）。参数 hour(0-23 必填) minute(0-59 必填) label(可选)",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("hour", obj { put("type", "integer") })
+                put("minute", obj { put("type", "integer") })
+                put("label", obj { put("type", "string") })
+            })
+            put("required", req("hour", "minute"))
+        },
+    ) { args ->
+        val hour = JsonArg.int(args, "hour") ?: return@ToolDef "ERROR: 缺少 hour"
+        val minute = JsonArg.int(args, "minute") ?: return@ToolDef "ERROR: 缺少 minute"
+        val label = JsonArg.string(args, "label") ?: "DevCodex"
+        runCatching {
+            val i = android.content.Intent(android.provider.AlarmClock.ACTION_SET_ALARM).apply {
+                putExtra(android.provider.AlarmClock.EXTRA_HOUR, hour)
+                putExtra(android.provider.AlarmClock.EXTRA_MINUTES, minute)
+                putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label)
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx().startActivity(i)
+            "OK: 闹钟 $hour:$minute $label 已预填，请在系统界面保存"
+        }.getOrElse { "ERROR: ${it.message}（需系统闹钟应用）" }
+    }
+
+    val shareContent = ToolDef(
+        name = "share_content",
+        description = "系统分享文本（弹分享面板）。参数 text(必填) title(可选)",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("text", obj { put("type", "string") })
+                put("title", obj { put("type", "string") })
+            })
+            put("required", req("text"))
+        },
+    ) { args ->
+        val text = JsonArg.string(args, "text") ?: return@ToolDef "ERROR: 缺少 text"
+        runCatching {
+            val i = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(android.content.Intent.EXTRA_TEXT, text)
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx().startActivity(android.content.Intent.createChooser(i, JsonArg.string(args, "title") ?: "分享"))
+            "OK: 分享面板已弹出"
+        }.getOrElse { "ERROR: ${it.message}" }
+    }
+
+    val calendarOpen = ToolDef(
+        name = "calendar_open",
+        description = "打开系统日历应用（ccco 式设备工具）",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj { put("date", obj { put("type", "string") }) })
+        },
+    ) { _ ->
+        runCatching {
+            val i = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                data = android.net.Uri.parse("content://com.android.calendar/time/")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx().startActivity(i)
+            "OK: 日历已打开"
+        }.getOrElse { "ERROR: ${it.message}" }
+    }
+
     val all = listOf(
         webSearch, browserRender, imageInfo, imageConvert,
         pipelineRun, bgList, bgKill, calendarList, calendarAdd,
-        clipboardWrite, notifyPost,
+        clipboardWrite, notifyPost, alarmSet, shareContent, calendarOpen,
     )
 }

@@ -126,7 +126,7 @@ fun ProvidersScreen(vm: AppViewModel) {
                                     Text(p.baseUrl, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("${'$'}{p.enabledModels.size}/${'$'}{p.models.size}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                    Text("${p.enabledModels.size}/${p.models.size}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                                     Text("模型", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Row {
                                         if (busy) CircularProgressIndicator(Modifier.size(18.dp))
@@ -336,7 +336,7 @@ private fun ProviderEditDialog(
                                         enabledModels = list  // 全选，用户自行取消
                                     }
                                 } catch (e: Exception) {
-                                    fetchError = "识别失败: ${e.describe().take(200)}，可手动在下方添加模型"
+                                    fetchError = "识别失败: ${e.describe().take(200)}（URL: ${normalizeBaseUrl(baseUrl)}/models）——可手动在下方添加"
                                 }
                                 fetching = false
                             }
@@ -350,7 +350,7 @@ private fun ProviderEditDialog(
                 }
                 fetchError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
-                Text("模型（勾选启用，可手动添加）：", style = MaterialTheme.typography.labelLarge)
+                Text("模型（勾选启用，可手动添加）—— 当前 ${models.size} 个，已启用 ${enabledModels.size} 个：", style = MaterialTheme.typography.labelLarge)
                 // 手动添加模型行
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(

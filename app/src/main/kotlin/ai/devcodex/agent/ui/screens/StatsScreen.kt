@@ -210,7 +210,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     }
                     if (fCost > 0) {
                         Text(
-                            "周期费用 ≈ ${'$'}${"%.2f".format(fCost)}（按公开价目估算）",
+                            "周期费用 ≈ ${"%.2f".format(fCost)}（按公开价目估算）",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                         )

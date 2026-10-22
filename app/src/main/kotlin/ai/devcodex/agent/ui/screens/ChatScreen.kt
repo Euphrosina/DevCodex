@@ -132,6 +132,26 @@ fun ChatScreen(vm: AppViewModel) {
     LaunchedEffect(Unit) { crashReport = CrashHandler.latestReport(context) }
 
     val messages = session?.messages ?: emptyList()
+    // 位置记忆：会话切换时恢复上次查看位置
+    val sessionKey = session?.id ?: "new"
+    LaunchedEffect(sessionKey) {
+        val saved = vm.chatScrollMap[sessionKey] ?: -1
+        if (saved >= 0 && saved < messages.size) {
+            runCatching { listState.scrollToItem(saved) }
+        } else if (messages.isNotEmpty()) {
+            runCatching { listState.scrollToItem(messages.lastIndex) }
+        }
+    }
+    // 离开/滚动时记录位置
+    LaunchedEffect(listState.firstVisibleItemIndex, sessionKey) {
+        vm.chatScrollMap[sessionKey] = listState.firstVisibleItemIndex
+    }
+    // 自动滚动：新消息（发送/AI 输出）时跟随到底
+    LaunchedEffect(messages.size, isRunning) {
+        if (messages.isNotEmpty() && (isRunning || listState.firstVisibleItemIndex >= messages.size - 3)) {
+            runCatching { listState.animateScrollToItem(messages.lastIndex) }
+        }
+    }
     // 工具结果映射：toolCallId -> tool 消息（内联渲染用）
     val toolResults = remember(messages) {
         messages.filter { it.role == "tool" && it.toolCallId != null }.associateBy { it.toolCallId!! }

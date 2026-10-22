@@ -61,7 +61,7 @@ object ModelLogos {
         model.hasWord("luma") -> R.drawable.nm_luma
         model.hasWord("microsoft") || model.hasWord("phi") || model.hasWord("wizardlm") -> R.drawable.nm_microsoft
         model.hasWord("codex") -> R.drawable.nm_codex
-        else -> R.drawable.nm_robot
+        else -> R.drawable.nm_openai
     }
 }
 

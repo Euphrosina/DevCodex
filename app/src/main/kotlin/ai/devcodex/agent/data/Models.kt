@@ -120,7 +120,7 @@ data class AppSettings(
             "skill_read", "skill_list",
             "fs_copy", "fs_move", "fs_mkdir", "fs_rename", "fs_grep", "fs_find",
             "fs_chmod", "fs_tail", "fs_head", "fs_stat", "fs_wc", "app_open", "linux_exec", "ssh_exec", "ssh_forward",
-            "web_search", "browser_render", "image_info", "image_convert", "pipeline_run", "bg_list", "bg_kill", "calendar_list", "calendar_add", "clipboard_write", "notify_post",
+            "web_search", "browser_render", "image_info", "image_convert", "pipeline_run", "bg_list", "bg_kill", "calendar_list", "calendar_add", "clipboard_write", "notify_post", "alarm_set", "share_content", "calendar_open",
         )
     }
 }

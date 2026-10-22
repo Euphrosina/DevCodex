@@ -169,6 +169,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     @Volatile var pendingContext: Int = 0
+    val chatScrollMap = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
 
     fun clearMessages() {

@@ -327,7 +327,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                     Text("    // 主题注释色", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.comment)
                     Text("    return shape(color)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.keyword)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     listOf("github" to "GitHub", "dracula" to "Dracula", "onedark" to "One Dark", "solar" to "Solarized", "monokai" to "Monokai", "nord" to "Nord", "gruvbox" to "Gruvbox", "vscode" to "VSCode", "highcontrast" to "高对比").forEach { (v, label) ->
                         FilterChip(selected = t.codeTheme == v, onClick = {
                             save { it.copy(codeTheme = v) }
@@ -646,7 +646,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             Text("Smarter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
-            "当前：${'$'}{eLabels[eCur]}（Faster 响应快 · Smarter 思考深）",
+            "当前：${eLabels[eCur]}（Faster 响应快 · Smarter 思考深）",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
         )
