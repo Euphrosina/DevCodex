@@ -98,6 +98,7 @@ fun ProvidersScreen(vm: AppViewModel) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(settings.providers, key = { it.id }) { p ->
+                    // rikkahub 式提供商卡：LOGO+名称+模型数徽章+底部徽章行
                     Card(
                         colors = CardDefaults.cardColors(
                             containerColor = if (p.isDefault) MaterialTheme.colorScheme.primaryContainer
@@ -106,28 +107,39 @@ fun ProvidersScreen(vm: AppViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { editing = p },
                     ) {
-                        ListItem(
-                            overlineContent = { Text(typeName(p.type)) },
-                            headlineContent = { Text(p.name.ifBlank { "未命名" }) },
-                            supportingContent = {
-                                Text(
-                                    "${p.baseUrl}\n已启用模型 ${p.enabledModels.size}/${p.models.size}",
-                                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            leadingContent = { if (p.isDefault) Icon(Icons.Filled.CheckCircle, "默认") else null },
-                            trailingContent = {
-                                Row {
-                                    if (busy) CircularProgressIndicator(Modifier.padding(8.dp))
-                                    IconButton(onClick = { vm.setDefaultProvider(p.id) }) {
-                                        Icon(Icons.Filled.CheckCircle, "设为默认")
+                        Column(Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                ai.devcodex.agent.ui.components.ModelLogo(p.name.ifBlank { "?" }, 42.dp)
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(p.name.ifBlank { "未命名" }, style = MaterialTheme.typography.titleMedium)
+                                        if (p.isDefault) {
+                                            Spacer(Modifier.width(6.dp))
+                                            androidx.compose.material3.AssistChip(
+                                                onClick = {},
+                                                label = { Text("默认", style = MaterialTheme.typography.labelSmall) },
+                                                modifier = Modifier.height(22.dp),
+                                            )
+                                        }
                                     }
-                                    IconButton(onClick = { vm.deleteProvider(p.id) }) {
-                                        Icon(Icons.Filled.Delete, "删除")
+                                    Text(p.baseUrl, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("${'$'}{p.enabledModels.size}/${'$'}{p.models.size}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                    Text("模型", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Row {
+                                        if (busy) CircularProgressIndicator(Modifier.size(18.dp))
+                                        IconButton(onClick = { vm.setDefaultProvider(p.id) }, modifier = Modifier.size(32.dp)) {
+                                            Icon(Icons.Filled.CheckCircle, "设为默认", Modifier.size(18.dp))
+                                        }
+                                        IconButton(onClick = { vm.deleteProvider(p.id) }, modifier = Modifier.size(32.dp)) {
+                                            Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp))
+                                        }
                                     }
                                 }
-                            },
-                        )
+                            }
+                        }
                     }
                 }
             }

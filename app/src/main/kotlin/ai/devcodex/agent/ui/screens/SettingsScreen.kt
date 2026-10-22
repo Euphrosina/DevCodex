@@ -317,16 +317,18 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
             Column(Modifier.padding(12.dp)) {
                 Text("代码块配色预览", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(6.dp))
+                val pv = ai.devcodex.agent.m3l.darkPaletteForTheme(t.codeTheme)
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                        .background(androidx.compose.ui.graphics.Color(0xFF161B22)).padding(10.dp)
+                        .background(pv.background).padding(10.dp)
                 ) {
-                    Text("fun bubble(msg: Message) {", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFC9D1D9))
-                    Text("    val color = Color(0xFF4285F4)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFC3E88D))
-                    Text("    // GitHub Dark 风格", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF8B949E))
+                    Text("fun bubble(msg: Message) {", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.text)
+                    Text("    val color = Color(0xFF4285F4)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.string)
+                    Text("    // 主题注释色", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.comment)
+                    Text("    return shape(color)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.keyword)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-                    listOf("github" to "GitHub", "dracula" to "Dracula", "onedark" to "One Dark", "solar" to "Solarized").forEach { (v, label) ->
+                    listOf("github" to "GitHub", "dracula" to "Dracula", "onedark" to "One Dark", "solar" to "Solarized", "monokai" to "Monokai", "nord" to "Nord", "gruvbox" to "Gruvbox", "vscode" to "VSCode", "highcontrast" to "高对比").forEach { (v, label) ->
                         FilterChip(selected = t.codeTheme == v, onClick = {
                             save { it.copy(codeTheme = v) }
                             ai.devcodex.agent.m3l.CodeThemeHolder.current = v

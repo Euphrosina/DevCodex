@@ -316,7 +316,7 @@ fun ChatScreen(vm: AppViewModel) {
                                 Spacer(Modifier.weight(1f))
                                 Box(
                                     Modifier
-                                        .widthIn(max = 320.dp)
+                                        .widthIn(max = 340.dp)
                                         .combinedClickable(
                                             onClick = {},
                                             onLongClick = { selectedMsg = msg },

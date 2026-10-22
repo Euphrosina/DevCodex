@@ -490,6 +490,11 @@ fun codeBlockPalette(dark: Boolean, primaryTint: Color): CodeBlockPalette {
             keyword = Color(0xFF859900), string = Color(0xFF2AA198), number = Color(0xFFD33682),
             comment = Color(0xFF586E75), type = Color(0xFFB58900),
         )
+        "highcontrast" -> darkPaletteForTheme("highcontrast")
+        "monokai" -> darkPaletteForTheme("monokai")
+        "nord" -> darkPaletteForTheme("nord")
+        "gruvbox" -> darkPaletteForTheme("gruvbox")
+        "vscode" -> darkPaletteForTheme("vscode")
         else -> DarkCodeBlockPalette  // github
     }
 }

@@ -21,7 +21,7 @@ android {
         applicationId = "ai.devcodex.agent"
         minSdk = 26
         targetSdk = 28
-        versionCode = 46
+        versionCode = 48
         versionName = "3.9.0"
     }
 
