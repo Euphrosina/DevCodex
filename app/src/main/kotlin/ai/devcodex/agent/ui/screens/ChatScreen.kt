@@ -385,6 +385,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                         modifier = Modifier.fillMaxWidth(),
                                                     ) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
+                                                    ai.devcodex.agent.m3l.LocalCodeTheme provides settings.theme.codeTheme,
                                                     ai.devcodex.agent.m3l.LocalCodeBlockDark provides isSystemInDarkTheme(),
                                                         ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
                                                             primary = MaterialTheme.colorScheme.primary,

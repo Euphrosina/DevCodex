@@ -164,7 +164,7 @@ object ShellAccess {
     fun linuxExec(command: String, cwd: String = "/root"): String {
         val c = ai.devcodex.agent.tools.BuiltinTools.appContext()
         if (!ai.devcodex.agent.shell.TermuxRuntime.ensure(c)) return "ERROR: Termux 原生引擎未就绪（" + ai.devcodex.agent.shell.TermuxRuntime.lastError + ")"
-        return ai.devcodex.agent.shell.TermuxRuntime.exec(c, command)
+        return ai.devcodex.agent.shell.TermuxRuntime.exec(c, command, 30, cwd)
     }
 
     /** 本地沙盒执行（app uid，工作目录=工作区）：toybox 提供常规命令，可访问应用私有目录与自定义工作区 */

@@ -162,7 +162,7 @@ object BuiltinTools {
 
     val linuxExec = ToolDef(
         name = "linux_exec",
-        description = "在完整 Linux 沙盒（Alpine，PRoot）内执行命令。busybox 全套（ls/grep/sed/awk/wget/curl/tar 等），可用 apk add 装软件包。工作区挂载在 /workspace。适合写脚本、处理文件、跑 Linux 工具链",
+        description = "Termux 原生沙盒执行（busybox sh 完整工具链）。默认工作目录=应用工作区（相对路径直接读写），支持 cwd 指定工作目录",
         parameters = obj {
             put("type", "object")
             put("properties", obj {

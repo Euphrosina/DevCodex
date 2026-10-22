@@ -100,13 +100,16 @@ object TermuxRuntime {
     }.getOrDefault(false)
 
     /** 执行（busybox ash 为主 shell） */
-    fun exec(context: Context, command: String, timeoutSec: Long = 30): String {
+    fun exec(context: Context, command: String, timeoutSec: Long = 30, cwd: String? = null): String {
         if (!ensure(context)) return "ERROR(termux): 引擎未就绪（$lastError）"
         val usr = prefix(context)
         val loader = File(muslDir(context), "ld-musl-aarch64.so.1").absolutePath
         val bb = busybox(context).absolutePath
+        val ws = ai.devcodex.agent.tools.BuiltinTools.workspaceRoot().absolutePath
+        val workDir = if (cwd != null && File(cwd).isDirectory()) cwd else ws
+        val wrapped = "cd '$workDir' 2>/dev/null; $command"
         return try {
-            val p = ProcessBuilder(loader, bb, "sh", "-c", command)
+            val p = ProcessBuilder(loader, bb, "sh", "-c", wrapped)
                 .redirectErrorStream(true)
                 .apply {
                     val env = environment()

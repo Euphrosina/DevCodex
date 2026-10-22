@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,7 +62,6 @@ data class CodeBlockContent(
 internal fun CodeBlockView(code: String, info: String?, primaryTint: Color = Color.Black) {
     val context = LocalContext.current
     val darkCodeBlock = LocalCodeBlockDark.current
-    CodeThemeHolder.apply(context)
     val palette = codeBlockPalette(darkCodeBlock, primaryTint)
     val lines = code.replace("\r\n", "\n").replace('\r', '\n').split("\n")
     val fenceLabel = info?.trim()?.substringBefore(' ').orEmpty()
@@ -400,12 +400,12 @@ data class CodeBlockPalette(
     val property: Color
 )
 
-/** 代码块配色方案持有者（设置页写入，渲染层读取；非 Compose 状态避免 runCatching 限制） */
+/** 代码块配色方案（Compose 状态：LocalCodeTheme 变化触发代码块重组实时换色） */
+val LocalCodeTheme = androidx.compose.runtime.compositionLocalOf { "github" }
+
+/** 兼容旧路径（设置页写入） */
 internal object CodeThemeHolder {
     @Volatile var current: String = "github"
-    fun apply(c: android.content.Context) {
-        current = c.getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE).getString("code_theme", "github") ?: "github"
-    }
 }
 
 internal val DarkCodeBlockPalette = CodeBlockPalette(
@@ -449,7 +449,7 @@ fun codeBlockPalette(dark: Boolean, primaryTint: Color): CodeBlockPalette {
         )
     }
     // 深色：按预设方案（MChat 式多方案）
-    val theme = CodeThemeHolder.current
+    val theme = LocalCodeTheme.current
     return when (theme) {
         "dracula" -> DarkCodeBlockPalette.copy(
             background = Color(0xFF282A36), text = Color(0xFFF8F8F2),

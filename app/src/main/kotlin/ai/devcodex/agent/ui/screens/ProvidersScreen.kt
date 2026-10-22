@@ -239,8 +239,7 @@ private fun ProviderEditDialog(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true)
-                OutlinedTextField(value = baseUrl, onValueChange = { baseUrl = it }, label = { Text("Base URL") }, singleLine = true)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                 // 分区卡片：接入信息
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(10.dp)) {
