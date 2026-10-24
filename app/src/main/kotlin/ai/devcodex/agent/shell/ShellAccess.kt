@@ -233,14 +233,14 @@ object ShellAccess {
     }
 
     suspend fun exec(command: String): String {
-        // 唯一沙盒：内嵌 Termux 原生（bootstrap，无 ptrace 依赖）
+        // 1. Shizuku（ADB 权限，已授权则优先——修复"授权了却走 app 权限"）
+        shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
+        if (rootAvailable()) return rootExec(command)
+        // 2. 内嵌 Termux 沙盒（app uid）
         val ctx = ai.devcodex.agent.tools.BuiltinTools.appContext()
         if (runCatching { ai.devcodex.agent.shell.TermuxRuntime.ensure(ctx) }.getOrDefault(false)) {
             return ai.devcodex.agent.shell.TermuxRuntime.exec(ctx, command)
         }
-        // 2. Shizuku（ADB 权限）
-        shizukuAwait()?.let { svc -> return runCatching { svc.exec(command) }.getOrElse { "ERROR(shizuku): ${it.message}" } }
-        if (rootAvailable()) return rootExec(command)
         // 3. 外部 Termux
         if (termuxAvailable()) return termuxExec(command)
         if (axsUrl.isNotBlank()) return axsExec(command)

@@ -396,8 +396,12 @@ fun InputBar(
                         }
                     }
                 }
-                Spacer(Modifier.height(3.dp))
-                // 推理滑块（独立一行，MD3 七档，Faster↔Smarter）
+                }
+                // ===== 第二行：推理滑块独立一行（MD3 七档，Faster↔Smarter） =====
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                ) {
                 val effortIdx = effortLevels.indexOf(effort).coerceAtLeast(0)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -432,6 +436,7 @@ fun InputBar(
                     Spacer(Modifier.width(8.dp))
                     Text("● 运行中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
+                }
             }
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).padding(bottom = 8.dp),
@@ -464,4 +469,4 @@ fun InputBar(
             }
         }
     }
-}
+

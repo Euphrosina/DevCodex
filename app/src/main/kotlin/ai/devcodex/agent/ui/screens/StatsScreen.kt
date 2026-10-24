@@ -82,7 +82,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
     var stats by remember { mutableStateOf<FullStats?>(null) }
     var period by remember { mutableStateOf(4) }  // 0日 1周 2月 3年 4累计
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(vm.sessions.value.size, vm.activeSession.value?.messages?.size) {
         stats = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val sessions = vm.sessionRepo.list()
             val byDay = TreeMap<Long, DayUsage>()
@@ -317,8 +317,8 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     val weeks = 14
                     val today = Calendar.getInstance()
                     val start = Calendar.getInstance().apply {
-                        add(Calendar.DAY_OF_YEAR, -(weeks * 7))
-                        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                        add(Calendar.DAY_OF_YEAR, -(weeks * 7 + 6))
+                        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)  // 已在过去，set 只会微调不跳未来
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         for (w in 0 until weeks) {

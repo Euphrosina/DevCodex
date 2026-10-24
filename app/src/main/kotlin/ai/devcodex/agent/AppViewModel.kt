@@ -172,7 +172,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun stop() { runningJob?.cancel(); isRunning.value = false }
+    fun stop() {
+        runningJob?.cancel()
+        runningJob = null
+        _pendingApproval.value = null
+        isRunning.value = false
+        // 会话结束：清工具会话授权（下次新会话重新审批）
+        engine.engineSessionAllows.clear()
+    }
 
     private fun saveSessionBg(s: ChatSession) {
         viewModelScope.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { sessionRepo.save(s) } }

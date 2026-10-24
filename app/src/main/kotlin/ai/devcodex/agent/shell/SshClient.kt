@@ -26,7 +26,7 @@ object SshClient {
             } else {
                 session.setPassword(cfg.password)
             }
-            session.setConfig("StrictHostKeyChecking", "no")
+            session.setConfig("StrictHostKeyChecking", "accept-new")
             session.setConfig("PreferredAuthentications", "publickey,password")
             session.connect(8000)
             session

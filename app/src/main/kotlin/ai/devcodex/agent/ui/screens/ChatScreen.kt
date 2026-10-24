@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Bolt
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.filled.Dvr
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
@@ -319,6 +321,14 @@ fun ChatScreen(vm: AppViewModel) {
                         }
                     },
                     actions = {
+                        // 工作区直达（沉浸模式可达）
+                        IconButton(onClick = { vm.navRequest.value = "workspace" }) {
+                            Icon(Icons.Filled.Folder, "工作区")
+                        }
+                        // 提供商直达（沉浸模式可达）
+                        IconButton(onClick = { vm.navRequest.value = "providers" }) {
+                            Icon(Icons.Filled.AutoAwesome, "提供商")
+                        }
                         // 终端直达
                         IconButton(onClick = { vm.navRequest.value = "terminal" }) {
                             Icon(Icons.Filled.Dvr, "终端")
@@ -357,6 +367,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         )
                                         .align(Alignment.Top)
                                 ) { UserBubble(msg) }
+                                MsgActionBar(msg, onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制" }, onResend = { if (msg.content.isNotBlank()) { vm.send(msg.content) } }, onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) })
                                 Spacer(Modifier.width(6.dp))
                                 if (settings.theme.showAvatar && settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
                                     ai.devcodex.agent.ui.components.Avatar(
@@ -908,5 +919,26 @@ private fun StatIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, text
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         Icon(icon, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
         Text(text, style = MaterialTheme.typography.labelSmall, fontFamily = Mono, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
+    }
+}
+
+
+@Composable
+private fun MsgActionBar(msg: ai.devcodex.agent.data.Message, onCopy: (String) -> Unit, onResend: () -> Unit, onDelete: () -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+    ) {
+        IconButton(onClick = { onCopy(msg.content) }, modifier = Modifier.size(26.dp)) {
+            Icon(Icons.Filled.ContentCopy, "复制", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (msg.role == "user") {
+            IconButton(onClick = onResend, modifier = Modifier.size(26.dp)) {
+                Icon(Icons.Filled.Bolt, "重发", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        IconButton(onClick = onDelete, modifier = Modifier.size(26.dp)) {
+            Icon(Icons.Filled.Delete, "删除", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Extension
@@ -50,6 +51,7 @@ fun AppRoot(vm: AppViewModel) {
             Tab("workspace", "工作区", Icons.Filled.Folder),
             Tab("providers", "提供商", Icons.Filled.AutoAwesome),
             Tab("plugins", "插件", Icons.Filled.Extension),
+            Tab("extensions", "扩展", Icons.Filled.Download),
             Tab("settings", "设置", Icons.Filled.Settings),
         )
     }
@@ -168,6 +170,7 @@ fun AppRoot(vm: AppViewModel) {
                         composable("workspace") { ai.devcodex.agent.ui.screens.WorkspaceScreen(vm) }
                         composable("providers") { ProvidersScreen(vm) }
                         composable("plugins") { PluginsScreen(vm) }
+                        composable("extensions") { ai.devcodex.agent.ui.screens.ExtensionsScreen(vm) }
                         composable("settings") { SettingsScreen(vm) }
                             composable("terminal") { ai.devcodex.agent.ui.screens.TerminalScreen(vm) }
                     }
@@ -202,6 +205,7 @@ fun AppRoot(vm: AppViewModel) {
                         composable("workspace") { ai.devcodex.agent.ui.screens.WorkspaceScreen(vm) }
                         composable("providers") { ProvidersScreen(vm) }
                         composable("plugins") { PluginsScreen(vm) }
+                        composable("extensions") { ai.devcodex.agent.ui.screens.ExtensionsScreen(vm) }
                         composable("settings") { SettingsScreen(vm) }
                             composable("terminal") { ai.devcodex.agent.ui.screens.TerminalScreen(vm) }
                     }

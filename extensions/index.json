@@ -1,0 +1,6 @@
+[
+  {"name": "web-dev-toolkit", "type": "skill", "desc": "前端开发技能包：HTML/CSS/JS 最佳实践与组件模板", "url": "https://raw.githubusercontent.com/Moirania/DevCodex/main/extensions/skills/web-dev-toolkit.md", "size": 4096},
+  {"name": "python-data", "type": "skill", "desc": "Python 数据处理技能：pandas/爬虫/清洗模板", "url": "https://raw.githubusercontent.com/Moirania/DevCodex/main/extensions/skills/python-data.md", "size": 5120},
+  {"name": "android-helper", "type": "skill", "desc": "Android 逆向/调试技能：adb 命令速查与常见任务", "url": "https://raw.githubusercontent.com/Moirania/DevCodex/main/extensions/skills/android-helper.md", "size": 6144},
+  {"name": "translate-pro", "type": "plugin", "desc": "翻译工具插件（多语言互译，http 工具）", "url": "https://raw.githubusercontent.com/Moirania/DevCodex/main/extensions/plugins/translate-pro.json", "size": 2048}
+]

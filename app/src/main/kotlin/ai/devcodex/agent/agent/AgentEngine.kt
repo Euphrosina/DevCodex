@@ -333,7 +333,9 @@ class AgentEngine(
                         toolStatus = ToolStatus.RUNNING, timestamp = System.currentTimeMillis(),
                     ))
                     onUpdate(current)
-                    val result = runCatching { def.execute(tc.argsJson) }
+                    val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        runCatching { def.execute(tc.argsJson) }
+                    }
                         .getOrElse { "ERROR: ${it.message}" }
                     current = current.patch(toolMsgId) {
                         it.copy(toolResult = result, toolStatus = if (result.startsWith("ERROR")) ToolStatus.ERROR else ToolStatus.DONE)

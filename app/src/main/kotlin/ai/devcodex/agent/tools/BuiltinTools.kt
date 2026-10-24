@@ -194,6 +194,7 @@ object BuiltinTools {
     // ============ HTTP ============
     val httpRequest = ToolDef(
         name = "http_request",
+        risk = ToolDef.Risk.MEDIUM,
         description = "发起 HTTP 请求（GET/POST/PUT/DELETE），可请求任意 URL，用于查资料、调用 web API",
         parameters = obj {
             put("type", "object")
