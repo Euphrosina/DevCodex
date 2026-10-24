@@ -285,6 +285,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun getPreferences(): android.content.SharedPreferences =
         getApplication<android.app.Application>().getSharedPreferences("devcodex_stats", android.content.Context.MODE_PRIVATE)
 
+    fun rewindTo(msgId: String) {
+        val s = _activeSession.value ?: return
+        val idx = s.messages.indexOfFirst { it.id == msgId }
+        if (idx < 0) return
+        val kept = s.messages.take(idx)  // 回退到这里：删该消息及之后全部
+        val rewound = s.copy(messages = kept, updatedAt = System.currentTimeMillis())
+        _activeSession.value = rewound
+        viewModelScope.launch { sessionRepo.save(rewound); reloadSessions() }
+    }
+
     fun deleteMessage(msgId: String) {
         val cur = _activeSession.value ?: return
         val updated = cur.copy(messages = cur.messages.filter { it.id != msgId })

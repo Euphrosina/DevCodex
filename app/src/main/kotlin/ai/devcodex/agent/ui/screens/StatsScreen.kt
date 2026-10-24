@@ -333,9 +333,9 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                                         val msgs = st.byDay[key]?.messages ?: 0
                                         val color = when {
                                             msgs <= 0 -> empty
-                                            msgs < 5 -> primary.copy(alpha = 0.25f)
-                                            msgs < 20 -> primary.copy(alpha = 0.5f)
-                                            msgs < 50 -> primary.copy(alpha = 0.75f)
+                                            msgs < 3 -> primary.copy(alpha = 0.40f)
+                                            msgs < 10 -> primary.copy(alpha = 0.60f)
+                                            msgs < 30 -> primary.copy(alpha = 0.80f)
                                             else -> primary
                                         }
                                         Box(Modifier.size(16.dp).background(color, RoundedCornerShape(4.dp)))

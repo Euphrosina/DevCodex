@@ -358,16 +358,24 @@ fun ChatScreen(vm: AppViewModel) {
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Spacer(Modifier.weight(1f))
-                                Box(
-                                    Modifier
-                                        .widthIn(max = 340.dp)
-                                        .combinedClickable(
-                                            onClick = {},
-                                            onLongClick = { selectedMsg = msg },
-                                        )
-                                        .align(Alignment.Top)
-                                ) { UserBubble(msg) }
-                                MsgActionBar(msg, onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制" }, onResend = { if (msg.content.isNotBlank()) { vm.send(msg.content) } }, onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) })
+                                // cccodroid：用户消息=右对齐列（气泡+操作栏上下排）
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Box(
+                                        Modifier
+                                            .widthIn(max = 340.dp)
+                                            .combinedClickable(
+                                                onClick = {},
+                                                onLongClick = { selectedMsg = msg },
+                                            )
+                                    ) { UserBubble(msg) }
+                                    MsgActionBar(
+                                        msg,
+                                        onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制" },
+                                        onResend = { if (msg.content.isNotBlank() && !isRunning) { vm.send(msg.content) } },
+                                        onRewind = { vm.rewindTo(msg.id) },
+                                        onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) },
+                                    )
+                                }
                                 Spacer(Modifier.width(6.dp))
                                 if (settings.theme.showAvatar && settings.theme.showNick) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(34.dp)) {
                                     ai.devcodex.agent.ui.components.Avatar(
@@ -471,6 +479,14 @@ fun ChatScreen(vm: AppViewModel) {
                                             ))
                                         }
                                         MessageStats(msg, session)
+                                        // cccodroid：AI 消息底部操作栏（复制/回退/删除）
+                                        MsgActionBar(
+                                            msg,
+                                            onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制" },
+                                            onResend = {},
+                                            onRewind = { vm.rewindTo(msg.id) },
+                                            onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) },
+                                        )
                                     }
                                 }
                             }
@@ -653,19 +669,19 @@ fun ChatScreen(vm: AppViewModel) {
                                     val curCtx = session?.contextOverride ?: 0
                                     val options = listOf(0, 131072, 262144, 524288, 1048576, 2097152)
                                     val labels = mapOf(0 to "默认(${modelMax / 1024}k)", 131072 to "128k", 262144 to "256k", 524288 to "512k", 1048576 to "1M", 2097152 to "2M")
-                                    Row(
+                                    androidx.compose.foundation.layout.FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.padding(start = 15.dp, top = 2.dp, bottom = 6.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(start = 15.dp, top = 2.dp, bottom = 6.dp),
                                     ) {
-                                        Text("上下文 ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                                        Text("上下文 ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
                                         options.forEach { opt ->
                                             val support = opt == 0 || opt <= modelMax
                                             FilterChip(
                                                 selected = curCtx == opt,
                                                 onClick = { if (support) vm.setSessionContext(opt) },
-                                                label = { Text(labels[opt] ?: "?", style = MaterialTheme.typography.labelSmall) },
+                                                label = { Text(labels[opt] ?: "?", style = MaterialTheme.typography.labelSmall, maxLines = 1) },
                                                 enabled = support,
-                                                modifier = Modifier.height(26.dp),
+                                                modifier = Modifier.height(24.dp),
                                             )
                                         }
                                     }
@@ -924,21 +940,28 @@ private fun StatIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, text
 
 
 @Composable
-private fun MsgActionBar(msg: ai.devcodex.agent.data.Message, onCopy: (String) -> Unit, onResend: () -> Unit, onDelete: () -> Unit) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-    ) {
-        IconButton(onClick = { onCopy(msg.content) }, modifier = Modifier.size(26.dp)) {
-            Icon(Icons.Filled.ContentCopy, "复制", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun MsgActionBar(
+    msg: ai.devcodex.agent.data.Message,
+    onCopy: (String) -> Unit,
+    onResend: () -> Unit,
+    onRewind: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    // cccodroid msg-acts：气泡下方一行 32x30 透明图标钮（16dp stroke 图标）
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 2.dp)) {
+        IconButton(onClick = { onCopy(msg.content) }, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Filled.ContentCopy, "复制", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (msg.role == "user") {
-            IconButton(onClick = onResend, modifier = Modifier.size(26.dp)) {
-                Icon(Icons.Filled.Bolt, "重发", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            IconButton(onClick = onResend, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Filled.Bolt, "重发", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onRewind, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Filled.Schedule, "回退到这里", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        IconButton(onClick = onDelete, modifier = Modifier.size(26.dp)) {
-            Icon(Icons.Filled.Delete, "删除", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Filled.Delete, "删除", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

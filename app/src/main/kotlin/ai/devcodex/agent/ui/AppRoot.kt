@@ -149,6 +149,7 @@ fun AppRoot(vm: AppViewModel) {
                             composable("workspace") { ai.devcodex.agent.ui.screens.WorkspaceScreen(vm) }
                             composable("providers") { ProvidersScreen(vm) }
                             composable("plugins") { PluginsScreen(vm) }
+                            composable("extensions") { ai.devcodex.agent.ui.screens.ExtensionsScreen(vm) }
                             composable("settings") { SettingsScreen(vm) }
                             composable("terminal") { ai.devcodex.agent.ui.screens.TerminalScreen(vm) }
                         }
