@@ -77,18 +77,22 @@ fun AppRoot(vm: AppViewModel) {
     LaunchedEffect(Unit) {
         vm.navRequest.collect { req ->
             if (req != null) {
+                val immersiveNow = theme.immersive || theme.navPosition == "immersive"
                 when {
                     req == "back" -> runCatching { nav.popBackStack() }
                     req == "terminal" -> runCatching { nav.navigate("terminal") { launchSingleTop = true } }
                     req in listOf("stats", "about", "skills", "theme", "tools") -> {
-                        // 设置子页：跳设置 tab 并请求对应子页
+                        // 设置子页：跳设置页（tab 或路由）并请求对应子页
                         vm.settingsPageRequest.value = req
-                        val i = tabs.indexOfFirst { it.route == "settings" }
-                        if (i >= 0) navigate(i)
+                        if (immersiveNow) runCatching { nav.navigate("settings") { launchSingleTop = true } }
+                        else { val i = tabs.indexOfFirst { it.route == "settings" }; if (i >= 0) navigate(i) }
                     }
                     else -> {
-                        val i = tabs.indexOfFirst { it.route == req }
-                        if (i >= 0) navigate(i)
+                        if (immersiveNow) runCatching { nav.navigate(req) { launchSingleTop = true } }
+                        else {
+                            val i = tabs.indexOfFirst { it.route == req }
+                            if (i >= 0) navigate(i)
+                        }
                     }
                 }
                 vm.navRequest.value = null

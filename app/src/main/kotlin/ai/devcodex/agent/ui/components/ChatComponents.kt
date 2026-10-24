@@ -76,8 +76,8 @@ private val Mono = FontFamily.Monospace
 fun UserBubble(msg: Message, nick: String = "我") {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Surface(
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp),
             tonalElevation = 0.dp,
             modifier = Modifier.widthIn(max = 310.dp),
@@ -92,7 +92,7 @@ fun UserBubble(msg: Message, nick: String = "我") {
                 androidx.compose.foundation.layout.Column {
                 ai.devcodex.agent.m3l.MixedMarkdownLatex(
                     text = msg.content,
-                    textColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textColor = MaterialTheme.colorScheme.onSurface,
                     isStreaming = false,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                 )
@@ -274,6 +274,7 @@ fun ToolCard(msg: Message) {
 fun ApprovalCard(
     reason: String,
     toolName: String,
+    argsJson: String = "",
     onAllow: () -> Unit,
     onAlwaysAllow: () -> Unit,
     onDeny: () -> Unit,
@@ -290,6 +291,32 @@ fun ApprovalCard(
             }
             Spacer(Modifier.padding(3.dp))
             Text(reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+            // P0 审计修复：显示工具实际参数（不再盲批）
+            if (argsJson.isNotBlank()) {
+                Spacer(Modifier.padding(2.dp))
+                var showArgs by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(
+                        if (showArgs) "▾ 参数" else "▸ 参数",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.clickable { showArgs = !showArgs },
+                    )
+                }
+                if (showArgs) {
+                    Text(
+                        argsJson.take(400),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        maxLines = 6,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().background(
+                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                        ).padding(6.dp),
+                    )
+                }
+            }
             Spacer(Modifier.padding(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.align(Alignment.End)) {
                 TextButton(onClick = onDeny) { Text("拒绝") }
@@ -369,8 +396,8 @@ fun InputBar(
                         }
                     }
                 }
-                Spacer(Modifier.width(6.dp))
-                // 推理滑块（MD3 七档，Faster↔Smarter）
+                Spacer(Modifier.height(3.dp))
+                // 推理滑块（独立一行，MD3 七档，Faster↔Smarter）
                 val effortIdx = effortLevels.indexOf(effort).coerceAtLeast(0)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

@@ -501,7 +501,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             val sp2 = vm.getPreferences()
             val am = sp2.getString("approval_mode", "ASSISTED") ?: "ASSISTED"
             listOf("FULL" to "全自动", "ASSISTED" to "辅助", "REQUEST" to "每步审").forEach { (v, label) ->
-                FilterChip(selected = am == v, onClick = { sp2.edit().putString("approval_mode", v).apply() }, label = { Text(label) })
+                FilterChip(selected = am == v, onClick = { sp2.edit().putString("approval_mode", v).apply(); ai.devcodex.agent.tools.BuiltinTools.appContext().getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE).edit().putString("approval_mode", v).apply() }, label = { Text(label) })
             }
         }
 
@@ -745,7 +745,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         Text("内置工具", style = MaterialTheme.typography.titleMedium)
         Text("关闭后智能体将看不到对应能力", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.padding(6.dp))
-        (ai.devcodex.agent.tools.BuiltinTools.all + ai.devcodex.agent.tools.AdvancedFsTools.all).forEach { tool ->
+        (ai.devcodex.agent.tools.BuiltinTools.all + ai.devcodex.agent.tools.AdvancedFsTools.all + ai.devcodex.agent.tools.ExtraTools.all).forEach { tool ->
             val enabled = settings.enabledTools.contains(tool.name)
             val alwaysAllowed = settings.toolPerms[tool.name] == "ALLOW"
             ListItem(
@@ -1034,7 +1034,7 @@ private fun AboutPage(onBack: () -> Unit) {
                         val rel = ai.devcodex.agent.util.AppUpdate.checkLatest()
                         updateMsg = when {
                             rel == null -> "检查失败（网络或仓库不可达）"
-                            rel.tagName != "v${ai.devcodex.agent.BuildConfig.VERSION_NAME}" -> "新版本 ${rel.tagName} 可用：Releases 页下载 APK"
+                            (Regex("b(\\d+)").find(rel.tagName)?.groupValues?.get(1)?.toIntOrNull() ?: 0) > 28 -> "新版本 ${rel.tagName} 可用：Releases 页下载 APK"
                             else -> "已是最新版本"
                         }
                         checking = false

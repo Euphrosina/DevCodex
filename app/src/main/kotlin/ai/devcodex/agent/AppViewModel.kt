@@ -77,7 +77,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             engine.events.collect { ev ->
                 when (ev) {
                     is AgentEngine.UiEvent.Error -> toast.value = ev.message
-                    is AgentEngine.UiEvent.Finished -> { _activeSession.value?.let { throttledUpdate(it, true) } }
+                    is AgentEngine.UiEvent.Finished -> Unit
                 }
             }
         }
@@ -148,8 +148,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var lastSave = 0L
             try {
                 engine.run(session) { s ->
+                    // 会话守卫：用户已切走时不覆写当前会话（引擎后台继续跑并存盘）
+                    val stillActive = _activeSession.value?.id == session.id
                     // UI 节流 80ms：防 token 级全列表重组（聊久卡死/闪退根因）
-                    throttledUpdate(s)
+                    if (stillActive) throttledUpdate(s)
                     // 节流存盘：流式期间最多 1 次/秒，防每 token 写盘卡顿
                     val now = System.currentTimeMillis()
                     if (now - lastSave > 1000) {
@@ -159,6 +161,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } finally {
                 isRunning.value = false
+                // 最终态刷新（仅当用户未切走）
+                if (_activeSession.value?.id == session.id) {
+                    runCatching { sessionRepo.get(session.id) }?.getOrNull()?.let { _activeSession.value = it }
+                }
                 _pendingApproval.value = null
                 // 结束必存最终态
                 _activeSession.value?.let { saveSessionBg(it) }
@@ -299,7 +305,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pending = _pendingApproval.value ?: return
         if (granted && always) {
             val toolName = pending.first.toolCall.name
-            saveSettings { s -> s.copy(toolPerms = s.toolPerms + (toolName to "ALLOW")) }
+            // P0 审计修复：仅本会话内记住（引擎内存集合，重启/新会话失效），不再永久写入 DataStore
+            engine.engineSessionAllows.add(toolName)
         }
         approvalWaiters.remove(pending.first.toolCall.id)?.invoke(granted)
         _pendingApproval.value = null

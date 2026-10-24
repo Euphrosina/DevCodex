@@ -121,7 +121,7 @@ object AdvancedFsTools {
             })
             put("required", req("path", "mode"))
         },
-        risk = ToolDef.Risk.MEDIUM,
+        risk = ToolDef.Risk.LOW,
     ) { args ->
         val path = JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path"
         val mode = JsonArg.string(args, "mode") ?: "644"

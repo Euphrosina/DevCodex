@@ -26,6 +26,7 @@ class AgentEngine(
     /** 审批回调：UI 弹出卡片，用户决定后回调（挂起等待） */
     private val requestApproval: suspend (ApprovalRequest) -> Boolean,
 ) {
+    val engineSessionAllows: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     sealed interface UiEvent {
         data class Error(val message: String) : UiEvent
         data class Finished(val sessionId: String) : UiEvent
@@ -56,15 +57,15 @@ class AgentEngine(
                 is StreamEvent.Usage -> onUsage(ev.inputTokens, ev.outputTokens, ev.cachedTokens)
                 is StreamEvent.Delta -> {
                     onFirstDelta()
-                    if (think.isNotEmpty() && thinkStart > 0) {
-                        val settleMs = System.currentTimeMillis() - thinkStart
-                        current = current.patch(assistantId) { it.copy(thinkingMs = if (settleMs in 1..3600000L) settleMs else 0) }
-                    } else {
-                        // 跨轮：上一轮思考过（消息里已有 thinking）但计时停在 0 —— 估算结算
-                        val prev = current.messages.firstOrNull { it.id == assistantId }
-                        if (prev != null && !prev.thinking.isNullOrEmpty() && prev.thinkingMs == 0L) {
-                            current = current.patch(assistantId) { it.copy(thinkingMs = 1000L) }
-                        }
+                    val prevMsg = current.messages.firstOrNull { it.id == assistantId }
+                    val startAt = prevMsg?.thinkStartAt ?: 0L
+                    if (startAt > 0) {
+                        var settleMs = System.currentTimeMillis() - startAt
+                        if (settleMs < 0 || settleMs > 3_600_000L) settleMs = 0
+                        current = current.patch(assistantId) { it.copy(thinkingMs = settleMs) }
+                    } else if (think.isNotEmpty() && thinkStart > 0) {
+                        var settleMs = System.currentTimeMillis() - thinkStart
+                        if (settleMs in 1..3_600_000L) current = current.patch(assistantId) { it.copy(thinkingMs = settleMs) }
                     }
                     text.append(ev.text)
                     current = current.patch(assistantId) { it.copy(content = text.toString()) }
@@ -74,9 +75,11 @@ class AgentEngine(
                     val now = System.currentTimeMillis()
                     if (thinkStart == 0L) thinkStart = now
                     think.append(ev.text)
-                    var ms = now - thinkStart
-                    if (ms < 0 || ms > 3_600_000L) ms = 0  // 防御：异常值置零
-                    current = current.patch(assistantId) { it.copy(thinking = think.toString(), thinkingMs = ms) }
+                    val prevStart = current.messages.firstOrNull { it.id == assistantId }?.thinkStartAt ?: 0L
+                    val startAt = if (prevStart > 0) prevStart else thinkStart
+                    var ms = now - startAt
+                    if (ms < 0 || ms > 3_600_000L) ms = 0
+                    current = current.patch(assistantId) { it.copy(thinking = think.toString(), thinkingMs = ms, thinkStartAt = startAt) }
                     onUpdate(current)
                 }
                 is StreamEvent.ToolCallDelta -> {
@@ -96,6 +99,7 @@ class AgentEngine(
 
     suspend fun run(session: ChatSession, onUpdate: (ChatSession) -> Unit) {
         val s = settings()
+        engineSessionAllows.clear()
         val provider = s.providers.find { it.id == session.providerId && it.enabled }
             ?: s.providers.firstOrNull { it.enabled && it.enabledModels.isNotEmpty() }
             ?: run { events.emit(UiEvent.Error("未配置 API 提供商，请到「提供商」页添加并拉取模型")); return }
@@ -289,17 +293,23 @@ class AgentEngine(
                         continue
                     }
                     // 审批判定：用户已"总是允许"的直接放行；否则高危必审、fs_write 沙箱外必审
-                    val alwaysAllowed = s.toolPerms[tc.name] == "ALLOW"
-                    val mode = s.providers.let { _ -> s } // placeholder keep
+                    val alwaysAllowed = s.toolPerms[tc.name] == "ALLOW" || engineSessionAllows.contains(tc.name)
                     val approvalMode = ai.devcodex.agent.tools.BuiltinTools.appContext()
                         .getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE)
                         .getString("approval_mode", "ASSISTED") ?: "ASSISTED"
+                    // P0 审计修复：fs_write 沙箱判定改为解析 path 后 canonical 包含判断（防 content 绕过 / 相对路径误报）
+                    val fsWriteOutside = tc.name == "fs_write" && run {
+                        val p = ai.devcodex.agent.util.JsonArg.string(tc.argsJson, "path") ?: ""
+                        val resolved = if (p.startsWith("/")) java.io.File(p)
+                                       else java.io.File(ai.devcodex.agent.tools.BuiltinTools.appContext().filesDir, "workspace/$p")
+                        val canon = runCatching { resolved.canonicalPath }.getOrDefault(resolved.absolutePath)
+                        !canon.startsWith(ai.devcodex.agent.tools.BuiltinTools.appContext().filesDir.absolutePath + "/")
+                    }
                     val needApproval = when (approvalMode) {
                         "FULL" -> false                                       // 全自动（终信任）
                         "REQUEST" -> !alwaysAllowed                          // 每步必审（除非记忆允许）
-                        else -> !alwaysAllowed && (                          // ASSISTED：高危/沙箱外写必审
-                                def.risk == ToolDef.Risk.HIGH ||
-                                    (tc.name == "fs_write" && !tc.argsJson.contains(SANDBOX_MARK)))
+                        else -> !alwaysAllowed && (                          // ASSISTED：非 LOW 均审 + 沙箱外写必审
+                                def.risk != ToolDef.Risk.LOW || fsWriteOutside)
                     }
                     if (needApproval) {
                         val reason = when (def.risk) {

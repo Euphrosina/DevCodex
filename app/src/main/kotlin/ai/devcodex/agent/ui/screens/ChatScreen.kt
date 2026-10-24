@@ -138,6 +138,7 @@ fun ChatScreen(vm: AppViewModel) {
     LaunchedEffect(Unit) { crashReport = CrashHandler.latestReport(context) }
 
     val messages = session?.messages ?: emptyList()
+    val lastThinkingLen = messages.lastOrNull()?.thinking?.length ?: 0
     // 位置记忆：会话切换时恢复上次查看位置
     val sessionKey = session?.id ?: "new"
     LaunchedEffect(sessionKey) {
@@ -151,6 +152,12 @@ fun ChatScreen(vm: AppViewModel) {
     // 离开/滚动时记录位置
     LaunchedEffect(listState.firstVisibleItemIndex, sessionKey) {
         vm.chatScrollMap[sessionKey] = listState.firstVisibleItemIndex
+    }
+    // Operit 式思考流式自动滚动（思考文本增长时跟底）
+    LaunchedEffect(lastThinkingLen, isRunning) {
+        if (isRunning && messages.isNotEmpty()) {
+            runCatching { listState.animateScrollToItem(messages.lastIndex) }
+        }
     }
     // 自动滚动：新消息（发送/AI 输出）时跟随到底
     LaunchedEffect(messages.size, isRunning) {
@@ -217,8 +224,9 @@ fun ChatScreen(vm: AppViewModel) {
                 }
                 val grouped = sessions.sortedByDescending { it.updatedAt }.groupBy { groupOf(it.updatedAt) }
                 LazyColumn(
-                    Modifier.fillMaxWidth().weight(1f, fill = false),
+                    Modifier.widthIn(max = 760.dp).weight(1f, fill = false),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                 ) {
                     grouped.forEach { (group, items) ->
                         item(key = "grp-$group") {
@@ -387,7 +395,7 @@ fun ChatScreen(vm: AppViewModel) {
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Column(Modifier.weight(1f)) {
-                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking, msg.thinkingMs)
+                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking, msg.thinkingMs, isRunning && idx == messages.lastIndex)
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             TypingDots()
                                         } else if (msg.content.isNotBlank()) {
@@ -462,6 +470,7 @@ fun ChatScreen(vm: AppViewModel) {
                             ApprovalCard(
                                 reason = pendingApproval!!.first.reason,
                                 toolName = pendingApproval!!.first.toolCall.name,
+                                argsJson = pendingApproval!!.first.toolCall.argsJson,
                                 onAllow = { vm.respondApproval(granted = true, always = false) },
                                 onAlwaysAllow = { vm.respondApproval(granted = true, always = true) },
                                 onDeny = { vm.respondApproval(granted = false, always = false) },
@@ -681,6 +690,7 @@ fun ChatScreen(vm: AppViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = {
+                    if (isRunning) vm.stop()
                     vm.deleteMessage(sm.id)
                     selectedMsg = null
                 }) { Text("删除", color = MaterialTheme.colorScheme.error) }
@@ -782,7 +792,7 @@ private fun TypingDots() {
 }
 
 @Composable
-private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thinkingMs: Long = 0) {
+private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thinkingMs: Long = 0, streaming: Boolean = false) {
     var expanded by remember(autoCollapse) { mutableStateOf(!autoCollapse) }
     // Operit 渐变思考：呼吸流光渐变（tertiary→primary→secondary）
     val c1 = MaterialTheme.colorScheme.tertiary
@@ -815,12 +825,13 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thin
                 Text("✻", style = MaterialTheme.typography.labelLarge, color = c1.copy(alpha = alpha))
                 Text(
                     buildString {
-                        if (expanded) append("思考过程") else append("已深度思考")
-                        if (thinkingMs > 0) {
+                        if (streaming) append("思考中") else if (expanded) append("思考过程") else append("已深度思考")
+                        if (!streaming && thinkingMs > 0) {
                             val sec = thinkingMs / 1000.0
                             append(if (sec >= 60) String.format("（%dm%ds）", sec.toInt() / 60, sec.toInt() % 60)
                                    else String.format("（%.1fs）", sec))
                         }
+                        if (streaming) append(" ▍")
                     },
                     style = MaterialTheme.typography.labelMedium.copy(brush = flowBrush),
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,

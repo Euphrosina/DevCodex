@@ -593,7 +593,7 @@ object ExtraTools {
         webSearch, browserRender, imageInfo, imageConvert,
         pipelineRun, bgList, bgKill, calendarList, calendarAdd,
         clipboardWrite, notifyPost, alarmSet, shareContent, calendarOpen,
-        sandboxPkgInstall, pythonRun, nodeRun, deviceInfo, vibrate, openUrl,
+        sandboxPkgInstall, pythonRun, nodeRun, vibrate, openUrl,
         screenshotTake, clipboardGet, wifiState,
     )
 }

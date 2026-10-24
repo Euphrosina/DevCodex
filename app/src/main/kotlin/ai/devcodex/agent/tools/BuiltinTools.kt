@@ -134,7 +134,7 @@ object BuiltinTools {
             })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("command")) })
         },
-        risk = ToolDef.Risk.MEDIUM,
+        risk = ToolDef.Risk.HIGH,
     ) { args ->
         val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef "ERROR: 缺少 command"
         SshClient.exec(cmd)
@@ -161,7 +161,7 @@ object BuiltinTools {
     }
 
     val linuxExec = ToolDef(
-        name = "linux_exec",
+        name = "linux_exec", risk = ToolDef.Risk.HIGH,
         description = "Termux 原生沙盒执行（busybox sh 完整工具链）。默认工作目录=应用工作区（相对路径直接读写），支持 cwd 指定工作目录",
         parameters = obj {
             put("type", "object")
@@ -170,7 +170,6 @@ object BuiltinTools {
             })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("command")) })
         },
-        risk = ToolDef.Risk.LOW,
     ) { args ->
         val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef "ERROR: 缺少 command"
         ShellAccess.linuxExec(cmd).take(30000)

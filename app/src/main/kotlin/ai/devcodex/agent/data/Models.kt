@@ -59,6 +59,7 @@ data class Message(
     val toolResult: String? = null,         // 工具输出（展示用）
     val thinking: String? = null,
     val thinkingMs: Long = 0,
+    val thinkStartAt: Long = 0,   // 思考开始时间戳（跨轮稳定计时）
     val model: String? = null,
     val timestamp: Long = 0,
     val pendingApproval: PendingApproval? = null,
