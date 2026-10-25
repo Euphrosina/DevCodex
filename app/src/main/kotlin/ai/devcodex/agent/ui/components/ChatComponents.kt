@@ -75,30 +75,13 @@ private val Mono = FontFamily.Monospace
 @Composable
 fun UserBubble(msg: Message, nick: String = "我") {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp),  // rikkahub：尾巴角在右上 topEnd
-            tonalElevation = 0.dp,
+        ai.devcodex.agent.ui.components.DynamicBubble(
+            text = msg.content,
+            backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+            textColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            maxLines = 2000,
             modifier = Modifier.widthIn(max = 340.dp),
-        ) {
-            androidx.compose.runtime.CompositionLocalProvider(
-                ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
-                    primary = MaterialTheme.colorScheme.onPrimary,
-                    surface = MaterialTheme.colorScheme.primary,
-                    outlineVariant = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.4f),
-                ),
-            ) {
-                androidx.compose.foundation.layout.Column {
-                ai.devcodex.agent.m3l.MixedMarkdownLatex(
-                    text = msg.content,
-                    textColor = MaterialTheme.colorScheme.onSurface,
-                    isStreaming = false,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                )
-                }
-            }
-        }
+        )
     }
 }
 
