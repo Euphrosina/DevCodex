@@ -78,7 +78,7 @@ fun UserBubble(msg: Message, nick: String = "我") {
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp),
+            shape = RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp),  // rikkahub：尾巴角在右上 topEnd
             tonalElevation = 0.dp,
             modifier = Modifier.widthIn(max = 340.dp),
         ) {
@@ -352,9 +352,10 @@ fun InputBar(
     // rikkahub 视觉：顶部大圆角浮层容器
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
-        shadowElevation = 6.dp,
-        modifier = Modifier.fillMaxWidth().imePadding(),
+        shape = RoundedCornerShape(26.dp, 26.dp, 26.dp, 26.dp),
+        tonalElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 8.dp).padding(bottom = 8.dp),
     ) {
         Column(Modifier.fillMaxWidth()) {
             // 模型选择 chip 行
