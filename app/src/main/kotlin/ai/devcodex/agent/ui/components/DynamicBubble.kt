@@ -1,9 +1,7 @@
 package ai.devcodex.agent.ui.components
 
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -42,7 +40,6 @@ fun DynamicBubble(
         shape = dynamicBubbleShape(lineCount),
         tonalElevation = 0.dp,
         modifier = modifier
-            .width(IntrinsicSize.Min)
             .combinedClickable(onClick = {}, onLongClick = onLongClick),
     ) {
         Text(
