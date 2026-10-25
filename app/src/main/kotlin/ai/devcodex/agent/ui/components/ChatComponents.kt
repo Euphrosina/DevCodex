@@ -76,9 +76,9 @@ private val Mono = FontFamily.Monospace
 fun UserBubble(msg: Message, nick: String = "我") {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shape = RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp),
             tonalElevation = 0.dp,
             modifier = Modifier.widthIn(max = 340.dp),
         ) {

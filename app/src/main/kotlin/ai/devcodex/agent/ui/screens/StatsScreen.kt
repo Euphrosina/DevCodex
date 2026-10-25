@@ -1,6 +1,8 @@
 package ai.devcodex.agent.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -308,41 +310,87 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("消息热力图", style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.weight(1f))
-                        Text("近 14 周", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("近 1 年", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.padding(6.dp))
-                    val empty = MaterialTheme.colorScheme.surfaceVariant
-                    val primary = MaterialTheme.colorScheme.primary
-                    // 列式日历：每列一周（周一至周日行），等宽
-                    val weeks = 14
-                    val today = Calendar.getInstance()
-                    val start = Calendar.getInstance().apply {
-                        add(Calendar.DAY_OF_YEAR, -(weeks * 7 + 6))
-                        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)  // 已在过去，set 只会微调不跳未来
+                    // ===== rikkahub ChatHeatmap 照搬：LocalDate key + 53 周 + 分位数 + 月/周标签 + 图例 =====
+                    val today = java.time.LocalDate.now()
+                    val startSunday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY)).minusWeeks(52)
+                    val numWeeks = 53
+                    val byLocalDate = HashMap<java.time.LocalDate, Int>()
+                    st.byDay.forEach { (k, u) ->
+                        runCatching {
+                            val y = (k / 10000).toInt(); val mo = ((k / 100) % 100).toInt(); val d = (k % 100).toInt()
+                            byLocalDate[java.time.LocalDate.of(y, mo, d)] = u.messages
+                        }
                     }
+                    val activeCounts = byLocalDate.values.filter { it > 0 }.sorted()
+                    val q1 = activeCounts.getOrElse((activeCounts.size * 0.25).toInt()) { 1 }
+                    val q2 = activeCounts.getOrElse((activeCounts.size * 0.50).toInt()) { 2 }
+                    val q3 = activeCounts.getOrElse((activeCounts.size * 0.75).toInt()) { 3 }
+                    val cellSize = 11.dp; val cellSpacing = 2.dp
+                    @Composable fun heatCell(alpha: Float) {
+                        val color = when {
+                            alpha < 0f -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            alpha == 0f -> MaterialTheme.colorScheme.surfaceVariant
+                            else -> MaterialTheme.colorScheme.primary.copy(alpha = alpha)
+                        }
+                        Box(Modifier.size(cellSize).clip(MaterialTheme.shapes.extraSmall).background(color))
+                    }
+                    val scrollState = rememberScrollState(initial = Int.MAX_VALUE)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        for (w in 0 until weeks) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                for (d in 0..6) {
-                                    val c = Calendar.getInstance().apply { timeInMillis = start.timeInMillis }
-                                    c.add(Calendar.DAY_OF_YEAR, w * 7 + d)
-                                    if (c.timeInMillis > today.timeInMillis) {
-                                        Box(Modifier.size(16.dp))
-                                    } else {
-                                        val key = c.get(Calendar.YEAR) * 10000L + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
-                                        val msgs = st.byDay[key]?.messages ?: 0
-                                        val color = when {
-                                            msgs <= 0 -> empty
-                                            msgs < 3 -> primary.copy(alpha = 0.40f)
-                                            msgs < 10 -> primary.copy(alpha = 0.60f)
-                                            msgs < 30 -> primary.copy(alpha = 0.80f)
-                                            else -> primary
+                        Column(Modifier.width(12.dp), verticalArrangement = Arrangement.spacedBy(cellSpacing)) {
+                            Spacer(Modifier.height(14.dp))
+                            listOf("", "一", "", "三", "", "五", "").forEach { label ->
+                                Box(Modifier.size(cellSize), contentAlignment = Alignment.Center) {
+                                    if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.labelSmall, fontSize = MaterialTheme.typography.labelSmall.fontSize * 0.7f, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        Column(Modifier.horizontalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(cellSpacing)) {
+                                for (weekIdx in 0 until numWeeks) {
+                                    val weekStart = startSunday.plusDays((weekIdx * 7).toLong())
+                                    val labelDate = (0..6).map { weekStart.plusDays(it.toLong()) }.firstOrNull { it.dayOfMonth == 1 }
+                                    Box(Modifier.width(cellSize).height(14.dp), contentAlignment = Alignment.BottomStart) {
+                                        if (labelDate != null) {
+                                            Text(
+                                                if (labelDate.monthValue == 1) labelDate.year.toString()
+                                                else labelDate.month.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault()),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontSize = MaterialTheme.typography.labelSmall.fontSize * 0.75f,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                                            )
                                         }
-                                        Box(Modifier.size(16.dp).background(color, RoundedCornerShape(4.dp)))
+                                    }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(cellSpacing)) {
+                                for (weekIdx in 0 until numWeeks) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(cellSpacing)) {
+                                        for (dow in 0..6) {
+                                            val date = startSunday.plusDays((weekIdx * 7 + dow).toLong())
+                                            val isFuture = date.isAfter(today)
+                                            val count = if (isFuture) 0 else (byLocalDate[date] ?: 0)
+                                            val alpha = when {
+                                                isFuture -> -1f
+                                                count == 0 -> 0f
+                                                count <= q1 -> 0.25f
+                                                count <= q2 -> 0.5f
+                                                count <= q3 -> 0.75f
+                                                else -> 1f
+                                            }
+                                            heatCell(alpha)
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                        Text("少", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        listOf(0f, 0.25f, 0.5f, 0.75f, 1f).forEach { a -> Box(Modifier.size(10.dp).clip(MaterialTheme.shapes.extraSmall).background(if (a == 0f) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary.copy(alpha = a))) }
+                        Text("多", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

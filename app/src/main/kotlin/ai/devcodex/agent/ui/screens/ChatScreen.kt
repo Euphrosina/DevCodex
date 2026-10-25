@@ -155,9 +155,10 @@ fun ChatScreen(vm: AppViewModel) {
     LaunchedEffect(listState.firstVisibleItemIndex, sessionKey) {
         vm.chatScrollMap[sessionKey] = listState.firstVisibleItemIndex
     }
-    // Operit 式思考流式自动滚动（思考文本增长时跟底）
+    // 思考流式自动滚动：仅当用户位于列表底部附近才跟随（修复读上文被强制拉底）
     LaunchedEffect(lastThinkingLen, isRunning) {
-        if (isRunning && messages.isNotEmpty()) {
+        if (isRunning && messages.isNotEmpty() &&
+            listState.firstVisibleItemIndex >= (messages.size - 2).coerceAtLeast(0)) {
             runCatching { listState.animateScrollToItem(messages.lastIndex) }
         }
     }
