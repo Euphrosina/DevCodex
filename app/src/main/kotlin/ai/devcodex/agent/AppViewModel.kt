@@ -146,8 +146,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         isRunning.value = true
         runningJob = viewModelScope.launch {
             var lastSave = 0L
+            var finalSession = session
             try {
                 engine.run(session) { s ->
+                    finalSession = s
                     // 会话守卫：用户已切走时不覆写当前会话（引擎后台继续跑并存盘）
                     val stillActive = _activeSession.value?.id == session.id
                     // UI 节流 80ms：防 token 级全列表重组（聊久卡死/闪退根因）
@@ -159,15 +161,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         saveSessionBg(s)
                     }
                 }
+            } catch (e: Exception) {
+                // 请求失败明示（不再静默——模型收到失败结果会自主重试造成连环请求）
+                toast.value = "请求失败: " + (e.message ?: "未知错误").take(80)
             } finally {
                 isRunning.value = false
-                // 最终态刷新（仅当用户未切走）
-                if (_activeSession.value?.id == session.id) {
-                    runCatching { sessionRepo.get(session.id) }?.getOrNull()?.let { _activeSession.value = it }
-                }
                 _pendingApproval.value = null
-                // 结束必存最终态
-                _activeSession.value?.let { saveSessionBg(it) }
+                // 回退/截断根修：用引擎返回的最终会话直接刷新 UI（不再从磁盘读滞后版本覆盖内存）
+                if (_activeSession.value?.id == finalSession.id) {
+                    _activeSession.value = finalSession
+                    lastUiEmit = 0
+                }
+                // 结束必存最终态（先存盘，UI 已是最新）
+                saveSessionBg(finalSession)
             }
         }
     }

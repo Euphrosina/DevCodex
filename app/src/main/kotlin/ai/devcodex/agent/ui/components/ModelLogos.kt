@@ -26,7 +26,8 @@ object ModelLogos {
     fun resFor(model: String): Int = when {
         model.hasWord("xiaomimimo") || model.hasWord("mimo") -> R.drawable.nm_xiaomimimo
         model.hasWord("gpt") || model.hasWord("openai") || Regex("(?i)\\bo[1345]\\b").containsMatchIn(model) -> R.drawable.nm_openai
-        model.hasWord("claude") || model.hasWord("anthropic") -> R.drawable.nm_anthropic
+        model.hasWord("claude") -> R.drawable.nm_claude
+        model.hasWord("anthropic") -> R.drawable.nm_anthropic
         model.hasWord("deepseek") || model.contains("深度求索") || model.contains("深度") -> R.drawable.nm_deepseek
         model.hasWord("gemini") || model.contains("google") -> R.drawable.nm_gemini
         model.hasWord("glm") || model.hasWord("zhipu") || model.hasWord("chatglm") || model.contains("智谱") -> R.drawable.nm_zhipu

@@ -100,6 +100,7 @@ class AgentEngine(
     suspend fun run(session: ChatSession, onUpdate: (ChatSession) -> Unit) {
         val s = settings()
         engineSessionAllows.clear()
+        var failStreak = 0  // 连续失败断路器：连续 3 次请求失败直接终止（防模型自主重试连环请求）
         val provider = s.providers.find { it.id == session.providerId && it.enabled }
             ?: s.providers.firstOrNull { it.enabled && it.enabledModels.isNotEmpty() }
             ?: run { events.emit(UiEvent.Error("未配置 API 提供商，请到「提供商」页添加并拉取模型")); return }
@@ -244,13 +245,29 @@ class AgentEngine(
                 }
 
                 try {
-                    streamPost(LlmClient, request) { line -> current = consume(line) }
+                    runCatching { streamPost(LlmClient, request) { line -> current = consume(line) } }
+                        .onSuccess { failStreak = 0 }
+                        .onFailure {
+                            failStreak++
+                            if (failStreak >= 3) {
+                                events.emit(UiEvent.Error("连续 3 次请求失败，已自动停止（" + (it.message ?: "") + "）"))
+                                throw RuntimeException("连续 3 次请求失败，断路器触发")
+                            }
+                        }
                 } catch (e: Exception) {
                     val msg = e.message ?: e.toString()
                     if (msg.contains("HTTP 400") && effectiveSchemas.isNotEmpty()) {
                         // 未知模型 400：降级去掉 tools 重试一次
                         request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, emptyList(), stream = true, reasoningEffort = effort)
-                        streamPost(LlmClient, request) { line -> current = consume(line) }
+                        runCatching { streamPost(LlmClient, request) { line -> current = consume(line) } }
+                        .onSuccess { failStreak = 0 }
+                        .onFailure {
+                            failStreak++
+                            if (failStreak >= 3) {
+                                events.emit(UiEvent.Error("连续 3 次请求失败，已自动停止（" + (it.message ?: "") + "）"))
+                                throw RuntimeException("连续 3 次请求失败，断路器触发")
+                            }
+                        }
                     } else {
                         throw e
                     }
