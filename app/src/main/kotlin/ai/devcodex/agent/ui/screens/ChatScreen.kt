@@ -954,10 +954,10 @@ private fun MsgActionBar(
         }
         if (msg.role == "user") {
             IconButton(onClick = onResend, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.Bolt, "重发", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Filled.ArrowUpward, "重发", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = onRewind, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.Schedule, "回退到这里", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Filled.ArrowDownward, "回退到这里", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {

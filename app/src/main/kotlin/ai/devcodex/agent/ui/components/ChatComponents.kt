@@ -396,7 +396,6 @@ fun InputBar(
                         }
                     }
                 }
-                }
                 // ===== 第二行：推理滑块独立一行（MD3 七档，Faster↔Smarter） =====
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -469,4 +468,5 @@ fun InputBar(
             }
         }
     }
+}
 
