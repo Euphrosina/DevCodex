@@ -157,6 +157,9 @@ class AgentEngine(
             }.getOrDefault("")
         }
         var systemPrompt = basePrompt + skillSection
+        // 角色卡/会话内 system 消息（如角色设定）拼进系统提示（修复角色卡提示词无法注入）
+        val extraSys = session.messages.filter { it.role == "system" && it.content.isNotBlank() }.joinToString("\n\n") { it.content }
+        if (extraSys.isNotBlank()) systemPrompt += "\n\n" + extraSys
         if (session.webSearch) {
             systemPrompt += "\n\n联网搜索模式已开启：对时效性问题，先用 http_request 工具搜索（可用 https://www.bing.com/search?q=... 或 https://duckduckgo.com/html/?q=... 抓取结果页并引用来源），综合搜索结果回答。"
         }

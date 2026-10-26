@@ -29,6 +29,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -64,6 +67,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -84,6 +88,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -156,10 +161,10 @@ fun ChatScreen(vm: AppViewModel) {
     LaunchedEffect(listState.firstVisibleItemIndex, sessionKey) {
         vm.chatScrollMap[sessionKey] = listState.firstVisibleItemIndex
     }
-    // 思考流式自动滚动：仅当用户位于列表底部附近才跟随（修复读上文被强制拉底）
+    // 思考流式自动滚动：用户滚动操作中不跟随（根治手动滑动回弹）+判定放宽到倒数 3 项
     LaunchedEffect(lastThinkingLen, isRunning) {
-        if (isRunning && messages.isNotEmpty() &&
-            listState.firstVisibleItemIndex >= (messages.size - 2).coerceAtLeast(0)) {
+        if (isRunning && messages.isNotEmpty() && !listState.isScrollInProgress &&
+            listState.firstVisibleItemIndex >= (messages.size - 3).coerceAtLeast(0)) {
             runCatching { listState.animateScrollToItem(messages.lastIndex) }
         }
     }
@@ -442,13 +447,18 @@ fun ChatScreen(vm: AppViewModel) {
                                                 onClick = {},
                                                 onLongClick = { selectedMsg = msg },
                                             )) {
-                                                if (false && streamingNow) {  // MD 实时渲染：改走 M3L 节流（保留分支但停用纯文本路径）
-                                                    Text(
-                                                        msg.content + " ▍",
-                                                        Modifier.fillMaxWidth(),
-                                                        style = MaterialTheme.typography.bodyLarge,
-                                                    )
-                                                } else {
+                                                if (false && streamingNow) {
+                                                    Text("", Modifier.fillMaxWidth())
+                                                } else if (false) {
+                                                } else Column(Modifier.fillMaxWidth()) {
+                                                    // Gemini 式流体：流式尾部 30 字符渐显 + ▍；完成后走 M3L 富渲染
+                                                    if (streamingNow) {
+                                                        val full = msg.content
+                                                        val head = full.dropLast(30)
+                                                        val tail = full.takeLast(30)
+                                                        if (head.isNotEmpty()) Text(head, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge)
+                                                        Text(tail + " ▍", Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge)
+                                                    } else {
                                                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                     ai.devcodex.agent.m3l.LocalCodeTheme provides settings.theme.codeTheme,
@@ -499,6 +509,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                 id = tc.id, role = "tool", toolCallId = tc.id,
                                                 toolName = tc.name, toolStatus = ToolStatus.RUNNING,
                                             ))
+                                        }
                                         }
                                         MessageStats(msg, session)
                                         // cccodroid：AI 消息底部操作栏（复制/回退/删除）
@@ -617,6 +628,56 @@ fun ChatScreen(vm: AppViewModel) {
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 chars.forEach { c ->
+                    var editThis by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    if (editThis) {
+                        var eName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(c.name) }
+                        var eDesc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(c.description) }
+                        var ePers by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(c.personality) }
+                        var eFirst by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(c.firstMes) }
+                        var eAvatar by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(c.avatar) }
+                        val avatarPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+                            androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                        ) { uri: android.net.Uri? ->
+                            if (uri != null) {
+                                runCatching {
+                                    val ctx2 = ai.devcodex.agent.tools.BuiltinTools.appContext()
+                                    val tmp = java.io.File(ctx2.cacheDir, "avatar_tmp")
+                                    ctx2.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
+                                    eAvatar = ai.devcodex.agent.data.CharacterRepo.importAvatar(eName, tmp) ?: eAvatar
+                                    tmp.delete()
+                                }
+                            }
+                        }
+                        AlertDialog(
+                            onDismissRequest = { editThis = false },
+                            title = { Text("编辑角色卡") },
+                            text = {
+                                Column(Modifier.verticalScroll(rememberScrollState())) {
+                                    OutlinedTextField(value = eName, onValueChange = { eName = it }, label = { Text("名字") }, singleLine = true)
+                                    Spacer(Modifier.height(6.dp))
+                                    OutlinedTextField(value = eDesc, onValueChange = { eDesc = it }, label = { Text("角色设定") }, minLines = 2)
+                                    Spacer(Modifier.height(6.dp))
+                                    OutlinedTextField(value = ePers, onValueChange = { ePers = it }, label = { Text("性格") })
+                                    Spacer(Modifier.height(6.dp))
+                                    OutlinedTextField(value = eFirst, onValueChange = { eFirst = it }, label = { Text("开场白") }, minLines = 2)
+                                    Spacer(Modifier.height(8.dp))
+                                    OutlinedButton(onClick = { avatarPicker.launch("image/*") }) {
+                                        Icon(Icons.Filled.Add, null, Modifier.size(14.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(if (eAvatar.isBlank()) "选择头像图片" else "已选头像：" + eAvatar.take(16), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    val updated = c.copy(name = eName.trim(), description = eDesc, personality = ePers, firstMes = eFirst, avatar = eAvatar)
+                                    if (vm.updateCharacter(c, updated)) { showCharacters = false; vm.toast.value = "角色已更新" }
+                                    else vm.toast.value = "更新失败"
+                                }) { Text("保存") }
+                            },
+                            dismissButton = { TextButton(onClick = { editThis = false }) { Text("取消") } },
+                        )
+                    }
                     Row(
                         Modifier.fillMaxWidth().clickable {
                             vm.startWithCharacter(c)
@@ -625,15 +686,17 @@ fun ChatScreen(vm: AppViewModel) {
                         }.padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        androidx.compose.foundation.layout.Box(
-                            Modifier.size(40.dp).background(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                androidx.compose.foundation.shape.CircleShape,
-                            ),
-                            contentAlignment = androidx.compose.ui.Alignment.Center,
-                        ) {
-                            Text(c.name.takeOrNull(1) ?: "角", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
+                        // 头像：导入图片优先，无则首字母
+                        val avFile = remember(c) { ai.devcodex.agent.data.CharacterRepo.avatarFile(c) }
+                        if (avFile != null) {
+                            val avBmp = remember(c) { android.graphics.BitmapFactory.decodeFile(avFile.absolutePath) }
+                            if (avBmp != null) {
+                                androidx.compose.foundation.Image(
+                                    bitmap = avBmp.asImageBitmap(), contentDescription = c.name,
+                                    modifier = Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                                )
+                            } else CharAvatarFallback(c)
+                        } else CharAvatarFallback(c)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(c.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -644,6 +707,7 @@ fun ChatScreen(vm: AppViewModel) {
                                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
                         }
+                        IconButton(onClick = { editThis = true }) { Icon(Icons.Filled.Schedule, "编辑", Modifier.size(16.dp)) }
                         IconButton(onClick = {
                             ai.devcodex.agent.data.CharacterRepo.delete(c.name)
                             showCharacters = false
@@ -1064,3 +1128,16 @@ private fun MsgActionBar(
 }
 
 private fun String.takeOrNull(n: Int): String? = if (isEmpty()) null else take(n)
+
+@Composable
+private fun CharAvatarFallback(c: ai.devcodex.agent.data.CharacterCard) {
+    androidx.compose.foundation.layout.Box(
+        Modifier.size(40.dp).background(
+            MaterialTheme.colorScheme.primaryContainer,
+            androidx.compose.foundation.shape.CircleShape,
+        ),
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        Text(c.name.takeOrNull(1) ?: "角", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+    }
+}

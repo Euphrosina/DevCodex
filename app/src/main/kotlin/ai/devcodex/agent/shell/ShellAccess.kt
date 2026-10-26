@@ -224,10 +224,16 @@ object ShellAccess {
     } catch (e: Exception) { "ERROR(root write): ${e.message}" }
 
     /** 旧 toybox 沙盒（保留备用：Linux rootfs 损坏时兜底） */
+    @Volatile private var curlEnsured = false
     suspend fun execSandbox(command: String): String {
-        // P2 审计修复：真 Termux 沙盒（bootstrap 的 bash/apt），失败回退 busybox
+        // 真 Termux 沙盒（bootstrap bash/apt），失败回退 busybox
         return runCatching {
             val ctx = ai.devcodex.agent.tools.BuiltinTools.appContext()
+            // 首次进入沙盒时装 curl/wget（网络工具缺失修复）
+            if (!curlEnsured) {
+                curlEnsured = true
+                runCatching { ai.devcodex.agent.shell.TermuxRuntime.exec(ctx, "command -v curl >/dev/null 2>&1 || (command -v apt >/dev/null 2>&1 && apt install -y curl wget 2>/dev/null) || true", timeoutSec = 120) }
+            }
             ai.devcodex.agent.shell.TermuxRuntime.exec(ctx, command, timeoutSec = 150)
         }.getOrElse { localExec(command) }
     }

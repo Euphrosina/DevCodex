@@ -340,6 +340,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         reloadSessions()
     }
 
+    fun updateCharacter(old: ai.devcodex.agent.data.CharacterCard, new: ai.devcodex.agent.data.CharacterCard): Boolean {
+        ai.devcodex.agent.data.CharacterRepo.delete(old.name)
+        return ai.devcodex.agent.data.CharacterRepo.save(new)
+    }
+
     fun importCharacter(jsonText: String): Boolean {
         val c = ai.devcodex.agent.data.CharacterRepo.importFromJson(jsonText) ?: return false
         return ai.devcodex.agent.data.CharacterRepo.save(c)

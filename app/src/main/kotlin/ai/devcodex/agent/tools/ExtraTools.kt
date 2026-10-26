@@ -63,15 +63,102 @@ object ExtraTools {
         }.getOrElse { "ERROR: ${it.message}" }
     }
 
+    // ============ APK 构建（Termux 工具链：aapt2+javac+d8+apksigner） ============
+    private val apkBuild: ToolDef = ToolDef(
+        name = "apk_build",
+        risk = ToolDef.Risk.MEDIUM,
+        description = "在工作区内构建 Android APK（Termux 工具链，缺件自动 pkg 安装）。参数 project_dir(必填，含 AndroidManifest.xml 与 java/res)。产出签名 output.apk。适合 Xposed/LSP 模块、小工具 app。",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("project_dir", obj { put("type", "string"); put("description", "工程目录（工作区相对路径）") })
+                put("keystore", obj { put("type", "string"); put("description", "可选签名密钥库，默认自动生成 debug 签名") })
+            })
+            put("required", req("project_dir"))
+        },
+    ) { args ->
+        val dir = ai.devcodex.agent.util.JsonArg.string(args, "project_dir") ?: return@ToolDef "ERROR: 缺少 project_dir"
+        val ks = ai.devcodex.agent.util.JsonArg.string(args, "keystore") ?: ""
+        val cmd = buildString {
+            append("cd \"\$HOME/workspace/").append(dir.trim('/')).append("\" && ")
+            append("(command -v aapt2 >/dev/null 2>&1 || pkg install -y aapt openjdk-17 d8-android-tools apksigner >/dev/null 2>&1 || true) && ")
+            append("mkdir -p build && aapt2 compile --dir res -o build/res.zip 2>/dev/null; ")
+            append("aapt2 link -o build/base.apk --manifest AndroidManifest.xml build/res.zip 2>/dev/null || aapt2 link -o build/base.apk --manifest AndroidManifest.xml; ")
+            append("find java -name '*.java' > build/sources.txt 2>/dev/null || find . -name '*.java' > build/sources.txt; ")
+            append("javac -classpath build/base.apk -d build/classes @build/sources.txt 2>&1 | head -30; ")
+            append("(cd build/classes && d8 \$(find . -name '*.class') --output ../dexout 2>/dev/null) && ")
+            append("cp build/dexout/*.dex build/ 2>/dev/null; (cd build && zip -j base.apk classes*.dex dexout/*.dex -q 2>/dev/null || zip -j base.apk *.dex -q); ")
+            if (ks.isNotBlank()) append("apksigner sign --ks \"").append(ks).append("\" --out output.apk base.apk && echo APK_SIGNED; ")
+            else append("(keytool -genkeypair -keystore build/debug.ks -storepass debugpass -keypass debugpass -alias debug -dname CN=DevCodex -keyalg RSA -validity 10000 2>/dev/null; apksigner sign --ks build/debug.ks --pass pass:debugpass --key-pass pass:debugpass --out output.apk base.apk) && echo APK_SIGNED; ")
+            append("ls -la output.apk 2>/dev/null || echo BUILD_FAILED_CHECK_LOG")
+        }
+        ai.devcodex.agent.shell.ShellAccess.execSandbox(cmd).take(2500)
+    }
+
+    // ============ native 构建（Termux clang：.so/.ko） ============
+    private val nativeBuild: ToolDef = ToolDef(
+        name = "native_build",
+        risk = ToolDef.Risk.MEDIUM,
+        description = "用 Termux clang 编译 native 产物。参数 src_dir(必填)、out(默认 out)、type(so|ko|o，默认 so)、kernel_dir(编 .ko 必填：内核源码树路径)。.so 直接可编；.ko 需提供匹配设备内核的源码树（无则返回说明）。",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("src_dir", obj { put("type", "string") })
+                put("out", obj { put("type", "string") })
+                put("type", obj { put("type", "string") })
+                put("kernel_dir", obj { put("type", "string") })
+            })
+            put("required", req("src_dir"))
+        },
+    ) { args ->
+        val dir = ai.devcodex.agent.util.JsonArg.string(args, "src_dir") ?: return@ToolDef "ERROR: 缺少 src_dir"
+        val out = ai.devcodex.agent.util.JsonArg.string(args, "out") ?: "out"
+        val type = ai.devcodex.agent.util.JsonArg.string(args, "type") ?: "so"
+        val kdir = ai.devcodex.agent.util.JsonArg.string(args, "kernel_dir") ?: ""
+        val cmd = when (type) {
+            "ko" -> if (kdir.isBlank()) "echo 'ERROR: 编 .ko 需要 kernel_dir（设备内核源码树）。'"
+            else "cd \"\$HOME/workspace/" + dir.trim('/') + "\" && clang -target aarch64-linux-android -I\"" + kdir + "/include\" -I\"" + kdir + "/arch/arm64/include\" -DKERNEL -c *.c -o ../" + out + ".o && ld -r -o ../" + out + ".ko ../" + out + ".o && echo KO_OK"
+            else -> "cd \"\$HOME/workspace/" + dir.trim('/') + "\" && clang -target aarch64-linux-android21 -shared -fPIC *.c -o ../" + out + ".so && echo SO_OK"
+        }
+        ai.devcodex.agent.shell.ShellAccess.execSandbox(cmd).take(2000)
+    }
+
+    // ============ JVM 跨平台构建（javac+jar） ============
+    private val jarBuild: ToolDef = ToolDef(
+        name = "jar_build",
+        risk = ToolDef.Risk.LOW,
+        description = "跨平台 JVM 构建：javac 编译 + jar 打包（产物可在任意 JVM 运行）。参数 src_dir(必填)、out(默认 app.jar)、main(主类全名，可选)。",
+        parameters = obj {
+            put("type", "object")
+            put("properties", obj {
+                put("src_dir", obj { put("type", "string") })
+                put("out", obj { put("type", "string") })
+                put("main", obj { put("type", "string") })
+            })
+            put("required", req("src_dir"))
+        },
+    ) { args ->
+        val dir = ai.devcodex.agent.util.JsonArg.string(args, "src_dir") ?: return@ToolDef "ERROR: 缺少 src_dir"
+        val out = ai.devcodex.agent.util.JsonArg.string(args, "out") ?: "app.jar"
+        val main = ai.devcodex.agent.util.JsonArg.string(args, "main") ?: ""
+        val fixed = if (main.isBlank())
+            "cd \"\$HOME/workspace/" + dir.trim('/') + "\" && find . -name '*.java' > srcs.txt && javac -d classes @srcs.txt && (cd classes && jar cf ../../" + out + " .) && ls -la ../../" + out + " && echo JAR_OK"
+        else
+            "cd \"\$HOME/workspace/" + dir.trim('/') + "\" && find . -name '*.java' > srcs.txt && javac -d classes @srcs.txt && jar cfe ../../" + out + " " + main + " -C classes . && ls -la ../../" + out + " && echo JAR_OK"
+        ai.devcodex.agent.shell.ShellAccess.execSandbox(fixed).take(2000)
+    }
+
+
     // ============ 2. 浏览器渲染（WebView 离屏执行 JS 取文本） ============
     val browserRender = ToolDef(
         name = "browser_render",
-        description = "浏览器渲染网页（执行 JS 后提取正文文本）。参数 url(必填)、timeout_sec(可选默认12)。适合 SPA/动态页面（http_request 拿不到内容时用这个）",
+        description = "无头浏览器渲染网页（执行 JS 后提取正文文本，可截图）。参数 url(必填)、timeout_sec(默认12)、screenshot(可选，true 时保存整页截图到工作区并返回路径)。",
         parameters = obj {
             put("type", "object")
             put("properties", obj {
                 put("url", obj { put("type", "string") })
                 put("timeout_sec", obj { put("type", "integer") })
+                put("screenshot", obj { put("type", "boolean") })
             })
             put("required", req("url"))
         },
@@ -79,9 +166,11 @@ object ExtraTools {
     ) { args ->
         val url = JsonArg.string(args, "url") ?: return@ToolDef "ERROR: 缺少 url"
         val timeout = (JsonArg.int(args, "timeout_sec") ?: 12) * 1000L
+        val wantShot = args.contains("screenshot") && args.contains("true")
         val latch = CountDownLatch(1)
         var text = ""
         var title = ""
+        var shotPath = ""
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             runCatching {
                 val wv = android.webkit.WebView(ctx())
@@ -94,6 +183,21 @@ object ExtraTools {
                         ) { r ->
                             text = r?.trim('"')?.replace("\\n", "\n") ?: ""
                             title = t ?: ""
+                            if (wantShot) {
+                                runCatching {
+                                    view?.measure(
+                                        android.view.View.MeasureSpec.makeMeasureSpec(1080, android.view.View.MeasureSpec.EXACTLY),
+                                        android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED),
+                                    )
+                                    view?.layout(0, 0, view?.measuredWidth ?: 1080, view?.measuredHeight ?: 1000)
+                                    val b = android.graphics.Bitmap.createBitmap(view?.measuredWidth ?: 1080, view?.measuredHeight ?: 1000, android.graphics.Bitmap.Config.ARGB_8888)
+                                    view?.draw(android.graphics.Canvas(b))
+                                    val f = java.io.File(ai.devcodex.agent.tools.BuiltinTools.appContext().filesDir, "workspace/shot_" + System.currentTimeMillis() + ".png")
+                                    f.parentFile?.mkdirs()
+                                    f.outputStream().use { b.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it) }
+                                    shotPath = f.absolutePath
+                                }
+                            }
                             latch.countDown()
                             view?.destroy()
                         }
@@ -106,7 +210,8 @@ object ExtraTools {
             }
         }
         latch.await(timeout + 3000L, TimeUnit.MILLISECONDS)
-        text.ifBlank { "ERROR: 页面加载超时或无文本" }.let { "[$title]\n$it" }
+        val base = text.ifBlank { "ERROR: 页面加载超时或无文本" }.let { "[$title]\n$it" }
+        if (shotPath.isNotBlank()) base + "\n[截图已保存: $shotPath]" else base
     }
 
     // ============ 3. 图像信息 ============
@@ -593,7 +698,7 @@ object ExtraTools {
         webSearch, browserRender, imageInfo, imageConvert,
         pipelineRun, bgList, bgKill, calendarList, calendarAdd,
         clipboardWrite, notifyPost, alarmSet, shareContent, calendarOpen,
-        sandboxPkgInstall, pythonRun, nodeRun, vibrate, openUrl,
+        sandboxPkgInstall, pythonRun, nodeRun, apkBuild, nativeBuild, jarBuild, vibrate, openUrl,
         screenshotTake, clipboardGet, wifiState,
     )
 }

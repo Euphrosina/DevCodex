@@ -29,6 +29,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -1030,7 +1032,33 @@ private fun AboutPage(onBack: () -> Unit) {
         }
         Spacer(Modifier.padding(10.dp))
 
-        // 反馈信息
+        // QQ 群卡（DeepSeek 群）：一行式链接卡（rikkahub LinkItem 风格）
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                runCatching {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://qun.qq.com/universal-share/share?ac=1&authKey=Y0p5CQQcAr6zABChA7uCRctrZqMAJ9XomRgVVRlE1Zt5W9qha%2FqGOkIjqf%2FkMlDf&busi_data=eyJncm91cENvZGUiOiIyMDgxODE2MDQiLCJ0b2tlbiI6IkI0VGE3a0VaL1Q1a3lWYkJYNm5zMU1SeHZnMUozSGxyV0JiVHN5QkQvNXZNUkZnb0taelB0TXpVMEJyQzVoN24iLCJ1aW4iOiIzNjMzMTkwMjY5In0%3D&data=sLRegEFQPFXCtZOVjO6-UPMgaZVw_71eem7w0ii5tcwH8kihxzyXmFDF9twUHtaSUhc43RKwOvcBU4Xa0LRFXQ&svctype=4&tempid=h5_group_info")))
+                }
+            },
+        ) {
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("💬", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.padding(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("点击链接加入群聊【𝑫𝒆𝒆𝒑𝑺𝒆𝒆𝒌】", style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    Text("问题反馈 / 交流 / 新版本通知", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        // 链接列表（rikkahub 式：官网（暂无）/源码/隐私）
+        ListItem(
+            headlineContent = { Text("官网") },
+            supportingContent = { Text("暂无（开源仓库即主页）", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingContent = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        )
         ListItem(
             headlineContent = { Text("反馈意见") },
             supportingContent = { Text("QQ：3633190269\n邮箱：Lv520e3e4@163.com", fontFamily = FontFamily.Monospace) },

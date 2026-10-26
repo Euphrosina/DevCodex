@@ -9,10 +9,10 @@ import java.io.File
 @Serializable
 data class CharacterCard(
     val name: String = "",
-    val description: String = "",      // 角色设定（人格核心）
+    val description: String = "",
     val personality: String = "",
     val scenario: String = "",
-    val firstMes: String = "",         // 开场白
+    val firstMes: String = "",
     val mesExample: String = "",
     val creatorNotes: String = "",
     val systemPrompt: String = "",
@@ -21,6 +21,7 @@ data class CharacterCard(
     val tags: List<String> = emptyList(),
     val creator: String = "",
     val characterVersion: String = "v2",
+    val avatar: String = "",
 )
 
 object CharacterRepo {
@@ -40,12 +41,20 @@ object CharacterRepo {
         true
     }.getOrDefault(false)
 
+    fun importAvatar(name: String, src: File): String? = runCatching {
+        val ext = if (src.extension.isBlank()) "png" else src.extension
+        val dest = File(dir, "avatar_" + name.replace(Regex("[/\\\\:*?\"<>|]"), "_") + "." + ext)
+        src.copyTo(dest, overwrite = true)
+        dest.name
+    }.getOrNull()
+
+    fun avatarFile(c: CharacterCard): File? = c.avatar.takeIf { it.isNotBlank() }?.let { File(dir, it).takeIf(File::exists) }
+
     fun delete(name: String): Boolean = runCatching {
         val safe = name.replace(Regex("[/\\\\:*?\"<>|]"), "_")
         File(dir, "$safe.json").delete()
     }.getOrDefault(false)
 
-    /** 导入 SillyTavern V2/V1 JSON（data 包装或平铺两种格式） */
     fun importFromJson(text: String): CharacterCard? = runCatching {
         val root = json.parseToJsonElement(text).let { it as? kotlinx.serialization.json.JsonObject } ?: return null
         val data = (root["data"] as? kotlinx.serialization.json.JsonObject)
