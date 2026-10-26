@@ -182,13 +182,13 @@ class AgentEngine(
                         }
                     }
                 }
-                // 自动压缩：按会话上下文档位（覆盖或模型上限）的 60% 触发
+                // 自动压缩：按会话上下文档位（覆盖或模型上限）的 20% 触发（提前压缩防溢出）
                 if (s.autoCompact) {
                     val ctxLimit = (session.contextOverride.takeIf { it > 0 }
                         ?: ai.devcodex.agent.provider.ModelRegistry.lookup(model).contextLength
                         ?: 128_000)
                     val estTokens = turns.sumOf { (it.content.length / 2.5 + it.toolCalls.size * 50).toLong() }
-                    if (estTokens > (ctxLimit * 0.6).toLong() && turns.size > 8) {
+                    if (estTokens > (ctxLimit * 0.2).toLong() && turns.size > 8) {
                         val keepHead = 2
                         val keepTail = 6
                         val dropped = turns.subList(keepHead, turns.size - keepTail)

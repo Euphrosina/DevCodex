@@ -28,12 +28,14 @@ object FlexFonts {
     val AnthropicSerif by lazy { FontFamily(androidx.compose.ui.text.font.Font(R.font.anthropic_serif)) }
     val OplusSerif by lazy { FontFamily(androidx.compose.ui.text.font.Font(R.font.oplus_serif)) }
 
-    fun byId(id: String): FontFamily = when (id) {
-        "gsf" -> GoogleSansFlex
-        "mono" -> JetBrainsMono
-        "serif" -> FontFamily.Serif
-        "anthropic" -> AnthropicSerif
-        "oplus" -> OplusSerif
+    fun byId(id: String): FontFamily = when {
+        id.startsWith("custom:") -> ai.devcodex.agent.tools.BuiltinTools.appContext()
+            ?.let { CustomFonts.family(it, id.removePrefix("custom:")) } ?: System
+        id == "gsf" -> GoogleSansFlex
+        id == "mono" -> JetBrainsMono
+        id == "serif" -> FontFamily.Serif
+        id == "anthropic" -> AnthropicSerif
+        id == "oplus" -> OplusSerif
         else -> System
     }
 }
@@ -50,6 +52,7 @@ private fun flexStyle(size: Int, weight: FontWeight, mono: Boolean = false): Tex
 /** M3 排版：应用字体(appFont) + 对话字体(chatFont) 双轨 */
 fun dcTypography(appFont: String = "gsf", chatFont: String = "gsf"): Typography {
     val chatMono = chatFont == "mono"
+    val chatFamily = FlexFonts.byId(chatFont)   // 对话字体全量支持（anthropic/oplus/serif/mono/gsf）
     val base = Typography(
         displaySmall = flexStyle(36, FontWeight.Normal),
         headlineLarge = flexStyle(32, FontWeight.Normal),
@@ -66,17 +69,23 @@ fun dcTypography(appFont: String = "gsf", chatFont: String = "gsf"): Typography 
         labelSmall = flexStyle(11, FontWeight.Medium),
     )
     val appFamily = FlexFonts.byId(appFont)
-    if (appFamily == FlexFonts.GoogleSansFlex) return base
-    return base.copy(
-        displaySmall = base.displaySmall.copy(fontFamily = appFamily),
-        headlineLarge = base.headlineLarge.copy(fontFamily = appFamily),
-        headlineMedium = base.headlineMedium.copy(fontFamily = appFamily),
-        headlineSmall = base.headlineSmall.copy(fontFamily = appFamily),
-        titleLarge = base.titleLarge.copy(fontFamily = appFamily),
-        titleMedium = base.titleMedium.copy(fontFamily = appFamily),
-        titleSmall = base.titleSmall.copy(fontFamily = appFamily),
-        labelLarge = base.labelLarge.copy(fontFamily = appFamily),
-        labelMedium = base.labelMedium.copy(fontFamily = appFamily),
-        labelSmall = base.labelSmall.copy(fontFamily = appFamily),
+    // 对话字体（body 三级）应用 chatFont 家族（anthropic/oplus/serif 实时生效）
+    val withChat = if (chatFamily == FlexFonts.GoogleSansFlex) base else base.copy(
+        bodyLarge = base.bodyLarge.copy(fontFamily = chatFamily),
+        bodyMedium = base.bodyMedium.copy(fontFamily = chatFamily),
+        bodySmall = base.bodySmall.copy(fontFamily = chatFamily),
+    )
+    if (appFamily == FlexFonts.GoogleSansFlex) return withChat
+    return withChat.copy(
+        displaySmall = withChat.displaySmall.copy(fontFamily = appFamily),
+        headlineLarge = withChat.headlineLarge.copy(fontFamily = appFamily),
+        headlineMedium = withChat.headlineMedium.copy(fontFamily = appFamily),
+        headlineSmall = withChat.headlineSmall.copy(fontFamily = appFamily),
+        titleLarge = withChat.titleLarge.copy(fontFamily = appFamily),
+        titleMedium = withChat.titleMedium.copy(fontFamily = appFamily),
+        titleSmall = withChat.titleSmall.copy(fontFamily = appFamily),
+        labelLarge = withChat.labelLarge.copy(fontFamily = appFamily),
+        labelMedium = withChat.labelMedium.copy(fontFamily = appFamily),
+        labelSmall = withChat.labelSmall.copy(fontFamily = appFamily),
     )
 }

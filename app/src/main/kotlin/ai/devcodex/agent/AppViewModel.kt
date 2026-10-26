@@ -291,6 +291,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun getPreferences(): android.content.SharedPreferences =
         getApplication<android.app.Application>().getSharedPreferences("devcodex_stats", android.content.Context.MODE_PRIVATE)
 
+    fun compactSessionNow() {
+        val s = _activeSession.value ?: return
+        val msgs = s.messages
+        if (msgs.size <= 8) { toast.value = "会话太短，无需压缩"; return }
+        val keepHead = 2
+        val keepTail = 6
+        val sb = StringBuilder("（前文摘要：手动压缩于 " + java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date()) + "）\n")
+        msgs.drop(keepHead).dropLast(keepTail).forEach { m ->
+            when (m.role) {
+                "user" -> sb.append("[用户] ").append(m.content.take(120)).append("\n")
+                "assistant" -> sb.append("[AI] ").append(m.content.take(150)).append("\n")
+                "tool" -> sb.append("[工具 ").append(m.toolName ?: "").append("] ").append((m.toolResult ?: "").take(80)).append("\n")
+            }
+        }
+        val compacted = s.copy(messages = msgs.take(keepHead) + listOf(
+            ai.devcodex.agent.data.Message(id = java.util.UUID.randomUUID().toString(), role = "user", content = sb.toString(), timestamp = System.currentTimeMillis()),
+            ai.devcodex.agent.data.Message(id = java.util.UUID.randomUUID().toString(), role = "assistant", content = "（已了解前文摘要，继续）", timestamp = System.currentTimeMillis()),
+        ) + msgs.takeLast(keepTail), updatedAt = System.currentTimeMillis())
+        _activeSession.value = compacted
+        viewModelScope.launch { sessionRepo.save(compacted); reloadSessions() }
+        toast.value = "已压缩：保留头 2 尾 6 + 摘要"
+    }
+
     fun rewindTo(msgId: String) {
         val s = _activeSession.value ?: return
         val idx = s.messages.indexOfFirst { it.id == msgId }

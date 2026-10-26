@@ -330,6 +330,10 @@ fun ChatScreen(vm: AppViewModel) {
                         IconButton(onClick = { vm.navRequest.value = "providers" }) {
                             Icon(Icons.Filled.AutoAwesome, "提供商")
                         }
+                        // 随时手动压缩会话
+                        IconButton(onClick = { vm.compactSessionNow() }) {
+                            Icon(Icons.Filled.Schedule, "压缩会话")
+                        }
                         // 终端直达
                         IconButton(onClick = { vm.navRequest.value = "terminal" }) {
                             Icon(Icons.Filled.Dvr, "终端")

@@ -161,7 +161,7 @@ fun ProvidersScreen(vm: AppViewModel) {
                         Text("选一个快速开始（Base URL 已填好，只需填 Key）；或拉到底选「自定义」", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         // 双列卡片（Operit 式）
                         LazyVerticalGrid(
-                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(4),
                             modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),

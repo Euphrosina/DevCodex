@@ -380,6 +380,42 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
             }
         }
         Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
+        // 自定义字体导入（rikkahub 式：选 ttf/otf → filesDir/fonts → 芯片列表可选）
+        val fontPicker = rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.GetContent()
+        ) { uri: android.net.Uri? ->
+            if (uri != null) {
+                runCatching {
+                    val fCtx = ai.devcodex.agent.tools.BuiltinTools.appContext()
+                    val tmp = java.io.File(fCtx.cacheDir, "font_import_" + System.currentTimeMillis())
+                    fCtx.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
+                    val name = ai.devcodex.agent.theme.CustomFonts.import(fCtx, tmp)
+                    if (name != null) { save { it.copy(chatFont = "custom:" + name) }; vm.toast.value = "字体已导入: " + name } else vm.toast.value = "导入失败"
+                    tmp.delete()
+                }
+            }
+        }
+        OutlinedButton(onClick = { fontPicker.launch("*/*") }) {
+            Icon(Icons.Filled.Add, null, Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("导入自定义字体（ttf/otf）", style = MaterialTheme.typography.labelSmall)
+        }
+        val fCtx2 = ai.devcodex.agent.tools.BuiltinTools.appContext()
+        val customFontNames = androidx.compose.runtime.remember { ai.devcodex.agent.theme.CustomFonts.list(fCtx2) }
+        if (customFontNames.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                customFontNames.forEach { name ->
+                    FilterChip(
+                        selected = t.chatFont == "custom:" + name,
+                        onClick = { save { it.copy(chatFont = "custom:" + name) } },
+                        label = { Text("Aa " + name.take(8), style = MaterialTheme.typography.labelSmall) },
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
         Text("对话字体（聊天气泡）", style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
