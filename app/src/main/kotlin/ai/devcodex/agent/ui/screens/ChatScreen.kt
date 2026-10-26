@@ -123,6 +123,7 @@ fun ChatScreen(vm: AppViewModel) {
     val scope = rememberCoroutineScope()
     var input by remember { mutableStateOf("") }
     var showModelPicker by remember { mutableStateOf(false) }
+    var showCharacters by remember { mutableStateOf(false) }
     var crashReport by remember { mutableStateOf<String?>(null) }
     var selectedMsg by remember { mutableStateOf<Message?>(null) }
     val listState = rememberLazyListState()
@@ -201,6 +202,17 @@ fun ChatScreen(vm: AppViewModel) {
                         vm.openSession(null)
                         scope.launch { drawerState.close() }
                     }) { Icon(Icons.Filled.Add, "新建") }
+                }
+                HorizontalDivider()
+                // 角色卡（Operit 式）：列表 + JSON 导入 + 点击开聊
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Psychology, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text("角色卡", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { showCharacters = true }) { Text("查看/导入") }
                 }
                 HorizontalDivider()
                 // 会话列表（重设计）：日期分组 + 最后消息预览 + 相对时间 + 选中卡
@@ -430,7 +442,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                 onClick = {},
                                                 onLongClick = { selectedMsg = msg },
                                             )) {
-                                                if (streamingNow) {
+                                                if (false && streamingNow) {  // MD 实时渲染：改走 M3L 节流（保留分支但停用纯文本路径）
                                                     Text(
                                                         msg.content + " ▍",
                                                         Modifier.fillMaxWidth(),
@@ -466,7 +478,12 @@ fun ChatScreen(vm: AppViewModel) {
                                                         },
                                                     ) {
                                                         ai.devcodex.agent.m3l.MixedMarkdownLatex(
-                                                            text = msg.content,
+                                                            text = if (streamingNow) {
+                                                                // MD 实时渲染节流：300ms 采样一次（防 token 级全量重排）
+                                                                var lastRender by androidx.compose.runtime.remember(idx) { androidx.compose.runtime.mutableStateOf("") }
+                                                                if (msg.content.length - lastRender.length > 60) lastRender = msg.content
+                                                                lastRender
+                                                            } else msg.content,
                                                             textColor = MaterialTheme.colorScheme.onSurface,
                                                             isStreaming = false,
                                                         )
@@ -568,6 +585,77 @@ fun ChatScreen(vm: AppViewModel) {
         }
     }
 
+    // 角色卡 BottomSheet
+    if (showCharacters) {
+        val chars = androidx.compose.runtime.remember { ai.devcodex.agent.data.CharacterRepo.list() }
+        val charPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.GetContent()
+        ) { uri: android.net.Uri? ->
+            if (uri != null) {
+                runCatching {
+                    val text = ai.devcodex.agent.tools.BuiltinTools.appContext().contentResolver.openInputStream(uri)?.bufferedReader()?.readText() ?: ""
+                    if (text.isNotBlank()) {
+                        if (vm.importCharacter(text)) vm.toast.value = "角色卡已导入"
+                        else vm.toast.value = "导入失败：格式不支持"
+                    }
+                }
+            }
+        }
+        ModalBottomSheet(onDismissRequest = { showCharacters = false }) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("角色卡", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    androidx.compose.material3.OutlinedButton(onClick = { charPicker.launch("application/json") }) {
+                        Icon(Icons.Filled.Add, null, Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("导入 JSON", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                if (chars.isEmpty()) {
+                    Text("暂无角色卡。导入 SillyTavern/Operit 格式 JSON（V2 data 包装或 V1 平铺均支持）。",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                chars.forEach { c ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            vm.startWithCharacter(c)
+                            showCharacters = false
+                            scope.launch { drawerState.close() }
+                        }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.size(40.dp).background(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                androidx.compose.foundation.shape.CircleShape,
+                            ),
+                            contentAlignment = androidx.compose.ui.Alignment.Center,
+                        ) {
+                            Text(c.name.takeOrNull(1) ?: "角", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(c.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                c.description.ifBlank { "（无设定）" },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        IconButton(onClick = {
+                            ai.devcodex.agent.data.CharacterRepo.delete(c.name)
+                            showCharacters = false
+                            vm.toast.value = "已删除角色"
+                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(16.dp)) }
+                    }
+                    androidx.compose.material3.HorizontalDivider()
+                }
+            }
+        }
+    }
+
     // 模型选择（MChat 式：紧凑单行列表 + 选中指示 + 分组小字头）
     if (showModelPicker) {
         var query by remember { mutableStateOf("") }
@@ -653,14 +741,18 @@ fun ChatScreen(vm: AppViewModel) {
                                         meta.contextLength?.let { add("ctx " + (it / 1000) + "k" to 0xFF5F6368) }
                                         if (meta === ai.devcodex.agent.provider.ModelMeta.Companion.UNKNOWN) add("自定义" to 0xFF5F6368)
                                     }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    // 徽章单行限宽（防重叠/溢出）
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.fillMaxWidth(0.9f),
+                                    ) {
                                         badges.forEach { (t, c) ->
                                             Box(
                                                 Modifier
                                                     .background(androidx.compose.ui.graphics.Color(c).copy(alpha = 0.14f), RoundedCornerShape(4.dp))
                                                     .padding(horizontal = 5.dp, vertical = 1.dp)
                                             ) {
-                                                Text(t, style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color(c))
+                                                Text(t, style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color(c), maxLines = 1, softWrap = false)
                                             }
                                         }
                                     }
@@ -970,3 +1062,5 @@ private fun MsgActionBar(
         }
     }
 }
+
+private fun String.takeOrNull(n: Int): String? = if (isEmpty()) null else take(n)

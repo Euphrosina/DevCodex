@@ -28,9 +28,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,11 +42,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import ai.devcodex.agent.AppViewModel
@@ -76,6 +83,43 @@ fun WorkspaceScreen(vm: AppViewModel) {
                         IconButton(onClick = {
                             currentDir = currentDir.substringBeforeLast('/').ifBlank { "" }
                         }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                    }
+                },
+                actions = {
+                    // 新建文件 / 新建文件夹（速度抽屉：折叠菜单）
+                    var showNewMenu by remember { mutableStateOf(false) }
+                    var showNewFile by remember { mutableStateOf(false) }
+                    var showNewDir by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showNewMenu = true }) { Icon(Icons.Filled.Add, "新建") }
+                    DropdownMenu(expanded = showNewMenu, onDismissRequest = { showNewMenu = false }) {
+                        DropdownMenuItem(text = { Text("新建文件") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.InsertDriveFile, null, Modifier.size(18.dp)) }, onClick = { showNewMenu = false; showNewFile = true })
+                        DropdownMenuItem(text = { Text("新建文件夹") }, leadingIcon = { Icon(Icons.Filled.Folder, null, Modifier.size(18.dp)) }, onClick = { showNewMenu = false; showNewDir = true })
+                    }
+                    if (showNewFile || showNewDir) {
+                        var name by remember(showNewFile, showNewDir) { mutableStateOf("") }
+                        AlertDialog(
+                            onDismissRequest = { showNewFile = false; showNewDir = false },
+                            title = { Text(if (showNewFile) "新建文件" else "新建文件夹") },
+                            text = {
+                                OutlinedTextField(
+                                    value = name, onValueChange = { name = it },
+                                    label = { Text("名称") },
+                                    singleLine = true,
+                                    supportingText = { Text("在 " + (currentDir.ifBlank { "工作区根目录" }) + " 下创建") },
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    if (name.isNotBlank()) {
+                                        val path = (currentDir.ifBlank { "" }) + (if (currentDir.isNotBlank()) "/" else "") + name.trim()
+                                        val ok = if (showNewFile) repo.createFile(path) else repo.createDir(path)
+                                        if (ok) refresh++ else vm.toast.value = "创建失败（可能已存在）"
+                                    }
+                                    showNewFile = false; showNewDir = false
+                                }) { Text("创建") }
+                            },
+                            dismissButton = { TextButton(onClick = { showNewFile = false; showNewDir = false }) { Text("取消") } },
+                        )
                     }
                 },
             )
@@ -135,37 +179,57 @@ fun WorkspaceScreen(vm: AppViewModel) {
         }
     }
 
-    // 文件预览
+    // 文件预览（大卡片 BottomSheet：文本/代码可滚+图片直读+复制引用/删除）
     preview?.let { e ->
-        AlertDialog(
-            onDismissRequest = { preview = null },
-            title = { Text(e.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        "${repo.formatSize(e.size)} · ${e.relativePath}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        ModalBottomSheet(onDismissRequest = { preview = null }) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Icon(
+                        if (e.isDir) Icons.Filled.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
+                        null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary,
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(e.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "${repo.formatSize(e.size)} · ${repo.formatDate(e.modified)} · ${e.relativePath}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(12.dp))
+                val isImg = e.file.extension.lowercase() in listOf("png", "jpg", "jpeg", "webp", "gif", "bmp")
+                if (isImg) {
+                    val bmp = remember(e) { repo.readImage(e) }
+                    if (bmp != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = e.name,
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                        )
+                    } else Text("（图片解码失败）", style = MaterialTheme.typography.bodySmall)
+                } else if (repo.isTextFile(e)) {
                     Text(
-                        if (repo.isTextFile(e)) WorkspaceRepo.textPreview(e.file)
-                        else "（二进制文件，AI 可通过路径访问：${e.relativePath}）",
+                        WorkspaceRepo.textPreview(e.file),
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                    )
+                } else {
+                    Text(
+                        "（二进制文件，AI 可通过路径访问：${e.relativePath}）",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            },
-            confirmButton = {
-                val clipboard = LocalClipboardManager.current
-                TextButton(onClick = {
-                    clipboard.setText(AnnotatedString("@${e.name}"))
-                    preview = null
-                }) { Text("复制引用") }
-            },
-            dismissButton = {
-                TextButton(onClick = { preview = null }) { Text("关闭") }
-            },
-        )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    val clipboard = LocalClipboardManager.current
+                    TextButton(onClick = { clipboard.setText(AnnotatedString("@${e.name}")); vm.toast.value = "已复制引用" }) { Text("复制引用") }
+                    TextButton(onClick = { repo.delete(e.relativePath); preview = null; refresh++ }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                    androidx.compose.material3.Button(onClick = { preview = null }) { Text("关闭") }
+                }
+            }
+        }
     }
 }

@@ -68,6 +68,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var latestSettings = AppSettings()
 
     init {
+        runCatching { ai.devcodex.agent.data.CharacterRepo.init(getApplication()) }
         viewModelScope.launch {
             settings.collect { latestSettings = it }
         }
@@ -312,6 +313,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _activeSession.value = compacted
         viewModelScope.launch { sessionRepo.save(compacted); reloadSessions() }
         toast.value = "已压缩：保留头 2 尾 6 + 摘要"
+    }
+
+    // 角色卡开聊（Operit 式：设定→system，开场白→assistant 首条）
+    fun startWithCharacter(c: ai.devcodex.agent.data.CharacterCard) {
+        val sys = buildString {
+            append("你将扮演角色：").append(c.name).append("\n")
+            if (c.description.isNotBlank()) append("【角色设定】\n").append(c.description).append("\n")
+            if (c.personality.isNotBlank()) append("【性格】\n").append(c.personality).append("\n")
+            if (c.scenario.isNotBlank()) append("【场景】\n").append(c.scenario).append("\n")
+            if (c.systemPrompt.isNotBlank()) append("【系统指令】\n").append(c.systemPrompt).append("\n")
+            if (c.postHistoryInstructions.isNotBlank()) append("【持续指令】\n").append(c.postHistoryInstructions).append("\n")
+        }
+        val s = sessionRepo.newSession()
+        val msgs = buildList {
+            add(ai.devcodex.agent.data.Message(
+                id = java.util.UUID.randomUUID().toString(), role = "system", content = sys,
+                timestamp = System.currentTimeMillis()))
+            if (c.firstMes.isNotBlank()) add(ai.devcodex.agent.data.Message(
+                id = java.util.UUID.randomUUID().toString(), role = "assistant", content = c.firstMes,
+                timestamp = System.currentTimeMillis()))
+        }
+        val withChar = s.copy(title = "角色 · " + c.name, messages = msgs)
+        sessionRepo.save(withChar)
+        _activeSession.value = withChar
+        reloadSessions()
+    }
+
+    fun importCharacter(jsonText: String): Boolean {
+        val c = ai.devcodex.agent.data.CharacterRepo.importFromJson(jsonText) ?: return false
+        return ai.devcodex.agent.data.CharacterRepo.save(c)
     }
 
     fun rewindTo(msgId: String) {

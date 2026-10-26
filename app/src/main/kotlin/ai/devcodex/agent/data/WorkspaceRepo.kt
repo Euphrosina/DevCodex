@@ -78,6 +78,23 @@ class WorkspaceRepo(private val context: Context) {
         }
     }.getOrNull() ?: uri.lastPathSegment
 
+    /** 新建文件（自动跳过已存在） */
+    fun createFile(relativePath: String): Boolean = runCatching {
+        val f = resolve(relativePath)
+        f.parentFile?.mkdirs()
+        f.createNewFile()
+    }.getOrDefault(false)
+
+    /** 新建文件夹 */
+    fun createDir(relativePath: String): Boolean = runCatching {
+        resolve(relativePath).mkdirs()
+    }.getOrDefault(false)
+
+    fun readText(e: Entry): String = e.file.readText()
+
+    fun readImage(e: Entry): android.graphics.Bitmap? =
+        android.graphics.BitmapFactory.decodeFile(e.file.absolutePath)
+
     fun delete(relPath: String): Boolean = resolve(relPath).deleteRecursively()
 
     fun read(relPath: String): String = resolve(relPath).readText()
