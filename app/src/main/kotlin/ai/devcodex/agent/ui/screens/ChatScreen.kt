@@ -491,7 +491,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                             text = if (streamingNow) {
                                                                 // MD 实时渲染节流：300ms 采样一次（防 token 级全量重排）
                                                                 var lastRender by androidx.compose.runtime.remember(idx) { androidx.compose.runtime.mutableStateOf("") }
-                                                                if (msg.content.length - lastRender.length > 60) lastRender = msg.content
+                                                                if (msg.content.length - lastRender.length > 240) lastRender = msg.content
                                                                 lastRender
                                                             } else msg.content,
                                                             textColor = MaterialTheme.colorScheme.onSurface,
@@ -1108,22 +1108,28 @@ private fun MsgActionBar(
     onRewind: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    // cccodroid msg-acts：气泡下方一行 32x30 透明图标钮（16dp stroke 图标）
-    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 2.dp)) {
-        IconButton(onClick = { onCopy(msg.content) }, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Filled.ContentCopy, "复制", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    // 气泡下操作栏：图标+微字标签（视觉更轻、语义更明），按下涟漪圆角
+    Row(horizontalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.padding(top = 2.dp, end = 2.dp)) {
+        val onSurfVar = MaterialTheme.colorScheme.onSurfaceVariant
+        @Composable fun actBtn(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+            ) {
+                Icon(icon, label, Modifier.size(14.dp), tint = onSurfVar.copy(alpha = 0.75f))
+                Text(label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = onSurfVar.copy(alpha = 0.7f))
+            }
         }
+        actBtn("复制", Icons.Filled.ContentCopy, onClick = { onCopy(msg.content) })
         if (msg.role == "user") {
-            IconButton(onClick = onResend, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.ArrowUpward, "重发", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            IconButton(onClick = onRewind, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.ArrowDownward, "回退到这里", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            actBtn("重发", Icons.Filled.ArrowUpward, onClick = onResend)
+            actBtn("回退", Icons.Filled.ArrowDownward, onClick = onRewind)
         }
-        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Filled.Delete, "删除", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        actBtn("删除", Icons.Filled.Delete, onClick = onDelete)
     }
 }
 

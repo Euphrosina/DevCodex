@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.compose.NavHost
@@ -57,6 +58,10 @@ fun AppRoot(vm: AppViewModel) {
     }
     var tabIdx by remember { mutableIntStateOf(0) }
     val nav = rememberNavController()
+    // ===== 完整响应式断点（Material3 WindowSizeClass 手写版）=====
+    // compact <600dp：手机单栏  medium 600-840dp：底部导航  expanded ≥840dp：左侧常驻 NavigationRail
+    var isExpanded by remember { mutableStateOf(false) }
+    var isMedium by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val settings by vm.settings.collectAsState(initial = AppSettings())
     val theme = settings.theme
@@ -71,6 +76,11 @@ fun AppRoot(vm: AppViewModel) {
             }
         }
     }
+
+    // 断点检测（LocalConfiguration 尺寸变化重算）
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    isExpanded = cfg.screenWidthDp >= 840
+    isMedium = cfg.screenWidthDp >= 600
 
     LaunchedEffect(Unit) {
         vm.toast.collect { msg -> msg?.let { snackbar.showSnackbar(it); vm.toast.value = null } }
@@ -121,7 +131,8 @@ fun AppRoot(vm: AppViewModel) {
 
     Surface(color = MaterialTheme.colorScheme.background) {
         when {
-            theme.navPosition == "rail" && showNav -> {
+            // 完整响应式：expanded（≥840dp）自动切左侧常驻 NavigationRail，手动 rail 设置同样生效
+            (theme.navPosition == "rail" || isExpanded) && showNav -> {
                 // 左侧导航栏（横屏/平板友好，可隐藏底栏）
                 Row(Modifier.padding()) {
                     NavigationRail(
@@ -178,12 +189,12 @@ fun AppRoot(vm: AppViewModel) {
                 }
             }
             else -> {
-                // 默认：底部导航
+                // 响应式：expanded=左侧常驻 NavigationRail / medium+compact=底部导航
                 Scaffold(
                     snackbarHost = { SnackbarHost(snackbar) },
                     contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                     bottomBar = {
-                        if (showNav) {
+                        if (showNav && !isExpanded) {
                             NavigationBar {
                                 tabs.forEachIndexed { i, t ->
                                     NavigationBarItem(

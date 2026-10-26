@@ -229,7 +229,11 @@ object ShellAccess {
         // 真 Termux 沙盒（bootstrap bash/apt），失败回退 busybox
         return runCatching {
             val ctx = ai.devcodex.agent.tools.BuiltinTools.appContext()
-            // 首次进入沙盒时装 curl/wget（网络工具缺失修复）
+            // Ubuntu PRoot（Operit 式）：rootfs 就绪则优先完整 Linux 环境
+            if (ai.devcodex.agent.shell.PRootUbuntu.ensure(ctx)) {
+                return ai.devcodex.agent.shell.PRootUbuntu.exec(ctx, command)
+            }
+            // 次选 Termux 沙盒：首次自动装 curl/wget
             if (!curlEnsured) {
                 curlEnsured = true
                 runCatching { ai.devcodex.agent.shell.TermuxRuntime.exec(ctx, "command -v curl >/dev/null 2>&1 || (command -v apt >/dev/null 2>&1 && apt install -y curl wget 2>/dev/null) || true", timeoutSec = 120) }

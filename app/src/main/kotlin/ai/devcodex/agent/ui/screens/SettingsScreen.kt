@@ -1032,33 +1032,63 @@ private fun AboutPage(onBack: () -> Unit) {
         }
         Spacer(Modifier.padding(10.dp))
 
-        // QQ 群卡（DeepSeek 群）：一行式链接卡（rikkahub LinkItem 风格）
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                runCatching {
-                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://qun.qq.com/universal-share/share?ac=1&authKey=Y0p5CQQcAr6zABChA7uCRctrZqMAJ9XomRgVVRlE1Zt5W9qha%2FqGOkIjqf%2FkMlDf&busi_data=eyJncm91cENvZGUiOiIyMDgxODE2MDQiLCJ0b2tlbiI6IkI0VGE3a0VaL1Q1a3lWYkJYNm5zMU1SeHZnMUozSGxyV0JiVHN5QkQvNXZNUkZnb0taelB0TXpVMEJyQzVoN24iLCJ1aW4iOiIzNjMzMTkwMjY5In0%3D&data=sLRegEFQPFXCtZOVjO6-UPMgaZVw_71eem7w0ii5tcwH8kihxzyXmFDF9twUHtaSUhc43RKwOvcBU4Xa0LRFXQ&svctype=4&tempid=h5_group_info")))
-                }
-            },
-        ) {
-            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("💬", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.padding(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("点击链接加入群聊【𝑫𝒆𝒆𝒑𝑺𝒆𝒆𝒌】", style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                    Text("问题反馈 / 交流 / 新版本通知", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        // ===== rikkahub CardGroup 式：版本/系统信息组（primaryContainer） =====
+        @Composable fun groupIcon(emoji: String, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
+            androidx.compose.foundation.layout.Box(
+                Modifier.size(38.dp).background(container, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) { Text(emoji, style = MaterialTheme.typography.titleMedium) }
+        }
+        Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Column {
+                ListItem(
+                    leadingContent = { groupIcon("📦", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
+                    headlineContent = { Text("版本") },
+                    supportingContent = { Text("v0.2.2 / 75（持续迭代中）") },
+                )
+                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                ListItem(
+                    leadingContent = { groupIcon("📱", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
+                    headlineContent = { Text("系统") },
+                    supportingContent = { Text(android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL + " / Android " + android.os.Build.VERSION.RELEASE + " / SDK " + android.os.Build.VERSION.SDK_INT) },
+                )
             }
         }
+        Spacer(Modifier.height(10.dp))
 
-        // 链接列表（rikkahub 式：官网（暂无）/源码/隐私）
-        ListItem(
-            headlineContent = { Text("官网") },
-            supportingContent = { Text("暂无（开源仓库即主页）", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            leadingContent = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-        )
+        // ===== 链接组（tertiaryContainer）：官网=本项目仓库 / GitHub / QQ 群 =====
+        Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Column {
+                ListItem(
+                    leadingContent = { groupIcon("🌐", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    headlineContent = { Text("官网") },
+                    supportingContent = { Text("https://github.com/Moirania/DevCodex", maxLines = 1) },
+                    modifier = Modifier.clickable {
+                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/Moirania/DevCodex"))) }
+                    },
+                )
+                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                ListItem(
+                    leadingContent = { groupIcon("⭐", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    headlineContent = { Text("GitHub 仓库") },
+                    supportingContent = { Text("开源 · Star · Issues", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    modifier = Modifier.clickable {
+                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/Moirania/DevCodex"))) }
+                    },
+                )
+                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                ListItem(
+                    leadingContent = { groupIcon("💬", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    headlineContent = { Text("QQ 群 · DeepSeek") },
+                    supportingContent = { Text("问题反馈 / 交流 / 新版本通知", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    modifier = Modifier.clickable {
+                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://qun.qq.com/universal-share/share?ac=1&authKey=Y0p5CQQcAr6zABChA7uCRctrZqMAJ9XomRgVVRlE1Zt5W9qha%2FqGOkIjqf%2FkMlDf&busi_data=eyJncm91cENvZGUiOiIyMDgxODE2MDQiLCJ0b2tlbiI6IkI0VGE3a0VaL1Q1a3lWYkJYNm5zMU1SeHZnMUozSGxyV0JiVHN5QkQvNXZNUkZnb0taelB0TXpVMEJyQzVoN24iLCJ1aW4iOiIzNjMzMTkwMjY5In0%3D&data=sLRegEFQPFXCtZOVjO6-UPMgaZVw_71eem7w0ii5tcwH8kihxzyXmFDF9twUHtaSUhc43RKwOvcBU4Xa0LRFXQ&svctype=4&tempid=h5_group_info"))) }
+                    },
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+
         ListItem(
             headlineContent = { Text("反馈意见") },
             supportingContent = { Text("QQ：3633190269\n邮箱：Lv520e3e4@163.com", fontFamily = FontFamily.Monospace) },

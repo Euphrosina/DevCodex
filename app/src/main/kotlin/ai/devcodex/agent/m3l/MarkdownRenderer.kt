@@ -70,7 +70,7 @@ fun MixedMarkdownLatex(
         while (true) {
             val stableText = stabilizeStreamingMarkdown(latestText)
             if (stableText != renderedText) renderedText = stableText
-            delay(80)
+            delay(240)
         }
     }
     val segments by remember(renderedText) {
@@ -96,7 +96,8 @@ fun MixedMarkdownLatex(
                             style = TextStyle(
                                 color = textColor,
                                 fontSize = 15.sp,
-                                lineHeight = 22.sp
+                                lineHeight = 22.sp,
+                                fontFamily = androidx.compose.material3.LocalTextStyle.current.fontFamily,  // 跟随主题对话字体
                             ),
                             isTextSelectable = true,
                             afterSetMarkdown = { textView ->

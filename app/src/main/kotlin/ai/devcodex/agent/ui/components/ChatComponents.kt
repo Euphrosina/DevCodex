@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -380,41 +382,32 @@ fun InputBar(
                         }
                     }
                 }
-                // ===== 第二行：推理滑块独立一行（MD3 七档，Faster↔Smarter） =====
+                // ===== 第二行：推理档按钮组（7 档可选，横向滚动自适应任意屏宽） =====
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 2.dp)
+                        .horizontalScroll(rememberScrollState()),
                 ) {
-                val effortIdx = effortLevels.indexOf(effort).coerceAtLeast(0)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-                ) {
-                    Text("F", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Slider(
-                        value = effortIdx.toFloat(),
-                        onValueChange = { v ->
-                            val idx = (v + 0.5f).toInt().coerceIn(0, 6)
-                            onEffort(effortLevels[idx])
-                        },
-                        valueRange = 0f..6f,
-                        colors = androidx.compose.material3.SliderColors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            activeTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                            inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                            disabledThumbColor = MaterialTheme.colorScheme.primary,
-                            disabledActiveTrackColor = MaterialTheme.colorScheme.primary,
-                            disabledInactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            disabledActiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                            disabledInactiveTickColor = androidx.compose.ui.graphics.Color.Transparent,
-                        ),
-                        modifier = Modifier.weight(1f).height(22.dp).padding(horizontal = 2.dp),
-                    )
-                    Text("S", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Text(effortLabels[effort] ?: "Off", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp))
+                    Text("思考 ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+                    effortLevels.forEachIndexed { idx, lv ->
+                        val sel = effort == lv
+                        Box(
+                            Modifier
+                                .padding(horizontal = 2.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .clickable { onEffort(lv) }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                effortLabels[lv] ?: lv.ifBlank { "Off" },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (sel) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 if (running) {
                     Spacer(Modifier.width(8.dp))
                     Text("● 运行中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
