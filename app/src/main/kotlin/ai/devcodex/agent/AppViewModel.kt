@@ -168,6 +168,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             } finally {
                 isRunning.value = false
                 _pendingApproval.value = null
+                // 空回复兜底：末条 assistant 无正文/无工具/无思考时补提示（修"空回复"）
+                runCatching {
+                    val last = finalSession.messages.lastOrNull { it.role == "assistant" }
+                    if (last != null && last.content.isBlank() && last.toolCalls.isEmpty() && last.thinking.isNullOrBlank() && last.toolResult.isNullOrBlank()) {
+                        val fixed = last.copy(content = "（模型未返回正文：可能被截断或接口异常，请重试或换模型）")
+                        finalSession = finalSession.copy(messages = finalSession.messages.map { if (it.id == last.id) fixed else it })
+                        _activeSession.value = finalSession
+                    }
+                }
                 // 回退/截断根修：用引擎返回的最终会话直接刷新 UI（不再从磁盘读滞后版本覆盖内存）
                 if (_activeSession.value?.id == finalSession.id) {
                     _activeSession.value = finalSession

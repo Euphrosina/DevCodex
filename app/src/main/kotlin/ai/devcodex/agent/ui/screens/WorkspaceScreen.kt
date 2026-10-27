@@ -241,29 +241,34 @@ fun WorkspaceScreen(vm: AppViewModel) {
                             }
                         }
                     } else if (isCode) {
-                        // GitHub Dark 语法高亮（#0D1117 底+GitHub 配色）
+                        // GitHub Dark 语法高亮（#0D1117 底+GitHub 官方配色）——逐段扫描修全红 bug
                         Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()).background(androidx.compose.ui.graphics.Color(0xFF0D1117))) {
-                            val kw = Regex("\b(fun|val|var|class|object|if|else|for|while|return|import|package|public|private|static|void|def|let|const|struct|fn|match|async|await)\b")
-                            val str = Regex("\"[^\"]*\"|'[^']*'")
-                            val cmt = Regex("//.*|/\\*.*?\\*/|#.*")
+                            val kwR = Regex("\\b(fun|val|var|class|object|if|else|for|while|return|import|package|public|private|static|void|def|let|const|struct|fn|match|async|await)\\b")
+                            val strR = Regex("\"[^\"]*\"|'[^']*'")
+                            val cmtR = Regex("//[^\\n]*|/\\*.*?\\*/")
                             content.lines().take(3000).forEach { line ->
+                                // 收集全部匹配段（range→颜色），按起点排序逐段渲染
+                                data class Span(val start: Int, val end: Int, val color: androidx.compose.ui.graphics.Color, val text: String)
+                                val spans = buildList {
+                                    kwR.findAll(line).forEach { add(Span(it.range.first, it.range.last, androidx.compose.ui.graphics.Color(0xFFFF7B72), it.value)) }
+                                    strR.findAll(line).forEach { add(Span(it.range.first, it.range.last, androidx.compose.ui.graphics.Color(0xFFA5D6FF), it.value)) }
+                                    cmtR.findAll(line).forEach { add(Span(it.range.first, it.range.last, androidx.compose.ui.graphics.Color(0xFF8B949E), it.value)) }
+                                }.sortedBy { it.start }
                                 val annotated = androidx.compose.ui.text.buildAnnotatedString {
-                                    var i = 0
-                                    val all = listOf(kw, str, cmt)
-                                    while (i < line.length) {
-                                        val m = all.firstNotNullOfOrNull { r -> r.find(line, i) }
-                                        if (m == null) { append(line.substring(i)); break }
-                                        if (m.range.first > i) append(line.substring(i, m.range.first))
-                                        val color = when (m) {
-                                            cmt.find(line, i) -> androidx.compose.ui.graphics.Color(0xFF8B949E)  // GitHub Dark comment
-                                            str.find(line, i) -> androidx.compose.ui.graphics.Color(0xFFA5D6FF)  // string
-                                            else -> androidx.compose.ui.graphics.Color(0xFFFF7B72)              // keyword
+                                    var pos = 0
+                                    for (sp in spans) {
+                                        if (sp.start >= pos && sp.start < line.length) {
+                                            if (sp.start > pos) append(line.substring(pos, sp.start))
+                                            withStyle(androidx.compose.ui.text.SpanStyle(color = sp.color)) { append(sp.text) }
+                                            pos = sp.end + 1
                                         }
-                                        withStyle(androidx.compose.ui.text.SpanStyle(color = color)) { append(m.value) }
-                                        i = m.range.last + 1
                                     }
+                                    if (pos < line.length) append(line.substring(pos))
                                 }
-                                Text(annotated, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = MaterialTheme.typography.bodySmall.fontSize * 0.85f))
+                                Text(
+                                    annotated,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = MaterialTheme.typography.bodySmall.fontSize * 0.85f, color = androidx.compose.ui.graphics.Color(0xFFC9D1D9)),
+                                )
                             }
                         }
                     } else if (e.file.extension.lowercase() in listOf("md", "markdown", "txt")) {

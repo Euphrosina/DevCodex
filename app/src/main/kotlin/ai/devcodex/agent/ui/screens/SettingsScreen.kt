@@ -1,4 +1,5 @@
 package ai.devcodex.agent.ui.screens
+import androidx.compose.material3.CardDefaults
 
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.IconButton
@@ -39,6 +40,11 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Favorite
@@ -55,7 +61,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -995,270 +1002,91 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
 /** 关于页：作者/反馈/赞助/隐私政策 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AboutPage(onBack: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var showReward by remember { mutableStateOf(false) }
-    var showPrivacy by remember { mutableStateOf(false) }
-    var showPluginGuide by remember { mutableStateOf(false) }
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
-            .padding(16.dp)
-    ) {
-        // 作者卡
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier.fillMaxWidth(),
+fun AboutPage(onBack: () -> Unit) {
+    val scroll = rememberScrollState()
+    Column(Modifier.fillMaxSize()) {
+        // ===== rikkahub SettingAboutPage 完整复刻（136dp logo+两组 CardGroup）=====
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).verticalScroll(scroll),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // rikkahub 式 logo：圆角图标块
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 androidx.compose.foundation.layout.Box(
-                    Modifier.size(64.dp).background(
-                        MaterialTheme.colorScheme.primary,
-                        androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                    Modifier.size(136.dp).background(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
                     ),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.Settings, null, Modifier.size(36.dp), tint = androidx.compose.ui.graphics.Color.White) }
-                Spacer(Modifier.height(10.dp))
-                Text("DevCodex", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                ) { Icon(Icons.Filled.Build, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                 Text(
-                    "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · Android AI Agent",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                )
-                Spacer(Modifier.padding(8.dp))
-                Text("作者：刘雨欣", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Spacer(Modifier.padding(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {
-                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("mqq://im/chat?chat_type=wpa&uin=3633190269"))) }
-                    }) { Text("QQ 联系") }
-                    OutlinedButton(onClick = {
-                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:Lv520e3e4@163.com"))) }
-                    }) { Text("邮件反馈") }
-                }
-            }
-        }
-        Spacer(Modifier.padding(10.dp))
-
-        // ===== rikkahub CardGroup 式：版本/系统信息组（primaryContainer） =====
-        @Composable fun groupIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
-            androidx.compose.foundation.layout.Box(
-                Modifier.size(38.dp).background(container, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(icon, null, Modifier.size(20.dp), tint = content) }
-        }
-        Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-            Column {
-                ListItem(
-                    leadingContent = { groupIcon(Icons.Filled.Schedule, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
-                    headlineContent = { Text("版本") },
-                    supportingContent = { Text("v0.2.2 / 75（持续迭代中）") },
-                )
-                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                ListItem(
-                    leadingContent = { groupIcon(Icons.Filled.Settings, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
-                    headlineContent = { Text("系统") },
-                    supportingContent = { Text(android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL + " / Android " + android.os.Build.VERSION.RELEASE + " / SDK " + android.os.Build.VERSION.SDK_INT) },
+                    "DevCodex",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Black),
                 )
             }
-        }
-        Spacer(Modifier.height(10.dp))
-
-        // ===== 链接组（tertiaryContainer）：官网=本项目仓库 / GitHub / QQ 群 =====
-        Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-            Column {
-                ListItem(
-                    leadingContent = { groupIcon(Icons.Filled.Search, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
-                    headlineContent = { Text("官网") },
-                    supportingContent = { Text("https://github.com/Moirania/DevCodex", maxLines = 1) },
-                    modifier = Modifier.clickable {
-                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/Moirania/DevCodex"))) }
-                    },
-                )
-                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                ListItem(
-                    leadingContent = { groupIcon(GitHubIcon, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
-                    headlineContent = { Text("GitHub 仓库") },
-                    supportingContent = { Text("开源 · Star · Issues", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                    modifier = Modifier.clickable {
-                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/Moirania/DevCodex"))) }
-                    },
-                )
-                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                ListItem(
-                    leadingContent = { groupIcon(Icons.Filled.Psychology, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
-                    headlineContent = { Text("QQ 群 · DeepSeek") },
-                    supportingContent = { Text("问题反馈 / 交流 / 新版本通知", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                    modifier = Modifier.clickable {
-                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://qun.qq.com/universal-share/share?ac=1&authKey=Y0p5CQQcAr6zABChA7uCRctrZqMAJ9XomRgVVRlE1Zt5W9qha%2FqGOkIjqf%2FkMlDf&busi_data=eyJncm91cENvZGUiOiIyMDgxODE2MDQiLCJ0b2tlbiI6IkI0VGE3a0VaL1Q1a3lWYkJYNm5zMU1SeHZnMUozSGxyV0JiVHN5QkQvNXZNUkZnb0taelB0TXpVMEJyQzVoN24iLCJ1aW4iOiIzNjMzMTkwMjY5In0%3D&data=sLRegEFQPFXCtZOVjO6-UPMgaZVw_71eem7w0ii5tcwH8kihxzyXmFDF9twUHtaSUhc43RKwOvcBU4Xa0LRFXQ&svctype=4&tempid=h5_group_info"))) }
-                    },
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-
-        ListItem(
-            headlineContent = { Text("反馈意见") },
-            supportingContent = { Text("QQ：3633190269\n邮箱：Lv520e3e4@163.com", fontFamily = FontFamily.Monospace) },
-        )
-
-        // 赞助
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-            onClick = { showReward = true },
-        ) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("🧋", style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.padding(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("请作者喝杯奶茶", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                    Text("如果 DevCodex 帮到了你，欢迎请作者喝杯奶茶支持一下", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
-                }
-                Text("→", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onTertiaryContainer)
-            }
-        }
-
-        // 检查更新 + 调试日志 + 插件文档（关键入口，多路可达）
-        var updateMsg by remember { mutableStateOf<String?>(null) }
-        var checking by remember { mutableStateOf(false) }
-        var exporting by remember { mutableStateOf(false) }
-        val scope = androidx.compose.runtime.rememberCoroutineScope()
-        ListItem(
-            headlineContent = { Text("检查更新") },
-            supportingContent = { Text(updateMsg ?: "当前 v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · GitHub Releases") },
-            leadingContent = { Icon(Icons.Filled.SystemUpdate, null) },
-            modifier = Modifier.clickable {
-                if (!checking) {
-                    checking = true
-                    scope.launch {
-                        val rel = ai.devcodex.agent.util.AppUpdate.checkLatest()
-                        updateMsg = when {
-                            rel == null -> "检查失败（网络或仓库不可达）"
-                            (Regex("b(\\d+)").find(rel.tagName)?.groupValues?.get(1)?.toIntOrNull() ?: 0) > 28 -> "新版本 ${rel.tagName} 可用：Releases 页下载 APK"
-                            else -> "已是最新版本"
+            val c1 = MaterialTheme.colorScheme.primaryContainer
+            val t1 = MaterialTheme.colorScheme.onPrimaryContainer
+            ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                Column {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c1, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Code, null, Modifier.size(20.dp), tint = t1) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("版本", style = MaterialTheme.typography.bodyLarge)
+                            Text(ai.devcodex.agent.BuildConfig.VERSION_NAME + " / " + ai.devcodex.agent.BuildConfig.VERSION_CODE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        checking = false
                     }
-                }
-            },
-        )
-        ListItem(
-            headlineContent = { Text("导出调试日志") },
-            supportingContent = { Text(if (exporting) "打包中…" else "崩溃+会话+logcat 打包为 ZIP（在 Android/data 可取出）") },
-            leadingContent = { Icon(Icons.Filled.BugReport, null) },
-            modifier = Modifier.clickable {
-                exporting = true
-                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    val f = ai.devcodex.agent.util.AppUpdate.exportDebugZip(context)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        updateMsg = "调试包已导出：${f.absolutePath}"
-                        exporting = false
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c1, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Smartphone, null, Modifier.size(20.dp), tint = t1) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("系统", style = MaterialTheme.typography.bodyLarge)
+                            Text(android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL + " / Android " + android.os.Build.VERSION.RELEASE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
-                }
-            },
-        )
-        ListItem(
-            headlineContent = { Text("插件开发文档") },
-            supportingContent = { Text("是什么 · JSON 字段 · 模板语法 · 示例 · 调试") },
-            leadingContent = { Icon(Icons.Filled.Extension, null) },
-            modifier = Modifier.clickable { showPluginGuide = true },
-        )
-        // 隐私
-        ListItem(
-            headlineContent = { Text("隐私政策") },
-            supportingContent = { Text("应用隐私与用户数据处理说明") },
-            leadingContent = { Icon(Icons.Filled.PrivacyTip, null) },
-            modifier = Modifier.clickable { showPrivacy = true },
-        )
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
-        Text(
-            "致谢：主题与字体方案源自 rikkahub（Apache-2.0）；Agent 交互模式参考 Operit（Apache-2.0）；设计参考 AiCode。",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-
-    // 赞赏码弹窗
-    if (showReward) {
-        AlertDialog(
-            onDismissRequest = { showReward = false },
-            title = { Text("请作者喝杯奶茶", style = MaterialTheme.typography.titleMedium) },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(ai.devcodex.agent.R.drawable.reward_qrcode),
-                        contentDescription = "微信赞赏码",
-                        modifier = Modifier.size(260.dp),
-                    )
-                    Text("微信扫码 · 金额随意", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            },
-            confirmButton = { TextButton(onClick = { showReward = false }) { Text("关闭") } },
-        )
-    }
-
-    // 插件开发文档（全屏，与插件页同一份）
-    if (showPluginGuide) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginGuide = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("插件开发文档") },
-                        navigationIcon = { IconButton(onClick = { showPluginGuide = false }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "关闭") } },
-                    )
-                },
-            ) { pad ->
-                Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp)) {
-                    Text(PLUGIN_GUIDE_TEXT, style = MaterialTheme.typography.bodyMedium)
                 }
             }
-        }
-    }
-
-    // 隐私政策弹窗
-    if (showPrivacy) {
-        AlertDialog(
-            onDismissRequest = { showPrivacy = false },
-            title = { Text("隐私政策") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        """DevCodex 隐私政策（应用隐私与用户隐私）
-
-一、数据本地化
-DevCodex 不内置任何模型服务，不运营任何服务器。你的会话记录、API 配置（密钥）、工作区文件、技能与插件全部保存在手机本地（应用私有目录），卸载应用即随之删除。
-
-二、网络请求
-应用仅在你主动使用时向「你自己配置的 API 提供商」发送对话请求（含你输入的内容与必要的会话上下文）；插件工具会向你安装的插件所声明的 URL 发起请求。我们不代理、不收集、不分析这些流量。
-
-三、敏感权限
-· Shizuku/Root：仅在你明确授权后用于执行你批准的命令与文件操作，全部操作有审批记录；
-· 无障碍服务：仅在你手动开启后用于屏幕内容读取与界面自动化，服务在你的设备上本地运行；
-· 文件访问：工作区为应用私有目录；访问其他路径（如 /sdcard）需要 Shizuku/Root 授权且高危操作逐次确认。
-
-四、崩溃报告
-崩溃堆栈仅保存在本地，只有你主动点击"复制"并自行发送，才会离开你的设备。
-
-五、第三方代码致谢
-主题方案源自 rikkahub（Apache-2.0）、交互模式参考 Operit（Apache-2.0），其许可与来源见项目仓库。
-
-如对隐私有任何疑问：QQ 3633190269 · Lv520e3e4@163.com（刘雨欣）""",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+            val c2 = MaterialTheme.colorScheme.tertiaryContainer
+            val t2 = MaterialTheme.colorScheme.onTertiaryContainer
+            ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                Column {
+                    Row(Modifier.fillMaxWidth().clickable { }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Public, null, Modifier.size(20.dp), tint = t2) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("官网", style = MaterialTheme.typography.bodyLarge)
+                            Text("github.com/Moirania/DevCodex", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(GitHubIcon, null, Modifier.size(22.dp), tint = t2) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("GitHub", style = MaterialTheme.typography.bodyLarge)
+                            Text("github.com/Moirania/DevCodex", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Chat, null, Modifier.size(20.dp), tint = t2) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("QQ 群 · DeepSeek", style = MaterialTheme.typography.bodyLarge)
+                            Text("群号见 README", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
-            },
-            confirmButton = { TextButton(onClick = { showPrivacy = false }) { Text("我已阅读") } },
-        )
+            }
+            OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("请作者喝奶茶", style = MaterialTheme.typography.labelLarge) }
+            Spacer(Modifier.height(12.dp))
+        }
     }
 }
+
 
 
 // GitHub octicon mark（rikkahub HugeIcons.Github 同款视觉）

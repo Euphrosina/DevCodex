@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -328,6 +329,7 @@ fun InputBar(
     onEffort: (String) -> Unit,
     onCompact: () -> Unit = {},
     ctxUsedPct: Int = 0,
+    usageOutTokens: Int = 0,
     onPickModel: () -> Unit,
     onAttach: () -> Unit = {},
 ) {
@@ -342,17 +344,23 @@ fun InputBar(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 8.dp).padding(bottom = 8.dp),
     ) {
         Column(Modifier.fillMaxWidth()) {
-            // MonkeyCode 式上下文用量指示：超 20% 显示进度条+压缩按钮
+            // Aether 式用量可视化：上下文(primary)+输出(tertiary)双段+压缩按钮
             if (ctxUsedPct >= 20) {
+                val outPct = (usageOutTokens * 100 / 4000).coerceIn(0, 30)  // 输出段按 4K 归一
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
                 ) {
-                    Text("上下文 " + ctxUsedPct + "%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Text("上下文", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(6.dp))
-                    Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
-                        Box(Modifier.fillMaxWidth(ctxUsedPct.coerceAtMost(100) / 100f).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                    Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
+                        Row(Modifier.fillMaxSize()) {
+                            Box(Modifier.weight((ctxUsedPct - outPct).coerceAtLeast(1).toFloat()).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                            Box(Modifier.weight(outPct.coerceAtLeast(0).toFloat()).fillMaxHeight().background(MaterialTheme.colorScheme.tertiary))
+                        }
                     }
+                    Spacer(Modifier.width(6.dp))
+                    Text("$ctxUsedPct%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = onCompact, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
                         Text("压缩", style = MaterialTheme.typography.labelSmall)
                     }

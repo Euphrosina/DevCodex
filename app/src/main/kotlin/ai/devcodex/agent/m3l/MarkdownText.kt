@@ -34,14 +34,15 @@ internal fun MarkdownText(
     textSelectionColors: TextSelectionColors,
     style: TextStyle,
     isTextSelectable: Boolean,
-    afterSetMarkdown: (TextView) -> Unit
+    afterSetMarkdown: (TextView) -> Unit,
+    isDarkTheme: Boolean = (androidx.compose.ui.platform.LocalConfiguration.current.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES,
 ) {
     val context = LocalContext.current
     val linkHandler = LocalMarkdownLinkHandler.current
     val density = LocalDensity.current
     val textSizePx = with(density) { style.fontSize.toPx() }
     val lineHeightPx = with(density) { style.lineHeight.toPx() }
-    val markwon = remember(context, linkColor, linkifyMask, linkHandler) {
+    val markwon = remember(context, linkColor, linkifyMask, linkHandler, isDarkTheme) {
         Markwon.builder(context)
             .usePlugin(StrikethroughPlugin.create())
             .usePlugin(TablePlugin.create(context))
@@ -57,6 +58,14 @@ internal fun MarkdownText(
                 override fun configureTheme(builder: MarkwonTheme.Builder) {
                     builder.linkColor(linkColor.toArgb())
                     builder.headingBreakHeight(0)
+                    // GitHub 式代码块：浅色 #F6F8FA / 深色 #0D1117
+                    val isDark = isDarkTheme
+                    val codeBg = if (isDark) 0xFF0D1117.toInt() else 0xFFF6F8FA.toInt()
+                    val codeFg = if (isDark) 0xFFC9D1D9.toInt() else 0xFF24292F.toInt()
+                    builder.codeBackgroundColor(codeBg)
+                    builder.codeTextColor(codeFg)
+                    builder.codeBlockBackgroundColor(codeBg)
+                    builder.codeBlockTextColor(codeFg)
                 }
             })
             .build()

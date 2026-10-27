@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -367,7 +368,17 @@ fun ChatScreen(vm: AppViewModel) {
                 )
             },
         ) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding)) {
+            // Aether 全屏渐变（浅色：白→FAFAFA→F2F2F5 / 深色：1B1D22→151619→1C1F23）
+            Column(
+                Modifier.fillMaxSize().padding(padding).background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        if (MaterialTheme.colorScheme.background.luminance() > 0.5f)
+                            listOf(androidx.compose.ui.graphics.Color(0xFFFFFFFF), androidx.compose.ui.graphics.Color(0xFFFAFAFA), androidx.compose.ui.graphics.Color(0xFFF2F2F5))
+                        else
+                            listOf(androidx.compose.ui.graphics.Color(0xFF1B1D22), androidx.compose.ui.graphics.Color(0xFF151619), androidx.compose.ui.graphics.Color(0xFF1C1F23)),
+                    ),
+                ),
+            ) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -611,6 +622,7 @@ fun ChatScreen(vm: AppViewModel) {
                     modelMaxCtx = modelMaxCtx2,
                     onCtx = { vm.setSessionContext(it) },
                     onCompact = { vm.compactSessionNow() },
+                    usageOutTokens = (messages.lastOrNull()?.outputTokens ?: 0L).toInt(),
                     ctxUsedPct = run {
                         val ctxMax = (session?.contextOverride ?: 0).takeIf { it > 0 } ?: ai.devcodex.agent.provider.ModelRegistry.lookup(curModelId).contextLength ?: 128_000
                         val est = (messages.sumOf { (it.content.length / 2.5).toLong() + it.toolCalls.size * 50 }) * 100 / ctxMax
@@ -805,11 +817,16 @@ fun ChatScreen(vm: AppViewModel) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .background(
+                                        if (selected) MaterialTheme.colorScheme.primaryContainer
+                                        else androidx.compose.ui.graphics.Color.Transparent,
+                                        RoundedCornerShape(14.dp),
+                                    )
                                     .clickable {
                                         vm.updateSessionModel(p.id, m)
                                         showModelPicker = false
                                     }
-                                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
                             ) {
                                 // 选中指示条（MChat selectionOffset 动画的静态版）
                                 Box(
