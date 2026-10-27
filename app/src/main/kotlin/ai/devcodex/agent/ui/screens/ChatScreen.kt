@@ -373,7 +373,7 @@ fun ChatScreen(vm: AppViewModel) {
                 Modifier.fillMaxSize().padding(padding).background(
                     androidx.compose.ui.graphics.Brush.verticalGradient(
                         if (MaterialTheme.colorScheme.background.luminance() > 0.5f)
-                            listOf(androidx.compose.ui.graphics.Color(0xFFFFFFFF), androidx.compose.ui.graphics.Color(0xFFFAFAFA), androidx.compose.ui.graphics.Color(0xFFF2F2F5))
+                            listOf(androidx.compose.ui.graphics.Color(0xFFF7F7F8), androidx.compose.ui.graphics.Color(0xFFEFEFF2), androidx.compose.ui.graphics.Color(0xFFE8E8EC))
                         else
                             listOf(androidx.compose.ui.graphics.Color(0xFF1B1D22), androidx.compose.ui.graphics.Color(0xFF151619), androidx.compose.ui.graphics.Color(0xFF1C1F23)),
                     ),

@@ -6,6 +6,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.LaunchedEffect
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -1080,12 +1082,20 @@ fun AboutPage(onBack: () -> Unit) {
                             Text("github.com/Moirania/DevCodex", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Row(Modifier.fillMaxWidth().clickable { runCatching { (context.getSystemService(android.content.ClipboardManager::class.java))?.setPrimaryClip(android.content.ClipData.newPlainText("qq", "935857642")) } }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().clickable { openUri("https://qun.qq.com/universal-share/share?ac=1&authKey=Y0p5CQQcAr6zABChA7uCRctrZqMAJ9XomRgVVRlE1Zt5W9qha%2FqGOkIjqf%2FkMlDf&busi_data=eyJncm91cENvZGUiOiIyMDgxODE2MDQiLCJ0b2tlbiI6IkI0VGE3a0VaL1Q1a3lWYkJYNm5zMU1SeHZnMUozSGxyV0JiVHN5QkQvNXZNUkZnb0taelB0TXpVMEJyQzVoN24iLCJ1aW4iOiIzNjMzMTkwMjY5In0%3D&data=sLRegEFQPFXCtZOVjO6-UPMgaZVw_71eem7w0ii5tcwH8kihxzyXmFDF9twUHtaSUhc43RKwOvcBU4Xa0LRFXQ&svctype=4&tempid=h5_group_info") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Chat, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text("QQ 群 · DeepSeek", style = MaterialTheme.typography.bodyLarge)
-                            Text("935857642（点击复制）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("208181604（点击加入群聊）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex/tree/main/docs") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Extension, null, Modifier.size(20.dp), tint = t2) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("插件开发文档", style = MaterialTheme.typography.bodyLarge)
+                            Text("技能/插件编写指南", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex#readme") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1107,7 +1117,33 @@ fun AboutPage(onBack: () -> Unit) {
                 }
             }
             OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex/issues") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
-            OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex#赞助") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("请作者喝奶茶", style = MaterialTheme.typography.labelLarge) }
+            var showReward by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            OutlinedButton(onClick = { showReward = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("微信赞助 / 请喝奶茶", style = MaterialTheme.typography.labelLarge) }
+            if (showReward) {
+                androidx.compose.ui.window.Dialog(onDismissRequest = { showReward = false }) {
+                    androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+                        Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("微信赞赏", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(12.dp))
+                            val ctx = androidx.compose.ui.platform.LocalContext.current
+                            val bmp = androidx.compose.runtime.remember {
+                                runCatching {
+                                    android.graphics.BitmapFactory.decodeStream(ctx.assets.open("wechat-reward.png"))
+                                }.getOrNull()
+                            }
+                            if (bmp != null) {
+                                Image(
+                                    bitmap = bmp.asImageBitmap(),
+                                    contentDescription = "微信收款码",
+                                    modifier = Modifier.size(260.dp),
+                                )
+                            } else Text("（收款码加载失败）", style = MaterialTheme.typography.bodySmall)
+                            Spacer(Modifier.height(8.dp))
+                            Text("感谢支持 DevCodex 开发", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
             Spacer(Modifier.height(12.dp))
         }
     }
