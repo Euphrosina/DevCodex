@@ -35,6 +35,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Favorite
@@ -58,6 +62,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
@@ -1017,7 +1022,7 @@ private fun AboutPage(onBack: () -> Unit) {
                         androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
                     ),
                     contentAlignment = Alignment.Center,
-                ) { Text("D", style = MaterialTheme.typography.headlineMedium, color = androidx.compose.ui.graphics.Color.White) }
+                ) { Icon(Icons.Filled.Settings, null, Modifier.size(36.dp), tint = androidx.compose.ui.graphics.Color.White) }
                 Spacer(Modifier.height(10.dp))
                 Text("DevCodex", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
@@ -1042,22 +1047,22 @@ private fun AboutPage(onBack: () -> Unit) {
         Spacer(Modifier.padding(10.dp))
 
         // ===== rikkahub CardGroup 式：版本/系统信息组（primaryContainer） =====
-        @Composable fun groupIcon(emoji: String, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
+        @Composable fun groupIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
             androidx.compose.foundation.layout.Box(
                 Modifier.size(38.dp).background(container, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
-            ) { Text(emoji, style = MaterialTheme.typography.titleMedium) }
+            ) { Icon(icon, null, Modifier.size(20.dp), tint = content) }
         }
         Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column {
                 ListItem(
-                    leadingContent = { groupIcon("📦", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
+                    leadingContent = { groupIcon(Icons.Filled.Schedule, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
                     headlineContent = { Text("版本") },
                     supportingContent = { Text("v0.2.2 / 75（持续迭代中）") },
                 )
                 androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 ListItem(
-                    leadingContent = { groupIcon("📱", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
+                    leadingContent = { groupIcon(Icons.Filled.Settings, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
                     headlineContent = { Text("系统") },
                     supportingContent = { Text(android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL + " / Android " + android.os.Build.VERSION.RELEASE + " / SDK " + android.os.Build.VERSION.SDK_INT) },
                 )
@@ -1069,7 +1074,7 @@ private fun AboutPage(onBack: () -> Unit) {
         Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column {
                 ListItem(
-                    leadingContent = { groupIcon("🌐", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    leadingContent = { groupIcon(Icons.Filled.Search, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
                     headlineContent = { Text("官网") },
                     supportingContent = { Text("https://github.com/Moirania/DevCodex", maxLines = 1) },
                     modifier = Modifier.clickable {
@@ -1078,7 +1083,7 @@ private fun AboutPage(onBack: () -> Unit) {
                 )
                 androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 ListItem(
-                    leadingContent = { groupIcon("⭐", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    leadingContent = { groupIcon(GitHubIcon, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
                     headlineContent = { Text("GitHub 仓库") },
                     supportingContent = { Text("开源 · Star · Issues", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     modifier = Modifier.clickable {
@@ -1087,7 +1092,7 @@ private fun AboutPage(onBack: () -> Unit) {
                 )
                 androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 ListItem(
-                    leadingContent = { groupIcon("💬", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    leadingContent = { groupIcon(Icons.Filled.Psychology, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
                     headlineContent = { Text("QQ 群 · DeepSeek") },
                     supportingContent = { Text("问题反馈 / 交流 / 新版本通知", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     modifier = Modifier.clickable {
@@ -1253,4 +1258,47 @@ DevCodex 不内置任何模型服务，不运营任何服务器。你的会话�
             confirmButton = { TextButton(onClick = { showPrivacy = false }) { Text("我已阅读") } },
         )
     }
+}
+
+
+// GitHub octicon mark（rikkahub HugeIcons.Github 同款视觉）
+private val GitHubIcon: androidx.compose.ui.graphics.vector.ImageVector by lazy {
+    androidx.compose.ui.graphics.vector.ImageVector.Builder(
+        name = "GitHubMark", defaultWidth = 24.dp, defaultHeight = 24.dp,
+        viewportWidth = 16f, viewportHeight = 16f,
+    ).apply {
+        path(
+            fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
+            pathFillType = androidx.compose.ui.graphics.PathFillType.NonZero,
+        ) {
+            // octicon mark-github v16 官方路径
+            moveTo(8f, 0.0f)
+            curveTo(3.58f, 0.0f, 0.0f, 3.58f, 0.0f, 8.0f)
+            curveTo(0.0f, 11.54f, 2.29f, 14.53f, 5.47f, 15.59f)
+            curveTo(5.87f, 15.67f, 6.02f, 15.42f, 6.02f, 15.21f)
+            curveTo(6.02f, 15.02f, 6.01f, 14.42f, 6.01f, 13.79f)
+            curveTo(4.0f, 14.23f, 3.52f, 12.9f, 3.52f, 12.9f)
+            curveTo(3.15f, 11.96f, 2.61f, 11.72f, 2.61f, 11.72f)
+            curveTo(1.86f, 11.21f, 2.67f, 11.22f, 2.67f, 11.22f)
+            curveTo(3.5f, 11.28f, 3.94f, 12.07f, 3.94f, 12.07f)
+            curveTo(4.68f, 13.33f, 5.89f, 12.97f, 6.04f, 12.76f)
+            curveTo(6.07f, 12.25f, 6.28f, 11.9f, 6.51f, 11.71f)
+            curveTo(4.74f, 11.51f, 2.87f, 10.83f, 2.87f, 7.94f)
+            curveTo(2.87f, 7.12f, 3.16f, 6.45f, 3.95f, 5.92f)
+            curveTo(3.9f, 5.73f, 3.65f, 4.96f, 4.01f, 3.94f)
+            curveTo(4.01f, 3.94f, 4.65f, 3.74f, 6.0f, 4.69f)
+            curveTo(6.6f, 4.52f, 7.24f, 4.44f, 7.88f, 4.43f)
+            curveTo(8.52f, 4.44f, 9.16f, 4.52f, 9.76f, 4.69f)
+            curveTo(11.11f, 3.74f, 11.75f, 3.94f, 11.75f, 3.94f)
+            curveTo(12.11f, 4.96f, 11.86f, 5.73f, 11.81f, 5.92f)
+            curveTo(12.6f, 6.45f, 12.89f, 7.12f, 12.89f, 7.94f)
+            curveTo(12.89f, 10.84f, 11.02f, 11.51f, 9.24f, 11.7f)
+            curveTo(9.53f, 11.95f, 9.79f, 12.45f, 9.79f, 13.22f)
+            curveTo(9.79f, 14.31f, 9.78f, 15.19f, 9.78f, 15.47f)
+            curveTo(9.78f, 15.68f, 9.93f, 15.93f, 10.33f, 15.85f)
+            curveTo(13.51f, 14.53f, 15.8f, 11.54f, 15.8f, 8.0f)
+            curveTo(15.8f, 3.58f, 12.42f, 0.0f, 8.0f, 0.0f)
+            close()
+        }
+    }.build()
 }

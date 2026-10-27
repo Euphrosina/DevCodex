@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
@@ -325,6 +326,8 @@ fun InputBar(
     modelMaxCtx: Int,
     onCtx: (Int) -> Unit,
     onEffort: (String) -> Unit,
+    onCompact: () -> Unit = {},
+    ctxUsedPct: Int = 0,
     onPickModel: () -> Unit,
     onAttach: () -> Unit = {},
 ) {
@@ -339,6 +342,22 @@ fun InputBar(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 8.dp).padding(bottom = 8.dp),
     ) {
         Column(Modifier.fillMaxWidth()) {
+            // MonkeyCode 式上下文用量指示：超 20% 显示进度条+压缩按钮
+            if (ctxUsedPct >= 20) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
+                ) {
+                    Text("上下文 " + ctxUsedPct + "%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
+                        Box(Modifier.fillMaxWidth(ctxUsedPct.coerceAtMost(100) / 100f).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                    }
+                    TextButton(onClick = onCompact, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+                        Text("压缩", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
             // 模型选择 chip 行
             Row(
                 verticalAlignment = Alignment.CenterVertically,

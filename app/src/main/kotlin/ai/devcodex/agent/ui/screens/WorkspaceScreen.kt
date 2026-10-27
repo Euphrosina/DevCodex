@@ -212,8 +212,8 @@ fun WorkspaceScreen(vm: AppViewModel) {
                     } else Text("（图片解码失败）", style = MaterialTheme.typography.bodySmall)
                 } else if (repo.isTextFile(e)) {
                     val content = WorkspaceRepo.textPreview(e.file)
-                    val isDiff = e.file.extension in listOf("diff", "patch") || content.trimStart().startsWith("@@ -") || (content.lines().firstOrNull()?.startsWith("--- ") == true && content.contains("@@ "))
-                    val isCode = e.file.extension in listOf("kt", "java", "py", "js", "ts", "c", "cpp", "h", "sh", "json", "xml", "yaml", "yml", "go", "rs")
+                    val isDiff = e.file.extension.lowercase() in listOf("diff", "patch") || content.trimStart().startsWith("@@ -") || (content.lines().firstOrNull()?.startsWith("--- ") == true && content.contains("@@ "))
+                    val isCode = e.file.extension.lowercase() in listOf("kt", "kts", "java", "py", "js", "jsx", "ts", "tsx", "c", "h", "cpp", "hpp", "cc", "m", "swift", "go", "rs", "php", "rb", "sql", "sh", "bash", "zsh", "json", "xml", "yaml", "yml", "toml", "ini", "cfg", "css", "scss", "html", "htm", "vue", "dart")
                     if (isDiff) {
                         // GitHub 式 Diff 渲染：+绿 -红 @@ 蓝分割行
                         Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
@@ -263,6 +263,14 @@ fun WorkspaceScreen(vm: AppViewModel) {
                                 }
                                 Text(annotated, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = MaterialTheme.typography.bodySmall.fontSize * 0.85f))
                             }
+                        }
+                    } else if (e.file.extension.lowercase() in listOf("md", "markdown", "txt")) {
+                        // Markdown 预览走 M3L（表格/代码/LaTeX 完整渲染）
+                        Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                            ai.devcodex.agent.m3l.MixedMarkdownLatex(
+                                text = content,
+                                textColor = MaterialTheme.colorScheme.onSurface,
+                            )
                         }
                     } else {
                         Text(

@@ -29,6 +29,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.alpha
@@ -393,9 +394,9 @@ fun ChatScreen(vm: AppViewModel) {
                                     ) { UserBubble(msg) }
                                     MsgActionBar(
                                         msg,
-                                        onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制" },
-                                        onResend = { if (msg.content.isNotBlank() && !isRunning) { vm.send(msg.content) } },
-                                        onRewind = { vm.rewindTo(msg.id) },
+                                        onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制 · " + c.length + " 字" },
+                                        onResend = { if (msg.content.isNotBlank()) { if (isRunning) vm.stop(); vm.send(msg.content) } },
+                                        onRewind = { if (isRunning) vm.stop(); vm.rewindTo(msg.id) },
                                         onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) },
                                     )
                                 }
@@ -439,7 +440,24 @@ fun ChatScreen(vm: AppViewModel) {
                                     Column(Modifier.weight(1f)) {
                                         if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking, msg.thinkingMs, isRunning && idx == messages.lastIndex)
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
-                                            TypingDots()
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                TypingDots()
+                                                // MonkeyCode 式流式定位：段落/字符位置
+                                                val paras = msg.content.split("\n\n").size
+                                                val chars = msg.content.length
+                                                if (chars > 0) Text(
+                                                    " · 第 $paras 段 · $chars 字",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                if (!msg.thinking.isNullOrBlank()) Text(
+                                                    " · 思考 " + (msg.thinking!!.length) + " 字",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.tertiary,
+                                                )
+                                            }
+                                        } else if (msg.content.isBlank() && msg.toolCalls.isEmpty() && !msg.thinking.isNullOrBlank()) {
+                                            // 纯思考消息：不渲染空正文（修"（空）"占位）
                                         } else if (msg.content.isNotBlank()) {
                                             // 性能关键：流式输出中（最后一条+运行中）用轻量纯 Text，
                                             // 完成后一次性切换 M3L 富渲染（Markdown/代码高亮/LaTeX/表格）
@@ -517,9 +535,9 @@ fun ChatScreen(vm: AppViewModel) {
                                         // cccodroid：AI 消息底部操作栏（复制/回退/删除）
                                         MsgActionBar(
                                             msg,
-                                            onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制" },
+                                            onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制 · " + c.length + " 字" },
                                             onResend = {},
-                                            onRewind = { vm.rewindTo(msg.id) },
+                                            onRewind = { if (isRunning) vm.stop(); vm.rewindTo(msg.id) },
                                             onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) },
                                         )
                                     }
@@ -590,6 +608,12 @@ fun ChatScreen(vm: AppViewModel) {
                     effort = settings.reasoningEffort,
                     modelMaxCtx = modelMaxCtx2,
                     onCtx = { vm.setSessionContext(it) },
+                    onCompact = { vm.compactSessionNow() },
+                    ctxUsedPct = run {
+                        val ctxMax = (session?.contextOverride ?: 0).takeIf { it > 0 } ?: ai.devcodex.agent.provider.ModelRegistry.lookup(curModelId).contextLength ?: 128_000
+                        val est = (messages.sumOf { (it.content.length / 2.5).toLong() + it.toolCalls.size * 50 }) * 100 / ctxMax
+                        est.toInt().coerceIn(0, 100)
+                    },
                     onEffort = { vm.saveSettings { s2 -> s2.copy(reasoningEffort = it) } },
                     onPickModel = { showModelPicker = true },
                     onAttach = { attachPicker.launch("*/*") },
@@ -725,7 +749,15 @@ fun ChatScreen(vm: AppViewModel) {
     // 模型选择（MChat 式：紧凑单行列表 + 选中指示 + 分组小字头）
     if (showModelPicker) {
         var query by remember { mutableStateOf("") }
-        ModalBottomSheet(onDismissRequest = { showModelPicker = false }, containerColor = MaterialTheme.colorScheme.surface) {
+        // 修：输入中打开 sheet 先清焦点（键盘不再挤压列表/拦截点击）
+        val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
+        androidx.compose.runtime.LaunchedEffect(showModelPicker) {
+            if (showModelPicker) runCatching { focusMgr.clearFocus(force = true) }
+        }
+        ModalBottomSheet(
+            onDismissRequest = { showModelPicker = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
             Column(Modifier.fillMaxWidth()) {
                 Text(
                     "选择模型",
@@ -1035,7 +1067,14 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thin
                             .background(flowBrush, RoundedCornerShape(2.dp))
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // 思考内容 M3L 富渲染（代码/LaTeX/表格——修思考不渲染代码格式）
+                    Column(Modifier.weight(1f).heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                        ai.devcodex.agent.m3l.MixedMarkdownLatex(
+                            text = text,
+                            textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            isStreaming = streaming,
+                        )
+                    }
                 }
             }
         }
