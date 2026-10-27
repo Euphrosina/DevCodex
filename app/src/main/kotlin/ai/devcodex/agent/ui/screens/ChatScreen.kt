@@ -30,6 +30,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.alpha
@@ -369,13 +371,15 @@ fun ChatScreen(vm: AppViewModel) {
             },
         ) { padding ->
             // Aether 全屏渐变（浅色：白→FAFAFA→F2F2F5 / 深色：1B1D22→151619→1C1F23）
+            // pure 方案：colorScheme 动态渐变（任何主题自动适配）
             Column(
                 Modifier.fillMaxSize().padding(padding).background(
                     androidx.compose.ui.graphics.Brush.verticalGradient(
-                        if (MaterialTheme.colorScheme.background.luminance() > 0.5f)
-                            listOf(androidx.compose.ui.graphics.Color(0xFFF7F7F8), androidx.compose.ui.graphics.Color(0xFFEFEFF2), androidx.compose.ui.graphics.Color(0xFFE8E8EC))
-                        else
-                            listOf(androidx.compose.ui.graphics.Color(0xFF1B1D22), androidx.compose.ui.graphics.Color(0xFF151619), androidx.compose.ui.graphics.Color(0xFF1C1F23)),
+                        listOf(
+                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.surfaceContainerLowest,
+                            MaterialTheme.colorScheme.surfaceContainerLow,
+                        ),
                     ),
                 ),
             ) {
@@ -1035,6 +1039,11 @@ private fun TypingDots() {
 @Composable
 private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thinkingMs: Long = 0, streaming: Boolean = false) {
     var expanded by remember(autoCollapse) { mutableStateOf(!autoCollapse) }
+    // 思考自动展开/收起：流式开始展开、完成自动收起（autoCollapse 时）
+    androidx.compose.runtime.LaunchedEffect(streaming) {
+        if (streaming) expanded = true
+        else if (autoCollapse) expanded = false
+    }
     // Operit 渐变思考：呼吸流光渐变（tertiary→primary→secondary）
     val c1 = MaterialTheme.colorScheme.tertiary
     val c2 = MaterialTheme.colorScheme.primary
@@ -1079,15 +1088,22 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thin
                 )
             }
             if (expanded) {
-                Row {
+                val thinkScroll = rememberScrollState()
+                // 思考流式自动滚动（用户上滑时不抢）
+                androidx.compose.runtime.LaunchedEffect(streaming, text.length) {
+                    if (streaming && thinkScroll.isScrollInProgress.not()) {
+                        runCatching { thinkScroll.animateScrollTo(thinkScroll.maxValue) }
+                    }
+                }
+                Row(Modifier.height(IntrinsicSize.Min)) {
                     Box(
                         Modifier
-                            .size(width = 3.dp, height = 200.dp)
+                            .width(3.dp).fillMaxHeight()
                             .background(flowBrush, RoundedCornerShape(2.dp))
                     )
                     Spacer(Modifier.width(8.dp))
-                    // 思考内容 M3L 富渲染（代码/LaTeX/表格——修思考不渲染代码格式）
-                    Column(Modifier.weight(1f).heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    // 思考内容 M3L 富渲染（代码/LaTeX/表格）
+                    Column(Modifier.weight(1f).heightIn(max = 360.dp).verticalScroll(thinkScroll)) {
                         ai.devcodex.agent.m3l.MixedMarkdownLatex(
                             text = text,
                             textColor = MaterialTheme.colorScheme.onSurfaceVariant,

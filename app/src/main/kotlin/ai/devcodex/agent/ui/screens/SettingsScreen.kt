@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -849,6 +850,78 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
     fun openUri(u: String) = runCatching {
         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)))
     }
+    var showPrivacyDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showPluginDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val privacyDocText = """
+# DevCodex 隐私政策
+
+## 数据收集
+DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、工作区文件均存储在设备本地（应用私有目录）。
+
+## 网络传输
+仅当你配置了 AI 提供商（如 DeepSeek/OpenAI）时，聊天内容会直接发送到**你配置的** API 端点。DevCodex 不经过任何第三方中转服务器。
+
+## 权限使用
+- 存储权限：仅用于读写你指定的工作区文件
+- 网络权限：仅用于调用你配置的 AI API
+
+## 删除数据
+卸载应用即删除全部本地数据。
+""".trim()
+    val pluginDocText = """
+# 插件（技能）开发指南
+
+## 结构
+技能 = Markdown 指令 + 可选工具。放置于技能页导入或手动放入技能目录。
+
+## Markdown 头
+\```
+name: 天气技能
+description: 查询天气并给出建议
+trigger: 天气|weather
+\```
+
+## 编写规则
+1. **name/description/trigger** 必填（trigger 用 | 分隔多个关键词
+2. 正文为 system 级指令（触发后注入
+3. 可引用工具：\{\{tools.list\}\} 查看可用工具
+4. 变量：\{\{user.name\}\}、\{\{time.now\}\}
+
+## 示例
+\```
+name: 翻译助手
+description: 中英互译
+trigger: 翻译|translate
+---
+将用户内容翻译成中文（若已是中文则译成英文），只输出译文。
+\```
+""".trim()
+    if (showPrivacyDoc) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showPrivacyDoc = false }) {
+            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("隐私政策", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = privacyDocText, textColor = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+    }
+    if (showPluginDoc) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginDoc = false }) {
+            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("插件开发文档", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = pluginDocText, textColor = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+    }
     var skills by remember { mutableStateOf(listOf<ai.devcodex.agent.data.SkillRepo.Skill>()) }
     var msg by remember { mutableStateOf<String?>(null) }
     fun reload() {
@@ -1015,6 +1088,78 @@ fun AboutPage(onBack: () -> Unit) {
     fun openUri(u: String) = runCatching {
         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)))
     }
+    var showPrivacyDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showPluginDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val privacyDocText = """
+# DevCodex 隐私政策
+
+## 数据收集
+DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、工作区文件均存储在设备本地（应用私有目录）。
+
+## 网络传输
+仅当你配置了 AI 提供商（如 DeepSeek/OpenAI）时，聊天内容会直接发送到**你配置的** API 端点。DevCodex 不经过任何第三方中转服务器。
+
+## 权限使用
+- 存储权限：仅用于读写你指定的工作区文件
+- 网络权限：仅用于调用你配置的 AI API
+
+## 删除数据
+卸载应用即删除全部本地数据。
+""".trim()
+    val pluginDocText = """
+# 插件（技能）开发指南
+
+## 结构
+技能 = Markdown 指令 + 可选工具。放置于技能页导入或手动放入技能目录。
+
+## Markdown 头
+\```
+name: 天气技能
+description: 查询天气并给出建议
+trigger: 天气|weather
+\```
+
+## 编写规则
+1. **name/description/trigger** 必填（trigger 用 | 分隔多个关键词
+2. 正文为 system 级指令（触发后注入
+3. 可引用工具：\{\{tools.list\}\} 查看可用工具
+4. 变量：\{\{user.name\}\}、\{\{time.now\}\}
+
+## 示例
+\```
+name: 翻译助手
+description: 中英互译
+trigger: 翻译|translate
+---
+将用户内容翻译成中文（若已是中文则译成英文），只输出译文。
+\```
+""".trim()
+    if (showPrivacyDoc) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showPrivacyDoc = false }) {
+            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("隐私政策", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = privacyDocText, textColor = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+    }
+    if (showPluginDoc) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginDoc = false }) {
+            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("插件开发文档", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = pluginDocText, textColor = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         // ===== rikkahub SettingAboutPage 完整复刻（136dp logo+两组 CardGroup）=====
@@ -1028,13 +1173,25 @@ fun AboutPage(onBack: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                // 软件自己的图标（assets/devcodex-logo.jpg 螺旋标）
                 androidx.compose.foundation.layout.Box(
                     Modifier.size(136.dp).background(
                         MaterialTheme.colorScheme.primaryContainer,
                         androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
                     ),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.Build, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+                ) {
+                    val logoBmp = androidx.compose.runtime.remember {
+                        runCatching {
+                            android.graphics.BitmapFactory.decodeStream(context.assets.open("devcodex-logo.jpg"))
+                        }.getOrNull()
+                    }
+                    if (logoBmp != null) Image(
+                        bitmap = logoBmp.asImageBitmap(),
+                        contentDescription = "DevCodex",
+                        modifier = Modifier.size(96.dp).clip(RoundedCornerShape(22.dp)),
+                    ) else Icon(Icons.Filled.Build, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
                 Text(
                     "DevCodex",
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Black),
@@ -1090,12 +1247,12 @@ fun AboutPage(onBack: () -> Unit) {
                             Text("208181604（点击加入群聊）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex/tree/main/docs") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().clickable { showPluginDoc = true }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Extension, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text("插件开发文档", style = MaterialTheme.typography.bodyLarge)
-                            Text("技能/插件编写指南", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("点击查看（应用内展示）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex#readme") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1106,12 +1263,12 @@ fun AboutPage(onBack: () -> Unit) {
                             Text("github.com/Moirania/DevCodex#readme", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex/blob/main/PRIVACY.md") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().clickable { showPrivacyDoc = true }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.PrivacyTip, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text("隐私政策", style = MaterialTheme.typography.bodyLarge)
-                            Text("本地处理，不上传隐私数据", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("点击查看（应用内展示）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
