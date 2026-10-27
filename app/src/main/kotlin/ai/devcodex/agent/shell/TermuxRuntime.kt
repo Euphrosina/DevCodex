@@ -109,7 +109,13 @@ object TermuxRuntime {
         val workDir = if (cwd != null && File(cwd).isDirectory()) cwd else ws
         val wrapped = "cd '$workDir' 2>/dev/null; $command"
         return try {
-            val p = ProcessBuilder(loader, bb, "sh", "-c", wrapped)
+            // bash 优先（bionic：系统 linker + env；Operit 同款方式）
+            val bash = File(usr, "bin/bash")
+            val p = if (bash.exists()) {
+                ProcessBuilder(bash.absolutePath, "-c", wrapped)
+            } else {
+                ProcessBuilder(loader, bb, "sh", "-c", wrapped)
+            }
                 .redirectErrorStream(true)
                 .apply {
                     val env = environment()

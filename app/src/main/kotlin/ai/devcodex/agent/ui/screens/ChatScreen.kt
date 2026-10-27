@@ -455,10 +455,16 @@ fun ChatScreen(vm: AppViewModel) {
                                                     // Gemini 式流体：流式尾部 30 字符渐显 + ▍；完成后走 M3L 富渲染
                                                     if (streamingNow) {
                                                         val full = msg.content
-                                                        val head = full.dropLast(30)
-                                                        val tail = full.takeLast(30)
+                                                        val head = full.dropLast(24)
+                                                        val tail = full.takeLast(24)
                                                         if (head.isNotEmpty()) Text(head, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge)
-                                                        Text(tail + " ▍", Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge)
+                                                        // Gemini 式流体：尾部逐字渐显（alpha 动画）+呼吸光标
+                                                        val fluidAlpha by androidx.compose.animation.core.animateFloatAsState(
+                                                            targetValue = if (tail.isNotEmpty()) 1f else 0f,
+                                                            animationSpec = androidx.compose.animation.core.tween(300),
+                                                            label = "fluid",
+                                                        )
+                                                        Text(tail + " ▍", Modifier.fillMaxWidth().alpha(0.3f + 0.7f * fluidAlpha), style = MaterialTheme.typography.bodyLarge)
                                                     } else {
                                                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                                                     androidx.compose.runtime.CompositionLocalProvider(

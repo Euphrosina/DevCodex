@@ -4,7 +4,7 @@ Daemon will be stopped at the end of the build
 > Task :app:preDebugBuild UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :app:compileDebugAidl UP-TO-DATE
-> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugBuildConfig
 > Task :app:generateDebugResources UP-TO-DATE
 > Task :app:packageDebugResources UP-TO-DATE
 > Task :app:processDebugNavigationResources UP-TO-DATE
@@ -15,68 +15,59 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugAssets UP-TO-DATE
 > Task :app:compressDebugAssets UP-TO-DATE
 > Task :app:generateDebugGlobalSynthetics UP-TO-DATE
-> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses
 > Task :app:desugarDebugFileDependencies UP-TO-DATE
-> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:compileDebugKotlin
+> Task :app:mergeExtDexDebug
 > Task :app:mergeLibDexDebug UP-TO-DATE
 > Task :app:checkDebugAarMetadata UP-TO-DATE
 > Task :app:mapDebugSourceSetPaths UP-TO-DATE
 > Task :app:compileDebugNavigationResources UP-TO-DATE
-> Task :app:mergeDebugResources UP-TO-DATE
-> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug UP-TO-DATE
-> Task :app:processDebugMainManifest UP-TO-DATE
-> Task :app:processDebugManifest UP-TO-DATE
-> Task :app:processDebugManifestForPackage UP-TO-DATE
-> Task :app:processDebugResources UP-TO-DATE
+
+> Task :app:compileDebugKotlin
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/components/ChatComponents.kt:111:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:136:21 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:357:47 'val Icons.Filled.Dvr: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Dvr.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:440:108 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/SettingsScreen.kt:480:36 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/StatsScreen.kt:282:53 Elvis operator (?:) always returns the left operand of non-nullable type 'Int'.
+w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/WorkspaceScreen.kt:284:37 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
+
+> Task :app:processDebugMainManifest
+/home/z/my-project/DevCodex-v3/app/src/main/AndroidManifest.xml:12:5-77 Warning:
+	Element uses-permission#android.permission.POST_NOTIFICATIONS at AndroidManifest.xml:12:5-77 duplicated with element declared at AndroidManifest.xml:9:5-77
+/home/z/my-project/DevCodex-v3/app/src/main/AndroidManifest.xml:13:5-77 Warning:
+	Element uses-permission#android.permission.FOREGROUND_SERVICE at AndroidManifest.xml:13:5-77 duplicated with element declared at AndroidManifest.xml:11:5-77
+
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource
+> Task :app:dexBuilderDebug
 > Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeProjectDexDebug
 > Task :app:mergeDebugNativeLibs UP-TO-DATE
 > Task :app:stripDebugDebugSymbols UP-TO-DATE
 > Task :app:validateSigningDebug UP-TO-DATE
 > Task :app:writeDebugAppMetadata UP-TO-DATE
 > Task :app:writeDebugSigningConfigVersions UP-TO-DATE
-> Task :app:compileDebugKotlin
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/agent/AgentEngine.kt:339:85 Expression is unused.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/data/Models.kt:72:5 @kotlin.jvm.Transient does not affect @Serializable classes. Please use @kotlinx.serialization.Transient instead.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/theme/DcTypography.kt:33:13 Unnecessary safe call on a non-null receiver of type 'Context'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:188:41 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:192:41 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:192:60 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:192:89 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:193:86 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:193:115 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:194:41 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:202:33 Unnecessary safe call on a non-null receiver of type 'WebView'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:266:47 'enum entry WEBP: Bitmap.CompressFormat' is deprecated. Deprecated in Java.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:618:68 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:653:9 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:684:27 'val connectionInfo: WifiInfo!' is deprecated. Deprecated in Java.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:690:53 'static fun calculateSignalLevel(p0: Int, p1: Int): Int' is deprecated. Deprecated in Java.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:692:33 'val ipAddress: Int' is deprecated. Deprecated in Java.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:692:79 'static fun formatIpAddress(p0: Int): String!' is deprecated. Deprecated in Java.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/tools/ExtraTools.kt:692:100 'val ipAddress: Int' is deprecated. Deprecated in Java.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/AppRoot.kt:51:44 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/components/ChatComponents.kt:111:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/components/MarkdownText.kt:38:21 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:136:21 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:357:47 'val Icons.Filled.Dvr: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Dvr.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/ChatScreen.kt:440:108 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/PluginsScreen.kt:83:34 'val Icons.Filled.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/SettingsScreen.kt:480:36 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/StatsScreen.kt:282:53 Elvis operator (?:) always returns the left operand of non-nullable type 'Int'.
-w: file:///home/z/my-project/DevCodex-v3/app/src/main/kotlin/ai/devcodex/agent/ui/screens/WorkspaceScreen.kt:227:37 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
-
-> Task :app:compileDebugJavaWithJavac
-> Task :app:processDebugJavaRes UP-TO-DATE
-> Task :app:mergeDebugJavaResource UP-TO-DATE
-> Task :app:dexBuilderDebug
-> Task :app:mergeProjectDexDebug
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
 [Incubating] Problems report is available at: file:///home/z/my-project/DevCodex-v3/build/reports/problems/problems-report.html
 
-BUILD SUCCESSFUL in 2m 26s
-39 actionable tasks: 6 executed, 33 up-to-date
+BUILD SUCCESSFUL in 3m 7s
+39 actionable tasks: 16 executed, 23 up-to-date
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

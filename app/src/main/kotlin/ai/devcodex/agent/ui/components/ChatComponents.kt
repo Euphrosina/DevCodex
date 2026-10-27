@@ -187,11 +187,7 @@ fun ToolCard(msg: Message) {
     )
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = when (status) {
-                ToolStatus.ERROR -> MaterialTheme.colorScheme.errorContainer
-                ToolStatus.DENIED, ToolStatus.AWAITING_APPROVAL -> MaterialTheme.colorScheme.surfaceVariant
-                else -> MaterialTheme.colorScheme.surfaceContainerHigh
-            }
+            containerColor = androidx.compose.ui.graphics.Color(0xFF1A1B1E)  // MonkeyCode 终端深底
         ),
         border = if (running) androidx.compose.foundation.BorderStroke(1.dp, toolBrush)
                  else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),

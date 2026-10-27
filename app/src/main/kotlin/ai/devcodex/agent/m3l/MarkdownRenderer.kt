@@ -85,12 +85,7 @@ fun MixedMarkdownLatex(
     }
     val segments by remember(renderedText) {
         derivedStateOf {
-            // 表格防误判：表格块（| 开头）前后保空行（紧贴段落/代码围栏时会被当代码或纯文本）
-            val norm = normalizeHtmlToMarkdown(renderedText)
-            val guarded = norm.split("\n").joinToString("\n") { line ->
-                if (line.trim().startsWith("|")) "\n" + line else line
-            }
-            splitContent(guarded, allowUnclosedCodeFence = true)
+            splitContent(normalizeHtmlToMarkdown(renderedText), allowUnclosedCodeFence = true)
         }
     }
 

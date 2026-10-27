@@ -326,12 +326,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (c.postHistoryInstructions.isNotBlank()) append("【持续指令】\n").append(c.postHistoryInstructions).append("\n")
         }
         val s = sessionRepo.newSession()
-        val msgs = buildList {
+        var msgs = buildList {
             add(ai.devcodex.agent.data.Message(
                 id = java.util.UUID.randomUUID().toString(), role = "system", content = sys,
                 timestamp = System.currentTimeMillis()))
             if (c.firstMes.isNotBlank()) add(ai.devcodex.agent.data.Message(
                 id = java.util.UUID.randomUUID().toString(), role = "assistant", content = c.firstMes,
+                timestamp = System.currentTimeMillis()))
+        }
+        // 世界书：触发关键词（keys 命中用户输入时注入）——开场即注入全部 enabled 条目（Operit 式常驻）
+        val book = c.characterBook
+        if (book != null && book.entries.isNotEmpty()) {
+            val lore = book.entries.filter { it.enabled }.joinToString("\n") { "【lore】" + it.content }
+            if (lore.isNotBlank()) msgs = msgs + listOf(ai.devcodex.agent.data.Message(
+                id = java.util.UUID.randomUUID().toString(), role = "system", content = lore,
                 timestamp = System.currentTimeMillis()))
         }
         val withChar = s.copy(title = "角色 · " + c.name, messages = msgs)

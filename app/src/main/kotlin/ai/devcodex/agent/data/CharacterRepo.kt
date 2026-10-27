@@ -22,6 +22,22 @@ data class CharacterCard(
     val creator: String = "",
     val characterVersion: String = "v2",
     val avatar: String = "",
+    val characterBook: CharacterBook? = null,   // 世界书（lorebook）
+)
+
+/** 世界书（SillyTavern V2 character_book） */
+@Serializable
+data class CharacterBook(
+    val name: String = "",
+    val entries: List<LoreEntry> = emptyList(),
+)
+
+@Serializable
+data class LoreEntry(
+    val keys: List<String> = emptyList(),   // 触发关键词
+    val content: String = "",               // 注入内容
+    val enabled: Boolean = true,
+    val insertionOrder: Int = 0,
 )
 
 object CharacterRepo {
@@ -55,6 +71,21 @@ object CharacterRepo {
         File(dir, "$safe.json").delete()
     }.getOrDefault(false)
 
+    private fun parseBook(el: kotlinx.serialization.json.JsonElement?): CharacterBook? = runCatching {
+        val obj = el as? kotlinx.serialization.json.JsonObject ?: return null
+        val entries = (obj["entries"] as? kotlinx.serialization.json.JsonArray)
+            ?.mapNotNull { e ->
+                val eo = e as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+                LoreEntry(
+                    keys = (eo["keys"] as? kotlinx.serialization.json.JsonArray)
+                        ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content } ?: emptyList(),
+                    content = (eo["content"] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "",
+                    enabled = (eo["enabled"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toBoolean() ?: true,
+                )
+            } ?: emptyList()
+        CharacterBook(name = (obj["name"] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "", entries = entries)
+    }.getOrNull()
+
     fun importFromJson(text: String): CharacterCard? = runCatching {
         val root = json.parseToJsonElement(text).let { it as? kotlinx.serialization.json.JsonObject } ?: return null
         val data = (root["data"] as? kotlinx.serialization.json.JsonObject)
@@ -76,6 +107,7 @@ object CharacterRepo {
                 tags = (data["tags"] as? kotlinx.serialization.json.JsonArray)
                     ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content } ?: emptyList(),
                 creator = str(data, "creator"),
+                characterBook = parseBook(data["character_book"]),
             )
         } else {
             CharacterCard(

@@ -1009,7 +1009,16 @@ private fun AboutPage(onBack: () -> Unit) {
             shape = RoundedCornerShape(18.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                // rikkahub 式 logo：圆角图标块
+                androidx.compose.foundation.layout.Box(
+                    Modifier.size(64.dp).background(
+                        MaterialTheme.colorScheme.primary,
+                        androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) { Text("D", style = MaterialTheme.typography.headlineMedium, color = androidx.compose.ui.graphics.Color.White) }
+                Spacer(Modifier.height(10.dp))
                 Text("DevCodex", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · Android AI Agent",

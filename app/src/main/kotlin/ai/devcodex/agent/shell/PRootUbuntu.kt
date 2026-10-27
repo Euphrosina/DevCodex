@@ -19,7 +19,7 @@ object PRootUbuntu {
         if (initialized && rootfsDir(ctx).resolve("bin").exists()) return true
         return runCatching {
             val prootDir = File(ctx.filesDir, "proot-bin").apply { mkdirs() }
-            // proot 二进制
+            // proot 二进制 + 依赖库（talloc/shmem/loader 全套，LD_LIBRARY_PATH 指 Termux usr/lib）
             val prootBin = File(prootDir, "proot")
             if (!prootBin.exists()) {
                 ctx.assets.open("proot/proot").use { input -> prootBin.outputStream().use { input.copyTo(it) } }
@@ -55,12 +55,19 @@ object PRootUbuntu {
     fun exec(ctx: Context, command: String, timeoutSec: Int = 150): String {
         val root = rootfsDir(ctx)
         val proot = File(ctx.filesDir, "proot-bin/proot").absolutePath
+        val termuxLib = File(ctx.filesDir, "usr/lib").absolutePath
         val full = "$proot -r ${root.absolutePath} " +
             "-b /dev -b /proc -b /sys -b /sdcard -b /data/local/tmp " +
             "-w /root -0 /usr/bin/env HOME=/root PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin " +
             "/bin/sh -c ${command.replace("\"", "\\\"")}"
         return runCatching {
-            val p = ProcessBuilder("sh", "-c", full).redirectErrorStream(true).start()
+            val bash = File(ctx.filesDir, "usr/bin/bash")
+            val pb = if (bash.exists()) ProcessBuilder(bash.absolutePath, "-c", full) else ProcessBuilder("sh", "-c", full)
+            pb.redirectErrorStream(true).apply {
+                environment()["LD_LIBRARY_PATH"] = termuxLib + ":" + (System.getenv("LD_LIBRARY_PATH") ?: "")
+                environment()["PATH"] = File(ctx.filesDir, "usr/bin").absolutePath + ":/system/bin:/system/xbin"
+            }
+            val p = pb.start()
             val out = StringBuilder()
             val reader = java.io.BufferedReader(java.io.InputStreamReader(p.inputStream))
             val t = Thread { reader.forEachLine { if (out.length < 60_000) out.append(it).append('\n') } }

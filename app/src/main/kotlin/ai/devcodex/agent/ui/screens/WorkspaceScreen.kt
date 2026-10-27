@@ -50,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import ai.devcodex.agent.AppViewModel
@@ -209,12 +211,67 @@ fun WorkspaceScreen(vm: AppViewModel) {
                         )
                     } else Text("（图片解码失败）", style = MaterialTheme.typography.bodySmall)
                 } else if (repo.isTextFile(e)) {
-                    Text(
-                        WorkspaceRepo.textPreview(e.file),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
-                    )
+                    val content = WorkspaceRepo.textPreview(e.file)
+                    val isDiff = e.file.extension in listOf("diff", "patch") || content.trimStart().startsWith("@@ -") || (content.lines().firstOrNull()?.startsWith("--- ") == true && content.contains("@@ "))
+                    val isCode = e.file.extension in listOf("kt", "java", "py", "js", "ts", "c", "cpp", "h", "sh", "json", "xml", "yaml", "yml", "go", "rs")
+                    if (isDiff) {
+                        // GitHub 式 Diff 渲染：+绿 -红 @@ 蓝分割行
+                        Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                            content.lines().take(4000).forEach { line ->
+                                val bg = when {
+                                    line.startsWith("+") -> androidx.compose.ui.graphics.Color(0xFF1B4721)
+                                    line.startsWith("-") -> androidx.compose.ui.graphics.Color(0xFF5D1B1B)
+                                    line.startsWith("@@") -> androidx.compose.ui.graphics.Color(0xFF123A5D)
+                                    else -> androidx.compose.ui.graphics.Color.Transparent
+                                }
+                                val fg = when {
+                                    line.startsWith("+") -> androidx.compose.ui.graphics.Color(0xFF7EE787)
+                                    line.startsWith("-") -> androidx.compose.ui.graphics.Color(0xFFFF7B72)
+                                    line.startsWith("@@") -> androidx.compose.ui.graphics.Color(0xFF79C0FF)
+                                    else -> MaterialTheme.colorScheme.onSurface
+                                }
+                                Text(
+                                    line.ifBlank { " " },
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = MaterialTheme.typography.bodySmall.fontSize * 0.85f),
+                                    color = fg,
+                                    modifier = Modifier.fillMaxWidth().background(bg).padding(horizontal = 8.dp, vertical = 0.5.dp),
+                                )
+                            }
+                        }
+                    } else if (isCode) {
+                        // 轻量语法高亮：关键字/字符串/注释着色
+                        Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                            val kw = Regex("\b(fun|val|var|class|object|if|else|for|while|return|import|package|public|private|static|void|def|let|const|struct|fn|match|async|await)\b")
+                            val str = Regex("\"[^\"]*\"|'[^']*'")
+                            val cmt = Regex("//.*|/\\*.*?\\*/|#.*")
+                            content.lines().take(3000).forEach { line ->
+                                val annotated = androidx.compose.ui.text.buildAnnotatedString {
+                                    var i = 0
+                                    val all = listOf(kw, str, cmt)
+                                    while (i < line.length) {
+                                        val m = all.firstNotNullOfOrNull { r -> r.find(line, i) }
+                                        if (m == null) { append(line.substring(i)); break }
+                                        if (m.range.first > i) append(line.substring(i, m.range.first))
+                                        val color = when (m) {
+                                            cmt.find(line, i) -> androidx.compose.ui.graphics.Color(0xFF8B949E)
+                                            str.find(line, i) -> androidx.compose.ui.graphics.Color(0xFFA5D6FF)
+                                            else -> androidx.compose.ui.graphics.Color(0xFFFF7B72)
+                                        }
+                                        withStyle(androidx.compose.ui.text.SpanStyle(color = color)) { append(m.value) }
+                                        i = m.range.last + 1
+                                    }
+                                }
+                                Text(annotated, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = MaterialTheme.typography.bodySmall.fontSize * 0.85f))
+                            }
+                        }
+                    } else {
+                        Text(
+                            content,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                        )
+                    }
                 } else {
                     Text(
                         "（二进制文件，AI 可通过路径访问：${e.relativePath}）",
