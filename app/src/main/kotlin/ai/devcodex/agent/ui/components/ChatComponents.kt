@@ -445,7 +445,7 @@ fun InputBar(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("给 DevCodex 下指令…") },
+                    placeholder = { Text("询问 DevCodex…") },
                     maxLines = 6,
                     shape = RoundedCornerShape(24.dp),
                     leadingIcon = {

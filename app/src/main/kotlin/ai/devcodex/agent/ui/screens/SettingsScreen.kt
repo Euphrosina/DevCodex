@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Favorite
@@ -842,6 +844,9 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
 @Composable
 private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    fun openUri(u: String) = runCatching {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)))
+    }
     var skills by remember { mutableStateOf(listOf<ai.devcodex.agent.data.SkillRepo.Skill>()) }
     var msg by remember { mutableStateOf<String?>(null) }
     fun reload() {
@@ -1004,6 +1009,11 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
 @Composable
 fun AboutPage(onBack: () -> Unit) {
     val scroll = rememberScrollState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    fun openUri(u: String) = runCatching {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)))
+    }
+
     Column(Modifier.fillMaxSize()) {
         // ===== rikkahub SettingAboutPage 完整复刻（136dp logo+两组 CardGroup）=====
         Column(
@@ -1070,18 +1080,34 @@ fun AboutPage(onBack: () -> Unit) {
                             Text("github.com/Moirania/DevCodex", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Row(Modifier.fillMaxWidth().clickable { }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().clickable { runCatching { (context.getSystemService(android.content.ClipboardManager::class.java))?.setPrimaryClip(android.content.ClipData.newPlainText("qq", "935857642")) } }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Chat, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text("QQ 群 · DeepSeek", style = MaterialTheme.typography.bodyLarge)
-                            Text("群号见 README", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("935857642（点击复制）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex#readme") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.MenuBook, null, Modifier.size(20.dp), tint = t2) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("开发文档", style = MaterialTheme.typography.bodyLarge)
+                            Text("github.com/Moirania/DevCodex#readme", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex/blob/main/PRIVACY.md") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.PrivacyTip, null, Modifier.size(20.dp), tint = t2) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("隐私政策", style = MaterialTheme.typography.bodyLarge)
+                            Text("本地处理，不上传隐私数据", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
-            OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
-            OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("请作者喝奶茶", style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex/issues") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex#赞助") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("请作者喝奶茶", style = MaterialTheme.typography.labelLarge) }
             Spacer(Modifier.height(12.dp))
         }
     }
