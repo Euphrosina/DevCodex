@@ -247,8 +247,9 @@ fun ChatScreen(vm: AppViewModel) {
                 val grouped = sessions.sortedByDescending { it.updatedAt }.groupBy { groupOf(it.updatedAt) }
                 LazyColumn(
                     Modifier.widthIn(max = 760.dp).weight(1f, fill = false),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),  // Aether 消息间距
                 ) {
                     grouped.forEach { (group, items) ->
                         item(key = "grp-$group") {
@@ -310,6 +311,7 @@ fun ChatScreen(vm: AppViewModel) {
         },
     ) {
         Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
             topBar = {
                 TopAppBar(
                     title = {
@@ -395,8 +397,8 @@ fun ChatScreen(vm: AppViewModel) {
                                     MsgActionBar(
                                         msg,
                                         onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制 · " + c.length + " 字" },
-                                        onResend = { if (msg.content.isNotBlank()) { if (isRunning) vm.stop(); vm.send(msg.content) } },
-                                        onRewind = { if (isRunning) vm.stop(); vm.rewindTo(msg.id) },
+                                        onResend = { if (msg.content.isNotBlank()) { if (isRunning) vm.toast.value = "回复进行中，稍后重发" else vm.send(msg.content) } },
+                                        onRewind = { if (isRunning) vm.toast.value = "回复进行中，稍后回退" else vm.rewindTo(msg.id) },
                                         onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) },
                                     )
                                 }
@@ -537,8 +539,8 @@ fun ChatScreen(vm: AppViewModel) {
                                             msg,
                                             onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制 · " + c.length + " 字" },
                                             onResend = {},
-                                            onRewind = { if (isRunning) vm.stop(); vm.rewindTo(msg.id) },
-                                            onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) },
+                                            onRewind = { if (isRunning) vm.toast.value = "回复进行中，稍后回退" else vm.rewindTo(msg.id) },
+                                            onDelete = { if (isRunning) { vm.toast.value = "回复进行中，删除将在完成后生效" } else vm.deleteMessage(msg.id) },
                                         )
                                     }
                                 }

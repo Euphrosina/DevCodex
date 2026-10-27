@@ -83,7 +83,9 @@ fun WorkspaceScreen(vm: AppViewModel) {
                 navigationIcon = {
                     if (currentDir.isNotBlank()) {
                         IconButton(onClick = {
-                            currentDir = currentDir.substringBeforeLast('/').ifBlank { "" }
+                            // 修根级目录无法返回：substring 不变时回根
+                            val parent = currentDir.substringBeforeLast('/')
+                            currentDir = if (parent == currentDir) "" else parent
                         }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
                     }
                 },
@@ -239,8 +241,8 @@ fun WorkspaceScreen(vm: AppViewModel) {
                             }
                         }
                     } else if (isCode) {
-                        // 轻量语法高亮：关键字/字符串/注释着色
-                        Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                        // GitHub Dark 语法高亮（#0D1117 底+GitHub 配色）
+                        Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()).background(androidx.compose.ui.graphics.Color(0xFF0D1117))) {
                             val kw = Regex("\b(fun|val|var|class|object|if|else|for|while|return|import|package|public|private|static|void|def|let|const|struct|fn|match|async|await)\b")
                             val str = Regex("\"[^\"]*\"|'[^']*'")
                             val cmt = Regex("//.*|/\\*.*?\\*/|#.*")
@@ -253,9 +255,9 @@ fun WorkspaceScreen(vm: AppViewModel) {
                                         if (m == null) { append(line.substring(i)); break }
                                         if (m.range.first > i) append(line.substring(i, m.range.first))
                                         val color = when (m) {
-                                            cmt.find(line, i) -> androidx.compose.ui.graphics.Color(0xFF8B949E)
-                                            str.find(line, i) -> androidx.compose.ui.graphics.Color(0xFFA5D6FF)
-                                            else -> androidx.compose.ui.graphics.Color(0xFFFF7B72)
+                                            cmt.find(line, i) -> androidx.compose.ui.graphics.Color(0xFF8B949E)  // GitHub Dark comment
+                                            str.find(line, i) -> androidx.compose.ui.graphics.Color(0xFFA5D6FF)  // string
+                                            else -> androidx.compose.ui.graphics.Color(0xFFFF7B72)              // keyword
                                         }
                                         withStyle(androidx.compose.ui.text.SpanStyle(color = color)) { append(m.value) }
                                         i = m.range.last + 1
