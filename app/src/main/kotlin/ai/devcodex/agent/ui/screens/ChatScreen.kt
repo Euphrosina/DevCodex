@@ -89,6 +89,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -161,10 +162,10 @@ fun ChatScreen(vm: AppViewModel) {
     LaunchedEffect(listState.firstVisibleItemIndex, sessionKey) {
         vm.chatScrollMap[sessionKey] = listState.firstVisibleItemIndex
     }
-    // 思考流式自动滚动：用户滚动操作中不跟随（根治手动滑动回弹）+判定放宽到倒数 3 项
-    LaunchedEffect(lastThinkingLen, isRunning) {
-        if (isRunning && messages.isNotEmpty() && !listState.isScrollInProgress &&
-            listState.firstVisibleItemIndex >= (messages.size - 3).coerceAtLeast(0)) {
+    // 思考期间不再自动滚动（根治回弹：思考文本增长不拉底，新消息仍跟随）
+    LaunchedEffect(messages.size, isRunning) {
+        if (isRunning && messages.isNotEmpty() &&
+            listState.firstVisibleItemIndex >= (messages.size - 2).coerceAtLeast(0)) {
             runCatching { listState.animateScrollToItem(messages.lastIndex) }
         }
     }
@@ -488,14 +489,9 @@ fun ChatScreen(vm: AppViewModel) {
                                                         },
                                                     ) {
                                                         ai.devcodex.agent.m3l.MixedMarkdownLatex(
-                                                            text = if (streamingNow) {
-                                                                // MD 实时渲染节流：300ms 采样一次（防 token 级全量重排）
-                                                                var lastRender by androidx.compose.runtime.remember(idx) { androidx.compose.runtime.mutableStateOf("") }
-                                                                if (msg.content.length - lastRender.length > 240) lastRender = msg.content
-                                                                lastRender
-                                                            } else msg.content,
+                                                            text = msg.content,
+                                                            isStreaming = streamingNow,
                                                             textColor = MaterialTheme.colorScheme.onSurface,
-                                                            isStreaming = false,
                                                         )
                                                     }
                                                 }
@@ -1126,8 +1122,8 @@ private fun MsgActionBar(
         }
         actBtn("复制", Icons.Filled.ContentCopy, onClick = { onCopy(msg.content) })
         if (msg.role == "user") {
-            actBtn("重发", Icons.Filled.ArrowUpward, onClick = onResend)
-            actBtn("回退", Icons.Filled.ArrowDownward, onClick = onRewind)
+            actBtn("重发", FeatherIcons.Reply, onClick = onResend)
+            actBtn("回退", FeatherIcons.Rewind, onClick = onRewind)
         }
         actBtn("删除", Icons.Filled.Delete, onClick = onDelete)
     }
@@ -1145,5 +1141,48 @@ private fun CharAvatarFallback(c: ai.devcodex.agent.data.CharacterCard) {
         contentAlignment = androidx.compose.ui.Alignment.Center,
     ) {
         Text(c.name.takeOrNull(1) ?: "角", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+    }
+}
+
+// ===== rikkahub feathericons 照搬（reply 重发 / rewind 回退）=====
+object FeatherIcons {
+    val Reply: androidx.compose.ui.graphics.vector.ImageVector by lazy {
+        androidx.compose.ui.graphics.vector.ImageVector.Builder(
+            name = "FeatherReply", defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 24f, viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
+                strokeLineWidth = 2f, strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
+                strokeLineJoin = androidx.compose.ui.graphics.StrokeJoin.Round,
+            ) {
+                moveTo(9f, 17f)
+                lineTo(4f, 12f)
+                lineTo(9f, 7f)
+                moveTo(20f, 18f)
+                lineTo(20f, 16f)
+                curveTo(20f, 13.79f, 18.21f, 12f, 16f, 12f)
+                lineTo(4f, 12f)
+            }
+        }.build()
+    }
+    val Rewind: androidx.compose.ui.graphics.vector.ImageVector by lazy {
+        androidx.compose.ui.graphics.vector.ImageVector.Builder(
+            name = "FeatherRewind", defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 24f, viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
+                strokeLineWidth = 2f, strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
+                strokeLineJoin = androidx.compose.ui.graphics.StrokeJoin.Round,
+            ) {
+                moveTo(11f, 19f)
+                lineTo(2f, 12f)
+                lineTo(11f, 5f)
+                moveTo(22f, 19f)
+                lineTo(13f, 12f)
+                lineTo(22f, 5f)
+            }
+        }.build()
     }
 }

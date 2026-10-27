@@ -121,7 +121,7 @@ class WorkspaceRepo(private val context: Context) {
         SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(ts))
 
     companion object {
-        fun textPreview(file: File, maxChars: Int = 3000): String = runCatching {
+        fun textPreview(file: File, maxChars: Int = 200_000): String = runCatching {
             val text = file.readText()
             if (text.length > maxChars) text.take(maxChars) + "\n…(共 ${text.length} 字符，截断预览)" else text
         }.getOrElse { "（无法预览：${it.message}）" }
