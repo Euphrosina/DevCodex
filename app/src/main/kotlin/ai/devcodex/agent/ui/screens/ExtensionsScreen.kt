@@ -74,15 +74,13 @@ fun ExtensionsScreen(vm: AppViewModel) {
                         val ctx = BuiltinTools.appContext()
                         when (entry.type) {
                             "plugin" -> {
-                                val dir = java.io.File(ctx.filesDir, "plugins").apply { mkdirs() }
-                                java.io.File(dir, entry.name + ".json").writeBytes(bytes)
+                                ai.devcodex.agent.data.PluginRepo(ctx).installFromText(String(bytes, Charsets.UTF_8)).getOrThrow()
                             }
                             else -> {
-                                val dir = java.io.File(ctx.filesDir, "skills").apply { mkdirs() }
-                                java.io.File(dir, entry.name + ".md").writeBytes(bytes)
+                                ai.devcodex.agent.data.SkillRepo(ctx).install(String(bytes, Charsets.UTF_8)).getOrThrow()
                             }
                         }
-                        message = "✓ 已安装「${entry.name}」（AI 已可调用，插件/技能页可管理）"
+                        message = "✓ 已安装「${entry.name}」（可在${if (entry.type == "plugin") "插件" else "技能"}页管理）"
                     }
             }.getOrElse { message = "安装失败：${it.message?.take(120)}" }
         }
