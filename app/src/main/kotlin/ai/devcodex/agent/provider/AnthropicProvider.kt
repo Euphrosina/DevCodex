@@ -46,7 +46,19 @@ object AnthropicProvider {
                     put("tool_use_id", t.toolCallId ?: "")
                     put("content", t.content.take(4000))
                 })
-                else -> if (t.content.isNotBlank()) push("user", buildJsonObject { put("type", "text"); put("text", t.content) })
+                else -> {
+                    t.images.forEach { im ->
+                        push("user", buildJsonObject {
+                            put("type", "image")
+                            put("source", buildJsonObject {
+                                put("type", "base64")
+                                put("media_type", im.mime)
+                                put("data", im.base64)
+                            })
+                        })
+                    }
+                    if (t.content.isNotBlank()) push("user", buildJsonObject { put("type", "text"); put("text", t.content) })
+                }
             }
         }
         return buildJsonArray {

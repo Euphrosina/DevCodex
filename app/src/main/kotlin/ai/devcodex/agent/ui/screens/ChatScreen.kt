@@ -201,7 +201,7 @@ fun ChatScreen(vm: AppViewModel) {
         ?: settings.providers.firstOrNull { it.isDefault }
         ?: settings.providers.firstOrNull()
     val modelLabel = session?.modelId
-        ?: defaultProvider?.enabledModels?.firstOrNull()
+        ?: defaultProvider?.enabledModels?.firstOrNull { ai.devcodex.agent.provider.ModelRegistry.isChatModel(it) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -326,7 +326,7 @@ fun ChatScreen(vm: AppViewModel) {
                             // MChat 式：会话标题 + 当前模型行（Logo+名称+下拉箭头）
                             Text(session?.title ?: "DevCodex", maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val displayModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: "选择模型"
+                                val displayModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull { ai.devcodex.agent.provider.ModelRegistry.isChatModel(it) } ?: "选择模型"
                                 ai.devcodex.agent.ui.components.ModelLogo(displayModel, 16.dp)
                                 Spacer(Modifier.width(4.dp))
                                 Text(
@@ -595,7 +595,7 @@ fun ChatScreen(vm: AppViewModel) {
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }
                 }
-                val curModelId = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull() ?: ""
+                val curModelId = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull { ai.devcodex.agent.provider.ModelRegistry.isChatModel(it) } ?: ""
                 val modelMaxCtx2 = ai.devcodex.agent.provider.ModelRegistry.lookup(curModelId).contextLength ?: Int.MAX_VALUE
                 // 斜杠命令建议浮层（输入以 / 开头）
                 if (input.startsWith("/") && input.length <= 24 && !input.contains(" ")) {
@@ -809,7 +809,9 @@ fun ChatScreen(vm: AppViewModel) {
                     leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.size(18.dp)) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 )
-                val activeProviders = settings.providers.filter { it.enabled && it.enabledModels.isNotEmpty() }
+                val activeProviders = settings.providers.filter { p ->
+                    p.enabled && p.enabledModels.any { ai.devcodex.agent.provider.ModelRegistry.isChatModel(it) }
+                }
                 if (activeProviders.isEmpty()) {
                     Text(
                         "没有可用模型，请到「提供商」页配置",
@@ -831,7 +833,9 @@ fun ChatScreen(vm: AppViewModel) {
                                 modifier = Modifier.padding(start = 28.dp, top = 12.dp, bottom = 4.dp),
                             )
                         }
-                        val filtered = p.enabledModels.filter { it.contains(query, ignoreCase = true) }
+                        val filtered = p.enabledModels.filter {
+                            ai.devcodex.agent.provider.ModelRegistry.isChatModel(it) && it.contains(query, ignoreCase = true)
+                        }
                         items(filtered.size, key = { p.id + '-' + filtered[it] + '-' + it }) { i ->
                             val m = filtered[i]
                             val selected = session?.modelId == m && session?.providerId == p.id

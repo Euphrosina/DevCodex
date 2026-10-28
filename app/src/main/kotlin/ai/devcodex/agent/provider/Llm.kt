@@ -34,7 +34,11 @@ data class ChatTurn(
     /** Anthropic thinking 块原文与签名，开启 thinking 的多轮工具调用必须原样回传 */
     val thinking: String? = null,
     val thinkingSignature: String? = null,
+    /** 用户消息携带的图片（base64，不含 data: 前缀） */
+    val images: List<ImagePart> = emptyList(),
 )
+
+data class ImagePart(val mime: String, val base64: String)
 
 sealed interface StreamEvent {
     data class Usage(val inputTokens: Long, val outputTokens: Long, val cachedTokens: Long) : StreamEvent

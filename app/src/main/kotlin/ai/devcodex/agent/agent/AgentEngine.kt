@@ -111,9 +111,10 @@ class AgentEngine(
         val provider = s.providers.find { it.id == session.providerId && it.enabled }
             ?: s.providers.firstOrNull { it.enabled && it.enabledModels.isNotEmpty() }
             ?: run { events.emit(UiEvent.Error("未配置 API 提供商，请到「提供商」页添加并拉取模型")); return }
-        val model = session.modelId?.takeIf { provider.enabledModels.contains(it) }
-            ?: provider.enabledModels.firstOrNull()
-            ?: run { events.emit(UiEvent.Error("该提供商没有启用的模型")); return }
+        val chatModels = provider.enabledModels.filter { ModelRegistry.isChatModel(it) }
+        val model = session.modelId?.takeIf { chatModels.contains(it) }
+            ?: chatModels.firstOrNull()
+            ?: run { events.emit(UiEvent.Error("该提供商没有可用的聊天模型（生图与视频模型不能作为聊天主模型）")); return }
 
         // MCP 工具拉取（启用中的服务器，单服务器 8s 超时保护）
         val mcpTools = s.mcpServers.filter { it.enabled }.flatMap { cfg ->
@@ -127,6 +128,7 @@ class AgentEngine(
         val toolDefs = BuiltinTools.all.filter { s.enabledTools.contains(it.name) } +
             ai.devcodex.agent.tools.AdvancedFsTools.all.filter { s.enabledTools.contains(it.name) } +
             ai.devcodex.agent.tools.ExtraTools.all.filter { s.enabledTools.contains(it.name) } +
+            ai.devcodex.agent.tools.MediaTools.all.filter { s.enabledTools.contains(it.name) } +
             customToolDefs(s.customTools) +
             mcpTools.map { mt ->
                 ToolDef(
@@ -186,7 +188,19 @@ class AgentEngine(
                         when (m.role) {
                             "user" -> {
                                 val c = (m.llmContent ?: m.content)
-                                if (c.isNotBlank()) add(ChatTurn("user", c))
+                                // 视觉模型：把随消息发送的图片读成 base64 附带；非视觉模型仅保留文本中的图片提示
+                                val imgs = if (m.imagePaths.isNotEmpty() && ai.devcodex.agent.provider.ModelRegistry.lookup(model).vision) {
+                                    m.imagePaths.mapNotNull { rel ->
+                                        runCatching {
+                                            val root = BuiltinTools.workspaceRoot().canonicalFile
+                                            val f = java.io.File(root, rel).canonicalFile
+                                            if (!f.path.startsWith(root.path + java.io.File.separator) || !f.isFile || f.length() > 8L * 1024 * 1024) return@runCatching null
+                                            val mime = when (f.extension.lowercase()) { "png" -> "image/png"; "webp" -> "image/webp"; else -> "image/jpeg" }
+                                            ai.devcodex.agent.provider.ImagePart(mime, java.util.Base64.getEncoder().encodeToString(f.readBytes()))
+                                        }.getOrNull()
+                                    }
+                                } else emptyList()
+                                if (c.isNotBlank() || imgs.isNotEmpty()) add(ChatTurn("user", c, images = imgs))
                             }
                             "assistant" -> if (m.content.isNotBlank() || m.toolCalls.isNotEmpty()) add(ChatTurn("assistant", m.content, m.toolCalls, thinking = m.thinking, thinkingSignature = m.thinkingSignature))
                             "tool" -> if (m.toolCallId != null) add(ChatTurn("tool", m.toolResult ?: "(空)", toolCallId = m.toolCallId, name = m.toolName))

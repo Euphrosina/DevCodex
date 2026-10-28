@@ -36,6 +36,17 @@ class SettingsRepo(private val context: Context) {
         }
     }
 
+    /** 一次性迁移：把生图/视频工具名并入旧用户已持久化的 enabledTools（仅执行一次，用户之后手动关闭的选择会被保留） */
+    suspend fun migrateMediaToolsIfNeeded() {
+        update { cur ->
+            if (cur.mediaToolsMigrated) return@update cur
+            cur.copy(
+                enabledTools = cur.enabledTools + setOf("image_generate", "video_generate", "video_status"),
+                mediaToolsMigrated = true,
+            )
+        }
+    }
+
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         context.dataStore.edit { p ->
             val cur = p[key]?.let { runCatching { json.decodeFromString<AppSettings>(it) }.getOrNull() } ?: AppSettings()

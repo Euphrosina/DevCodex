@@ -824,7 +824,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         Text("内置工具", style = MaterialTheme.typography.titleMedium)
         Text("关闭后智能体将看不到对应能力", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.padding(6.dp))
-        (ai.devcodex.agent.tools.BuiltinTools.all + ai.devcodex.agent.tools.AdvancedFsTools.all + ai.devcodex.agent.tools.ExtraTools.all).forEach { tool ->
+        (ai.devcodex.agent.tools.BuiltinTools.all + ai.devcodex.agent.tools.AdvancedFsTools.all + ai.devcodex.agent.tools.ExtraTools.all + ai.devcodex.agent.tools.MediaTools.all).forEach { tool ->
             val enabled = settings.enabledTools.contains(tool.name)
             val toolLevel = settings.toolPermissions[tool.name]?.let { ai.devcodex.agent.agent.PermissionLevel.parse(it).name }
             ListItem(

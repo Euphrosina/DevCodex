@@ -34,7 +34,19 @@ object OpenAiCompatProvider {
                         put("tool_call_id", t.toolCallId ?: "")
                         put("content", t.content)
                     }
-                    else -> put("content", t.content)
+                    else -> if (t.role == "user" && t.images.isNotEmpty()) {
+                        put("content", buildJsonArray {
+                            if (t.content.isNotBlank()) add(buildJsonObject { put("type", "text"); put("text", t.content) })
+                            t.images.forEach { im ->
+                                add(buildJsonObject {
+                                    put("type", "image_url")
+                                    put("image_url", buildJsonObject { put("url", "data:${im.mime};base64,${im.base64}") })
+                                })
+                            }
+                        })
+                    } else {
+                        put("content", t.content)
+                    }
                 }
             }
         }

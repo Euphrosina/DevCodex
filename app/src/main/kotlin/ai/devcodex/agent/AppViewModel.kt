@@ -73,7 +73,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             settings.collect { latestSettings = it }
         }
         // 旧审批模式与 toolPerms 一次性迁移到新权限字段（须先于设置读取生效）
-        viewModelScope.launch { runCatching { settingsRepo.migratePermissionsIfNeeded() } }
+        viewModelScope.launch {
+            runCatching { settingsRepo.migratePermissionsIfNeeded() }
+            // 生图/视频工具名并入旧用户已持久化的 enabledTools（一次性）
+            runCatching { settingsRepo.migrateMediaToolsIfNeeded() }
+        }
         reloadPlugins()
         reloadSessions()
         viewModelScope.launch {
@@ -115,12 +119,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // @引用 → 附件内容注入（LLM 侧带文件正文，UI 展示保持原文）
         val display = text.trim()
         var llmContent: String? = null
+        val imagePaths = mutableListOf<String>()
         val mentions = Regex("@([\\w\\u4e00-\\u9fa5.\\-]+)").findAll(display).map { it.groupValues[1] }.toList()
         if (mentions.isNotEmpty()) {
             val sb = StringBuilder(display)
             for (name in mentions.distinct()) {
                 val entry = workspaceRepo.list().firstOrNull { it.name.equals(name, ignoreCase = true) } ?: continue
-                if (workspaceRepo.isTextFile(entry)) {
+                if (!entry.isDir && entry.file.extension.lowercase() in setOf("png", "jpg", "jpeg", "webp")) {
+                    imagePaths += entry.relativePath
+                    sb.append("\n\n[图片 ").append(entry.name).append("]")
+                } else if (workspaceRepo.isTextFile(entry)) {
                     sb.append("\n\n[附件 ").append(entry.name).append("]\n")
                         .append(WorkspaceRepo.textPreview(entry.file, 15000))
                 } else {
@@ -132,7 +140,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val userMsg = ai.devcodex.agent.data.Message(
             id = java.util.UUID.randomUUID().toString(),
-            role = "user", content = display, llmContent = llmContent,
+            role = "user", content = display, llmContent = llmContent, imagePaths = imagePaths.toList(),
             timestamp = System.currentTimeMillis(),
         )
         val updated = session.copy(

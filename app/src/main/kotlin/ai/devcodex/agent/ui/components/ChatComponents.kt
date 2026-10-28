@@ -81,13 +81,39 @@ private val Mono = FontFamily.Monospace
 @Composable
 fun UserBubble(msg: Message, nick: String = "我") {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        ai.devcodex.agent.ui.components.DynamicBubble(
-            text = msg.content,
-            backgroundColor = MaterialTheme.colorScheme.primaryContainer,
-            textColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            maxLines = 2000,
-            modifier = Modifier.widthIn(max = 340.dp),
-        )
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // 随消息发送的图片缩略图（仅显示工作区内真实存在的文件）
+            if (msg.imagePaths.isNotEmpty()) {
+                val files = remember(msg.imagePaths) {
+                    val root = runCatching { ai.devcodex.agent.tools.BuiltinTools.workspaceRoot().canonicalFile }.getOrNull()
+                    if (root == null) emptyList() else msg.imagePaths.mapNotNull { rel ->
+                        runCatching { java.io.File(root, rel).canonicalFile }.getOrNull()
+                    }.filter { it.path.startsWith(root.path + java.io.File.separator) && it.isFile }
+                }
+                if (files.isNotEmpty()) {
+                    Row(
+                        Modifier.widthIn(max = 340.dp).horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        files.forEach { f ->
+                            coil.compose.AsyncImage(
+                                model = f,
+                                contentDescription = f.name,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp)),
+                            )
+                        }
+                    }
+                }
+            }
+            ai.devcodex.agent.ui.components.DynamicBubble(
+                text = msg.content,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                textColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 2000,
+                modifier = Modifier.widthIn(max = 340.dp),
+            )
+        }
     }
 }
 
@@ -248,6 +274,8 @@ fun ToolCard(msg: Message, argsJson: String = "", live: Boolean = true) {
                     maxLines = 1,
                 )
             }
+            // 生图/视频工具结果中的 FILE: 行：在卡片内直接预览生成的媒体
+            if (status == ToolStatus.DONE) MediaPreview(result)
             if (expanded) {
                 if (argsJson.isNotBlank() && argsJson != "{}") {
                     Text(
