@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -72,6 +73,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.vector.path
@@ -552,12 +555,31 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         // ============ 工具权限（全局默认） ============
         Text("工具权限", style = MaterialTheme.typography.titleMedium)
         Text("允许：全部直接执行 · 询问（默认）：低风险直接执行，其余执行前询问 · 禁止：全部不执行。单工具的设置优先于全局默认。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
-            listOf("ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止").forEach { (v, label) ->
-                FilterChip(
-                    selected = ai.devcodex.agent.agent.PermissionLevel.parse(settings.permissionDefault).name == v,
-                    onClick = { vm.saveSettings { s -> s.copy(permissionDefault = v) } },
-                    label = { Text(label) },
+        val curLevel = ai.devcodex.agent.agent.PermissionLevel.parse(settings.permissionDefault).name
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    listOf("ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止").forEach { (v, label) ->
+                        FilterChip(
+                            selected = curLevel == v,
+                            onClick = { vm.saveSettings { s -> s.copy(permissionDefault = v) } },
+                            label = { Text(label, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Spacer(Modifier.padding(4.dp))
+                Text(
+                    when (curLevel) {
+                        "ALLOW" -> "当前：所有工具直接执行，不再弹出审批。"
+                        "FORBID" -> "当前：所有工具一律不执行，除非单工具另行允许。"
+                        else -> "当前：低风险工具直接执行，其余在执行前询问。"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -828,16 +850,29 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
                 ) {
                     Text("权限：", style = MaterialTheme.typography.labelSmall)
-                    listOf<Pair<String?, String>>(null to "跟随全局", "ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止").forEach { (v, label) ->
-                        FilterChip(
-                            selected = toolLevel == v,
-                            onClick = {
-                                vm.saveSettings { s ->
-                                    s.copy(toolPermissions = if (v == null) s.toolPermissions - tool.name else s.toolPermissions + (tool.name to v))
-                                }
-                            },
-                            label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                        )
+                    var menuOpen by remember { mutableStateOf(false) }
+                    val options = listOf<Pair<String?, String>>(null to "跟随全局", "ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止")
+                    Box {
+                        OutlinedButton(
+                            onClick = { menuOpen = true },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        ) {
+                            Text(options.firstOrNull { it.first == toolLevel }?.second ?: "跟随全局", style = MaterialTheme.typography.labelSmall)
+                            Icon(Icons.Filled.ArrowDropDown, null, Modifier.size(16.dp))
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            options.forEach { (v, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        menuOpen = false
+                                        vm.saveSettings { s ->
+                                            s.copy(toolPermissions = if (v == null) s.toolPermissions - tool.name else s.toolPermissions + (tool.name to v))
+                                        }
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -901,7 +936,7 @@ trigger: 翻译|translate
 """.trim()
     if (showPrivacyDoc) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { showPrivacyDoc = false }) {
-            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
                 Column(Modifier.padding(16.dp)) {
                     Text("隐私政策", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
@@ -914,7 +949,7 @@ trigger: 翻译|translate
     }
     if (showPluginDoc) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginDoc = false }) {
-            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
                 Column(Modifier.padding(16.dp)) {
                     Text("插件开发文档", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
@@ -974,7 +1009,7 @@ trigger: 翻译|translate
             // 说明卡
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(Modifier.padding(14.dp)) {
@@ -1047,7 +1082,7 @@ trigger: 翻译|translate
                             containerColor = if (sk.enabled) MaterialTheme.colorScheme.surfaceContainerLow
                             else MaterialTheme.colorScheme.surfaceContainer,
                         ),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
                     ) {
                         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
@@ -1139,7 +1174,7 @@ trigger: 翻译|translate
 """.trim()
     if (showPrivacyDoc) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { showPrivacyDoc = false }) {
-            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
                 Column(Modifier.padding(16.dp)) {
                     Text("隐私政策", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
@@ -1152,7 +1187,7 @@ trigger: 翻译|translate
     }
     if (showPluginDoc) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginDoc = false }) {
-            androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
                 Column(Modifier.padding(16.dp)) {
                     Text("插件开发文档", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
@@ -1202,7 +1237,7 @@ trigger: 翻译|translate
             }
             val c1 = MaterialTheme.colorScheme.primaryContainer
             val t1 = MaterialTheme.colorScheme.onPrimaryContainer
-            ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
                 Column {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c1, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Code, null, Modifier.size(20.dp), tint = t1) }
@@ -1224,7 +1259,7 @@ trigger: 翻译|translate
             }
             val c2 = MaterialTheme.colorScheme.tertiaryContainer
             val t2 = MaterialTheme.colorScheme.onTertiaryContainer
-            ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
                 Column {
                     Row(Modifier.fillMaxWidth().clickable { }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Public, null, Modifier.size(20.dp), tint = t2) }
@@ -1276,12 +1311,12 @@ trigger: 翻译|translate
                     }
                 }
             }
-            OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex/issues") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex/issues") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
             var showReward by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-            OutlinedButton(onClick = { showReward = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("微信赞助 / 请喝奶茶", style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { showReward = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("微信赞助 / 请喝奶茶", style = MaterialTheme.typography.labelLarge) }
             if (showReward) {
                 androidx.compose.ui.window.Dialog(onDismissRequest = { showReward = false }) {
-                    androidx.compose.material3.Surface(shape = RoundedCornerShape(20.dp)) {
+                    androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
                         Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("微信赞赏", style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(12.dp))
