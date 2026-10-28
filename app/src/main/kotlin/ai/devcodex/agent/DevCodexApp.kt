@@ -23,6 +23,7 @@ class DevCodexApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        ai.devcodex.agent.util.DebugLog.init(this)
         CrashHandler.install(this)
         instance = this
         settingsRepo = SettingsRepo(this)

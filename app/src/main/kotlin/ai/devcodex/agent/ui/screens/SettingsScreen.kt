@@ -1221,6 +1221,22 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                     }
                 }
             }
+            val exportScope = androidx.compose.runtime.rememberCoroutineScope()
+            val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip"),
+            ) { uri ->
+                if (uri != null) exportScope.launch {
+                    val r = runCatching {
+                        context.contentResolver.openOutputStream(uri)?.use { ai.devcodex.agent.util.DebugLog.exportZip(context, it) }
+                    }
+                    android.widget.Toast.makeText(
+                        context,
+                        if (r.isSuccess) "调试日志已导出" else "导出失败：" + r.exceptionOrNull()?.message,
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+            OutlinedButton(onClick = { exportLauncher.launch("devcodex-debug-" + System.currentTimeMillis() + ".zip") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("导出调试日志（zip）", style = MaterialTheme.typography.labelLarge) }
             OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex/issues") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
             var showReward by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
             OutlinedButton(onClick = { showReward = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("微信赞助 / 请喝奶茶", style = MaterialTheme.typography.labelLarge) }
