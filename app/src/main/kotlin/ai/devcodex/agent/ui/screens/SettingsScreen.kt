@@ -922,7 +922,7 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
     val repo = ai.devcodex.agent.data.SkillRepo(context)
     var ghUrl by remember { mutableStateOf("") }
     var ghBusy by remember { mutableStateOf(false) }
-    val scope = kotlinx.coroutines.MainScope()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val picker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri ->
