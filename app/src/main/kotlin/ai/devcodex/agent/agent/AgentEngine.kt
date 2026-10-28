@@ -362,12 +362,22 @@ class AgentEngine(
                     }
                     // 审批判定：用户已"总是允许"的直接放行；否则高危必审、fs_write 沙箱外必审
                     // P0 审计修复：fs_write 沙箱判定改为解析 path 后 canonical 包含判断（防 content 绕过 / 相对路径误报）
-                    val fsWriteOutside = tc.name == "fs_write" && run {
-                        val p = ai.devcodex.agent.util.JsonArg.string(tc.argsJson, "path") ?: ""
-                        val resolved = if (p.startsWith("/")) java.io.File(p)
-                                       else java.io.File(ai.devcodex.agent.tools.BuiltinTools.appContext().filesDir, "workspace/$p")
-                        val canon = runCatching { resolved.canonicalPath }.getOrDefault(resolved.absolutePath)
-                        !canon.startsWith(ai.devcodex.agent.tools.BuiltinTools.appContext().filesDir.absolutePath + "/")
+                    // 写入类工具的越界判定：以当前工作区根为界，覆盖所有会修改文件的 fs_* 工具；无法解析的路径一律按越界处理
+                    val fsWriteOutside = run {
+                        val root = runCatching { ai.devcodex.agent.tools.BuiltinTools.workspaceRoot().canonicalFile }.getOrNull()
+                        val keys = when (tc.name) {
+                            "fs_write", "fs_delete", "fs_mkdir", "fs_rename", "fs_chmod" -> listOf("path")
+                            "fs_copy" -> listOf("dst")
+                            "fs_move" -> listOf("src", "dst")
+                            else -> emptyList()
+                        }
+                        keys.any { k ->
+                            val p = ai.devcodex.agent.util.JsonArg.string(tc.argsJson, k) ?: ""
+                            if (root == null) return@any true
+                            val f = if (p.startsWith("/")) java.io.File(p) else java.io.File(root, p.removePrefix("./"))
+                            val canon = runCatching { f.canonicalPath }.getOrNull() ?: return@any true
+                            !canon.startsWith(root.path + java.io.File.separator)
+                        }
                     }
                     val decision = PermissionResolver.resolve(def, s, engineSessionAllows, fsWriteOutside)
                     if (decision.level == PermissionLevel.FORBID) {
