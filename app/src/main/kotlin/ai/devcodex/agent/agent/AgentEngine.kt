@@ -309,10 +309,6 @@ class AgentEngine(
                         continue
                     }
                     // 审批判定：用户已"总是允许"的直接放行；否则高危必审、fs_write 沙箱外必审
-                    val alwaysAllowed = s.toolPerms[tc.name] == "ALLOW" || engineSessionAllows.contains(tc.name)
-                    val approvalMode = ai.devcodex.agent.tools.BuiltinTools.appContext()
-                        .getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE)
-                        .getString("approval_mode", "ASSISTED") ?: "ASSISTED"
                     // P0 审计修复：fs_write 沙箱判定改为解析 path 后 canonical 包含判断（防 content 绕过 / 相对路径误报）
                     val fsWriteOutside = tc.name == "fs_write" && run {
                         val p = ai.devcodex.agent.util.JsonArg.string(tc.argsJson, "path") ?: ""
@@ -321,12 +317,17 @@ class AgentEngine(
                         val canon = runCatching { resolved.canonicalPath }.getOrDefault(resolved.absolutePath)
                         !canon.startsWith(ai.devcodex.agent.tools.BuiltinTools.appContext().filesDir.absolutePath + "/")
                     }
-                    val needApproval = when (approvalMode) {
-                        "FULL" -> false                                       // 全自动（终信任）
-                        "REQUEST" -> !alwaysAllowed                          // 每步必审（除非记忆允许）
-                        else -> !alwaysAllowed && (                          // ASSISTED：非 LOW 均审 + 沙箱外写必审
-                                def.risk != ToolDef.Risk.LOW || fsWriteOutside)
+                    val decision = PermissionResolver.resolve(def, s, engineSessionAllows, fsWriteOutside)
+                    if (decision.level == PermissionLevel.FORBID) {
+                        current = current.copy(messages = current.messages + Message(
+                            id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
+                            toolResult = "ERROR: ${decision.reason}", toolStatus = ToolStatus.DENIED,
+                            timestamp = System.currentTimeMillis(),
+                        ))
+                        onUpdate(current)
+                        continue
                     }
+                    val needApproval = decision.level == PermissionLevel.ASK
                     // 先落一条工具消息：需审批时为 AWAITING_APPROVAL，否则直接 RUNNING
                     current = current.copy(messages = current.messages + Message(
                         id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
@@ -335,12 +336,7 @@ class AgentEngine(
                     ))
                     onUpdate(current)
                     if (needApproval) {
-                        val reason = when {
-                            fsWriteOutside -> "写入工作区之外的路径，需确认"
-                            def.risk == ToolDef.Risk.HIGH -> "高危操作，需确认：${def.description.take(50)}"
-                            def.risk == ToolDef.Risk.MEDIUM -> "该工具会改变设备或外部状态，需确认：${def.description.take(50)}"
-                            else -> "当前审批模式要求逐步确认：${def.description.take(50)}"
-                        }
+                        val reason = decision.reason
                         val granted = requestApproval(ApprovalRequest(tc, reason) { true })
                         if (!granted) {
                             current = current.patch(toolMsgId) {

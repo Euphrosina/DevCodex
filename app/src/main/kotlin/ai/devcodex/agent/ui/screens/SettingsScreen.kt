@@ -549,14 +549,16 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         )
         Spacer(Modifier.padding(10.dp))
 
-        // ============ 工具审批模式 ============
-        Text("工具审批模式", style = MaterialTheme.typography.titleMedium)
-        Text("FULL 全自动 · ASSISTED 高危才审（默认） · REQUEST 每步确认。单工具的「总是允许」记忆优先于模式。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // ============ 工具权限（全局默认） ============
+        Text("工具权限", style = MaterialTheme.typography.titleMedium)
+        Text("允许：全部直接执行 · 询问（默认）：低风险直接执行，其余执行前询问 · 禁止：全部不执行。单工具的设置优先于全局默认。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
-            val sp2 = vm.getPreferences()
-            val am = sp2.getString("approval_mode", "ASSISTED") ?: "ASSISTED"
-            listOf("FULL" to "全自动", "ASSISTED" to "辅助", "REQUEST" to "每步审").forEach { (v, label) ->
-                FilterChip(selected = am == v, onClick = { sp2.edit().putString("approval_mode", v).apply(); ai.devcodex.agent.tools.BuiltinTools.appContext().getSharedPreferences("devcodex_prefs", android.content.Context.MODE_PRIVATE).edit().putString("approval_mode", v).apply() }, label = { Text(label) })
+            listOf("ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止").forEach { (v, label) ->
+                FilterChip(
+                    selected = ai.devcodex.agent.agent.PermissionLevel.parse(settings.permissionDefault).name == v,
+                    onClick = { vm.saveSettings { s -> s.copy(permissionDefault = v) } },
+                    label = { Text(label) },
+                )
             }
         }
 
@@ -802,7 +804,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         Spacer(Modifier.padding(6.dp))
         (ai.devcodex.agent.tools.BuiltinTools.all + ai.devcodex.agent.tools.AdvancedFsTools.all + ai.devcodex.agent.tools.ExtraTools.all).forEach { tool ->
             val enabled = settings.enabledTools.contains(tool.name)
-            val alwaysAllowed = settings.toolPerms[tool.name] == "ALLOW"
+            val toolLevel = settings.toolPermissions[tool.name]?.let { ai.devcodex.agent.agent.PermissionLevel.parse(it).name }
             ListItem(
                 headlineContent = { Text(tool.name, style = MaterialTheme.typography.labelLarge) },
                 supportingContent = { Text(tool.description, maxLines = 2, style = MaterialTheme.typography.bodySmall) },
@@ -819,23 +821,24 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                     }
                 },
             )
-            if (enabled && (tool.risk == ai.devcodex.agent.agent.ToolDef.Risk.HIGH || tool.risk == ai.devcodex.agent.agent.ToolDef.Risk.MEDIUM)) {
+            if (enabled) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
                 ) {
-                    Text("审批策略：", style = MaterialTheme.typography.labelSmall)
-                    FilterChip(
-                        selected = !alwaysAllowed,
-                        onClick = { vm.saveSettings { s -> s.copy(toolPerms = s.toolPerms - tool.name) } },
-                        label = { Text("每次询问", style = MaterialTheme.typography.labelSmall) },
-                    )
-                    Spacer(Modifier.padding(3.dp))
-                    FilterChip(
-                        selected = alwaysAllowed,
-                        onClick = { vm.saveSettings { s -> s.copy(toolPerms = s.toolPerms + (tool.name to "ALLOW")) } },
-                        label = { Text("总是允许", style = MaterialTheme.typography.labelSmall) },
-                    )
+                    Text("权限：", style = MaterialTheme.typography.labelSmall)
+                    listOf<Pair<String?, String>>(null to "跟随全局", "ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止").forEach { (v, label) ->
+                        FilterChip(
+                            selected = toolLevel == v,
+                            onClick = {
+                                vm.saveSettings { s ->
+                                    s.copy(toolPermissions = if (v == null) s.toolPermissions - tool.name else s.toolPermissions + (tool.name to v))
+                                }
+                            },
+                            label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        )
+                    }
                 }
             }
         }

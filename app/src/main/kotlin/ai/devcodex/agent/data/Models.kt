@@ -96,6 +96,10 @@ data class AppSettings(
     val theme: ThemePrefsData = ThemePrefsData(),
     val enabledTools: Set<String> = defaultTools(),
     val toolPerms: Map<String, String> = emptyMap(),  // 工具名 -> ALLOW（总是允许）；缺省=每次询问
+    // 权限层：全局默认 ALLOW/ASK/FORBID，单工具例外优先于全局；toolPerms 仅供旧数据迁移读取
+    val permissionDefault: String = "ASK",
+    val toolPermissions: Map<String, String> = emptyMap(),
+    val permissionsMigrated: Boolean = false,
     val maxAgentSteps: Int = 24,
     val autoCompact: Boolean = true,      // 自动压缩上下文（超阈值摘要旧对话）
     // MCP 服务器（Streamable HTTP / SSE）

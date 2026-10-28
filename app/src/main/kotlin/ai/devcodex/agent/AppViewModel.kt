@@ -72,6 +72,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             settings.collect { latestSettings = it }
         }
+        // 旧审批模式与 toolPerms 一次性迁移到新权限字段（须先于设置读取生效）
+        viewModelScope.launch { runCatching { settingsRepo.migratePermissionsIfNeeded() } }
         reloadPlugins()
         reloadSessions()
         viewModelScope.launch {

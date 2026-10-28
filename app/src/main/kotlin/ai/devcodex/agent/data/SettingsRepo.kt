@@ -18,6 +18,24 @@ class SettingsRepo(private val context: Context) {
         p[key]?.let { runCatching { json.decodeFromString<AppSettings>(it) }.getOrNull() } ?: AppSettings()
     }
 
+    /** 一次性迁移：旧审批模式（SharedPreferences）与 toolPerms 转为 permissionDefault / toolPermissions */
+    suspend fun migratePermissionsIfNeeded() {
+        update { cur ->
+            if (cur.permissionsMigrated) return@update cur
+            val old = context.getSharedPreferences("devcodex_prefs", Context.MODE_PRIVATE)
+                .getString("approval_mode", null)
+                ?: context.getSharedPreferences("devcodex_stats", Context.MODE_PRIVATE)
+                    .getString("approval_mode", null)
+            val default = if (old == "FULL") "ALLOW" else "ASK"
+            val perTool = cur.toolPerms.filterValues { it == "ALLOW" }
+            cur.copy(
+                permissionDefault = default,
+                toolPermissions = perTool + cur.toolPermissions,
+                permissionsMigrated = true,
+            )
+        }
+    }
+
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         context.dataStore.edit { p ->
             val cur = p[key]?.let { runCatching { json.decodeFromString<AppSettings>(it) }.getOrNull() } ?: AppSettings()
