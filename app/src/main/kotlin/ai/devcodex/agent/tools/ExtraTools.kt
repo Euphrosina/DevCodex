@@ -531,7 +531,7 @@ object ExtraTools {
         risk = ToolDef.Risk.MEDIUM,
     ) { args ->
         val pkgs = JsonArg.string(args, "packages") ?: return@ToolDef "ERROR: 缺少 packages"
-        ShellAccess.execSandbox("pkg install -y $pkgs 2>&1 | tail -20").take(8000)
+        ShellAccess.execSandbox("(command -v apt-get >/dev/null 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y $pkgs || pkg install -y $pkgs) 2>&1 | tail -20").take(8000)
     }
 
     val pythonRun = ToolDef(
@@ -552,7 +552,7 @@ object ExtraTools {
         script.writeText(code)
         val hasPy = ShellAccess.execSandbox("command -v python3")
         if (!hasPy.contains("python3")) {
-            ShellAccess.execSandbox("pkg install -y python 2>&1 | tail -3")
+            ShellAccess.execSandbox("(command -v apt-get >/dev/null 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 || pkg install -y python) 2>&1 | tail -3")
         }
         ShellAccess.execSandbox("python3 ${script.absolutePath} 2>&1").take(20000)
     }
@@ -574,7 +574,7 @@ object ExtraTools {
         script.writeText(code)
         val hasNode = ShellAccess.execSandbox("command -v node")
         if (!hasNode.contains("node")) {
-            ShellAccess.execSandbox("pkg install -y nodejs 2>&1 | tail -3")
+            ShellAccess.execSandbox("(command -v apt-get >/dev/null 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs || pkg install -y nodejs) 2>&1 | tail -3")
         }
         ShellAccess.execSandbox("node ${script.absolutePath} 2>&1").take(20000)
     }

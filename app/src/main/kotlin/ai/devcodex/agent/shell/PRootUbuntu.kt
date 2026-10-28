@@ -27,7 +27,8 @@ object PRootUbuntu {
             }
             // rootfs（大文件解压一次）
             val root = rootfsDir(ctx)
-            if (!root.resolve("bin").exists()) {
+            val readyMark = File(root, ".devcodex_ready")
+            if (!readyMark.exists() || !root.resolve("bin").exists()) {
                 root.mkdirs()
                 onProgress(5)
                 val tmp = File(ctx.cacheDir, "ubuntu-rootfs.tar.gz")
@@ -36,9 +37,11 @@ object PRootUbuntu {
                 // tar 解压（用系统 toybox tar，Android 8+ 自带）
                 val p = ProcessBuilder("tar", "-xzf", tmp.absolutePath, "-C", root.absolutePath)
                     .redirectErrorStream(true).start()
-                p.waitFor()
+                val code = p.waitFor()
                 onProgress(95)
                 tmp.delete()
+                if (code != 0) error("rootfs 解压失败 exit=$code")
+                readyMark.writeText("ok")
             }
             // resolv.conf（联网）
             runCatching {
@@ -56,10 +59,13 @@ object PRootUbuntu {
         val root = rootfsDir(ctx)
         val proot = File(ctx.filesDir, "proot-bin/proot").absolutePath
         val termuxLib = File(ctx.filesDir, "usr/lib").absolutePath
+        val ws = ai.devcodex.agent.tools.BuiltinTools.workspaceRoot().absolutePath
+        File(root, "root/workspace").mkdirs()
+        val quoted = "'" + command.replace("'", "'\\''") + "'"
         val full = "$proot -r ${root.absolutePath} " +
-            "-b /dev -b /proc -b /sys -b /sdcard -b /data/local/tmp " +
-            "-w /root -0 /usr/bin/env HOME=/root PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin " +
-            "/bin/sh -c ${command.replace("\"", "\\\"")}"
+            "-b /dev -b /proc -b /sys -b /sdcard -b /data/local/tmp -b '$ws:/root/workspace' -b '${ctx.cacheDir.absolutePath}' " +
+            "-w /root/workspace -0 /usr/bin/env HOME=/root PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin " +
+            "/bin/sh -c $quoted"
         return runCatching {
             val bash = File(ctx.filesDir, "usr/bin/bash")
             val pb = if (bash.exists()) ProcessBuilder(bash.absolutePath, "-c", full) else ProcessBuilder("sh", "-c", full)

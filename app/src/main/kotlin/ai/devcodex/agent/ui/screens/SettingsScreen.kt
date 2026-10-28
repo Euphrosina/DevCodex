@@ -1211,7 +1211,7 @@ trigger: 翻译|translate
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // 软件自己的图标（assets/devcodex-logo.jpg 螺旋标）
+                // 软件自己的图标（取自应用启动图标 mipmap/ic_launcher）
                 androidx.compose.foundation.layout.Box(
                     Modifier.size(136.dp).background(
                         MaterialTheme.colorScheme.primaryContainer,
@@ -1221,20 +1221,25 @@ trigger: 翻译|translate
                 ) {
                     val logoBmp = androidx.compose.runtime.remember {
                         runCatching {
-                            android.graphics.BitmapFactory.decodeStream(context.assets.open("devcodex-logo.jpg"))
+                            context.packageManager.getApplicationIcon(context.packageName).let { d -> val s = 256; val b = android.graphics.Bitmap.createBitmap(s, s, android.graphics.Bitmap.Config.ARGB_8888); val c = android.graphics.Canvas(b); d.setBounds(0, 0, s, s); d.draw(c); b }
                         }.getOrNull()
                     }
                     if (logoBmp != null) Image(
                         bitmap = logoBmp.asImageBitmap(),
                         contentDescription = "DevCodex",
-                        modifier = Modifier.size(96.dp).clip(RoundedCornerShape(22.dp)),
+                        modifier = Modifier.size(120.dp).clip(MaterialTheme.shapes.extraLarge),
                     ) else Icon(Icons.Filled.Build, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
                 Text(
                     "DevCodex",
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Black),
                 )
+                Text("手机上的 AI 编程助手", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                androidx.compose.material3.Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.secondaryContainer) {
+                    Text("v" + ai.devcodex.agent.BuildConfig.VERSION_NAME, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
             }
+            Text("应用信息", Modifier.fillMaxWidth().padding(start = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             val c1 = MaterialTheme.colorScheme.primaryContainer
             val t1 = MaterialTheme.colorScheme.onPrimaryContainer
             ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
@@ -1257,6 +1262,7 @@ trigger: 翻译|translate
                     }
                 }
             }
+            Text("社区与文档", Modifier.fillMaxWidth().padding(start = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             val c2 = MaterialTheme.colorScheme.tertiaryContainer
             val t2 = MaterialTheme.colorScheme.onTertiaryContainer
             ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
