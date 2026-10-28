@@ -504,7 +504,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                 } else if (false) {
                                                 } else Column(Modifier.fillMaxWidth()) {
                                                     // Gemini 式流体：流式尾部 30 字符渐显 + ▍；完成后走 M3L 富渲染
-                                                    if (streamingNow) {
+                                                    if (false && streamingNow) {
                                                         val full = msg.content
                                                         val head = full.dropLast(24)
                                                         val tail = full.takeLast(24)

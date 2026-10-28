@@ -95,6 +95,14 @@ class AgentEngine(
                         ev.name ?: ex?.second ?: "",
                         StringBuilder(ex?.third ?: "").append(ev.argsFragment),
                     )
+                    // 工具调用增量到达即写入消息，界面立刻显示工具卡片（不再等整条流结束）
+                    val liveCalls = toolAgg.values.filter { it.second.isNotBlank() }.map {
+                        ToolCall(id = it.first, name = it.second, argsJson = it.third.toString().ifBlank { "{}" })
+                    }
+                    if (liveCalls.isNotEmpty()) {
+                        current = current.patch(assistantId) { it.copy(toolCalls = liveCalls) }
+                        onUpdate(current)
+                    }
                 }
                 is StreamEvent.ThinkingSignature -> {
                     current = current.patch(assistantId) { it.copy(thinkingSignature = (it.thinkingSignature ?: "") + ev.signature) }
@@ -281,7 +289,7 @@ class AgentEngine(
                     ai.devcodex.agent.util.DebugLog.w("Agent", "request failed attempt=${attempt + 1} model=$model toolsDropped=$toolsDropped: $msg", err)
                     // 丢弃半截流式缓冲，避免重试后内容重复
                     text.clear(); think.clear(); toolAgg.clear()
-                    current = current.patch(assistantId) { it.copy(content = "", thinking = null, thinkingSignature = null) }
+                    current = current.patch(assistantId) { it.copy(content = "", thinking = null, thinkingSignature = null, toolCalls = emptyList()) }
                     onUpdate(current)
                     if (!toolsDropped && msg.contains("HTTP 400")) {
                         toolsDropped = true
