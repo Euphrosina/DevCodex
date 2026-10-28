@@ -471,7 +471,7 @@ fun ChatScreen(vm: AppViewModel) {
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Column(Modifier.weight(1f)) {
-                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking, msg.thinkingMs, isRunning && idx == messages.lastIndex)
+                                        if (!msg.thinking.isNullOrBlank()) ThinkingBlockInline(msg.thinking!!, settings.theme.autoCollapseThinking, msg.thinkingMs, isRunning && idx == messages.lastIndex && msg.content.isBlank() && msg.toolCalls.isEmpty())
                                         if (msg.content.isBlank() && msg.toolCalls.isEmpty() && msg.thinking.isNullOrBlank()) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 TypingDots()
@@ -839,34 +839,18 @@ fun ChatScreen(vm: AppViewModel) {
                         items(filtered.size, key = { p.id + '-' + filtered[it] + '-' + it }) { i ->
                             val m = filtered[i]
                             val selected = session?.modelId == m && session?.providerId == p.id
-                            // MChat 紧凑行：左侧选中色条 + 模型名 + 能力小字 + 右侧勾
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                            // Codex 风格行：模型名 + 灰色能力小字 + 右侧勾；选中后下方展开上下文档位
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(
-                                        if (selected) MaterialTheme.colorScheme.primaryContainer
-                                        else androidx.compose.ui.graphics.Color.Transparent,
-                                        RoundedCornerShape(14.dp),
-                                    )
+                                    .clip(RoundedCornerShape(12.dp))
                                     .clickable {
                                         vm.updateSessionModel(p.id, m)
                                         showModelPicker = false
                                     }
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                             ) {
-                                // 选中指示条（MChat selectionOffset 动画的静态版）
-                                Box(
-                                    Modifier
-                                        .width(3.dp)
-                                        .height(30.dp)
-                                        .background(
-                                            if (selected) MaterialTheme.colorScheme.primary
-                                            else androidx.compose.ui.graphics.Color.Transparent,
-                                            RoundedCornerShape(2.dp),
-                                        )
-                                )
-                                Spacer(Modifier.width(12.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 ai.devcodex.agent.ui.components.ModelLogo(m, 28.dp)
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
@@ -890,13 +874,12 @@ fun ChatScreen(vm: AppViewModel) {
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         modifier = Modifier.fillMaxWidth(0.9f),
                                     ) {
-                                        badges.forEach { (t, c) ->
+                                        badges.forEach { (t, _) ->
                                             Box(
                                                 Modifier
-                                                    .background(androidx.compose.ui.graphics.Color(c).copy(alpha = 0.14f), RoundedCornerShape(4.dp))
-                                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                                                    .padding(end = 6.dp, top = 1.dp, bottom = 1.dp)
                                             ) {
-                                                Text(t, style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color(c), maxLines = 1, softWrap = false)
+                                                Text(t, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
                                             }
                                         }
                                     }
@@ -904,7 +887,8 @@ fun ChatScreen(vm: AppViewModel) {
                                 if (selected) {
                                     Icon(Icons.Filled.CheckCircle, "已选", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                                 }
-                                // 选中模型：上下文窗口档位（检测模型支持上限）
+                            }
+                                // 选中模型：上下文窗口档位（检测模型支持上限），位于模型行下方
                                 if (selected) {
                                     val modelMax = ai.devcodex.agent.provider.ModelRegistry.lookup(m).contextLength ?: Int.MAX_VALUE
                                     val curCtx = session?.contextOverride ?: 0
@@ -912,7 +896,7 @@ fun ChatScreen(vm: AppViewModel) {
                                     val labels = mapOf(0 to "默认(${modelMax / 1024}k)", 131072 to "128k", 262144 to "256k", 524288 to "512k", 1048576 to "1M", 2097152 to "2M")
                                     androidx.compose.foundation.layout.FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.fillMaxWidth().padding(start = 15.dp, top = 2.dp, bottom = 6.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(start = 38.dp, top = 2.dp, bottom = 6.dp),
                                     ) {
                                         Text("上下文 ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
                                         options.forEach { opt ->
@@ -1061,11 +1045,13 @@ private fun TypingDots() {
 
 @Composable
 private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thinkingMs: Long = 0, streaming: Boolean = false) {
-    var expanded by remember(autoCollapse) { mutableStateOf(!autoCollapse) }
-    // 思考自动展开/收起：流式开始展开、完成自动收起（autoCollapse 时）
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(autoCollapse) { mutableStateOf(!autoCollapse) }
+    var wasStreaming by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(streaming) }
+    // 仅在 streaming 状态发生跳变时自动展开/收起，首次组合与列表回收不重置用户手动操作
     androidx.compose.runtime.LaunchedEffect(streaming) {
         if (streaming) expanded = true
-        else if (autoCollapse) expanded = false
+        else if (wasStreaming && autoCollapse) expanded = false
+        wasStreaming = streaming
     }
     // Operit 渐变思考：呼吸流光渐变（tertiary→primary→secondary）
     val c1 = MaterialTheme.colorScheme.tertiary
@@ -1087,13 +1073,10 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thin
         start = androidx.compose.ui.geometry.Offset(offset - 600f, 0f),
         end = androidx.compose.ui.geometry.Offset(offset, 0f),
     )
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = MaterialTheme.shapes.small,
-        onClick = { expanded = !expanded },
-        modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 6.dp),
+    Box(
+        modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 6.dp).clickable { expanded = !expanded },
     ) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+        Column(Modifier.padding(horizontal = 2.dp, vertical = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("✻", style = MaterialTheme.typography.labelLarge, color = c1.copy(alpha = alpha))
                 Text(

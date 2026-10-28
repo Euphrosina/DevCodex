@@ -491,18 +491,17 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             singleLine = true, textStyle = MaterialTheme.typography.bodySmall,
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         )
+        val axsScope = androidx.compose.runtime.rememberCoroutineScope()
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
                 vm.saveSettings { it.copy(axsUrl = axsInput.trim()) }
                 ai.devcodex.agent.shell.ShellAccess.axsUrl = axsInput.trim()
             }) { Text("应用") }
             TextButton(onClick = {
-                kotlinx.coroutines.GlobalScope.launch {
+                axsScope.launch {
                     ai.devcodex.agent.shell.ShellAccess.axsUrl = axsInput.trim()
-                    val test = ai.devcodex.agent.shell.ShellAccess.axsExec("id")
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        axsInput = axsInput  // 触发重绘
-                    }
+                    val test = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ai.devcodex.agent.shell.ShellAccess.axsExec("id") }
+                    vm.toast.value = "AXS 测试: " + test.take(200)
                 }
             }) { Text("测试(id)") }
         }

@@ -60,7 +60,7 @@ class AgentEngine(
                     onFirstDelta()
                     val prevMsg = current.messages.firstOrNull { it.id == assistantId }
                     val startAt = prevMsg?.thinkStartAt ?: 0L
-                    if (startAt > 0) {
+                    if (startAt > 0 && text.isEmpty()) {
                         var settleMs = System.currentTimeMillis() - startAt
                         if (settleMs < 0 || settleMs > 3_600_000L) settleMs = 0
                         current = current.patch(assistantId) { it.copy(thinkingMs = settleMs) }

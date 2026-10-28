@@ -318,7 +318,7 @@ private fun ProviderEditDialog(
                             androidx.compose.material3.OutlinedButton(
                                 onClick = {
                                     testing = "__conn__"; testResult = null
-                                    kotlinx.coroutines.MainScope().launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                         testResult = runCatching {
                                             val url = baseUrl.trim().trimEnd('/') + "/models"
                                             val req = okhttp3.Request.Builder().url(url)
