@@ -83,9 +83,15 @@ class AgentEngine(
                     onUpdate(current)
                 }
                 is StreamEvent.ToolCallDelta -> {
-                    val ex = toolAgg[ev.index]
-                    toolAgg[ev.index] = Triple(
-                        ev.id ?: ex?.first ?: "call_${assistantId.take(8)}_${ev.index}",
+                    // index 缺失时（负值）按 id 变化划分不同的工具调用
+                    val key = if (ev.index >= 0) ev.index else {
+                        val lastKey = toolAgg.keys.lastOrNull()
+                        val lastId = lastKey?.let { toolAgg[it]?.first }
+                        if (lastKey == null) 0 else if (ev.id != null && ev.id != lastId) lastKey + 1 else lastKey
+                    }
+                    val ex = toolAgg[key]
+                    toolAgg[key] = Triple(
+                        ev.id ?: ex?.first ?: "call_${assistantId.take(8)}_$key",
                         ev.name ?: ex?.second ?: "",
                         StringBuilder(ex?.third ?: "").append(ev.argsFragment),
                     )

@@ -83,7 +83,7 @@ object OpenAiCompatProvider {
         delta["content"]?.jsonPrimitive?.contentOrNull?.let { if (it.isNotEmpty()) events.add(StreamEvent.Delta(it)) }
         delta["tool_calls"]?.jsonArray?.forEach { tcEl ->
             val tc = tcEl.jsonObject
-            val idx = tc["index"]?.jsonPrimitive?.intOrNull ?: 0
+            val idx = tc["index"]?.jsonPrimitive?.intOrNull ?: -1
             val fn = tc["function"]?.jsonObject
             events.add(StreamEvent.ToolCallDelta(
                 index = idx,
