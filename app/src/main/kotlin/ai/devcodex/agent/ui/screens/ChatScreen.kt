@@ -542,10 +542,25 @@ fun ChatScreen(vm: AppViewModel) {
                                         }
                                         msg.toolCalls.forEach { tc ->
                                             val toolMsg = toolResults[tc.id]
-                                            ToolCard(toolMsg ?: Message(
-                                                id = tc.id, role = "tool", toolCallId = tc.id,
-                                                toolName = tc.name, toolStatus = ToolStatus.RUNNING,
-                                            ))
+                                            ToolCard(
+                                                msg = toolMsg ?: Message(
+                                                    id = tc.id, role = "tool", toolCallId = tc.id,
+                                                    toolName = tc.name, toolStatus = ToolStatus.PENDING,
+                                                ),
+                                                argsJson = tc.argsJson,
+                                                live = isRunning,
+                                            )
+                                            val pa = pendingApproval
+                                            if (pa != null && pa.first.toolCall.id == tc.id) {
+                                                ApprovalCard(
+                                                    reason = pa.first.reason,
+                                                    toolName = tc.name,
+                                                    argsJson = tc.argsJson,
+                                                    onAllow = { vm.respondApproval(granted = true, always = false) },
+                                                    onAlwaysAllow = { vm.respondApproval(granted = true, always = true) },
+                                                    onDeny = { vm.respondApproval(granted = false, always = false) },
+                                                )
+                                            }
                                         }
                                         }
                                         MessageStats(msg, session)
@@ -560,18 +575,6 @@ fun ChatScreen(vm: AppViewModel) {
                                     }
                                 }
                             }
-                        }
-                    }
-                    if (pendingApproval != null) {
-                        item(key = "approval") {
-                            ApprovalCard(
-                                reason = pendingApproval!!.first.reason,
-                                toolName = pendingApproval!!.first.toolCall.name,
-                                argsJson = pendingApproval!!.first.toolCall.argsJson,
-                                onAllow = { vm.respondApproval(granted = true, always = false) },
-                                onAlwaysAllow = { vm.respondApproval(granted = true, always = true) },
-                                onDeny = { vm.respondApproval(granted = false, always = false) },
-                            )
                         }
                     }
                     if (messages.isEmpty()) item { EmptyHint(onExample = { input = it }) }

@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
@@ -163,12 +165,12 @@ fun ThinkingBlock(text: String) {
 
 // ============ 工具卡片（rikkahub 式：图标 + 名称 + 状态 + 参数摘要） ============
 @Composable
-fun ToolCard(msg: Message) {
+fun ToolCard(msg: Message, argsJson: String = "", live: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
     val status = msg.toolStatus
     val result = msg.toolResult
-    // Operit 式流光边框：运行中渐变描边 + 呼吸
-    val running = status == ToolStatus.RUNNING || status == ToolStatus.PENDING
+    // 流光边框与转圈只在会话仍在运行且工具确实处于执行中时出现
+    val running = live && status == ToolStatus.RUNNING
     val tc1 = MaterialTheme.colorScheme.primary
     val tc2 = MaterialTheme.colorScheme.tertiary
     val breath = rememberInfiniteTransition(label = "tool")
@@ -189,7 +191,7 @@ fun ToolCard(msg: Message) {
     )
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = androidx.compose.ui.graphics.Color(0xFF1A1B1E)  // MonkeyCode 终端深底
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         border = if (running) androidx.compose.foundation.BorderStroke(1.dp, toolBrush)
                  else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
@@ -218,11 +220,16 @@ fun ToolCard(msg: Message) {
                     modifier = Modifier.weight(1f),
                 )
                 when (status) {
-                    ToolStatus.RUNNING, ToolStatus.PENDING ->
-                        CircularProgressIndicator(Modifier.size(13.dp).alpha(tAlpha), strokeWidth = 1.5.dp)
+                    ToolStatus.RUNNING ->
+                        if (live) CircularProgressIndicator(Modifier.size(13.dp).alpha(tAlpha), strokeWidth = 1.5.dp)
+                        else Icon(Icons.Filled.Close, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ToolStatus.PENDING ->
+                        Icon(Icons.Filled.Schedule, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ToolStatus.AWAITING_APPROVAL ->
+                        Icon(Icons.Filled.Warning, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.tertiary)
                     ToolStatus.DONE -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
                     ToolStatus.ERROR -> Icon(Icons.Filled.ErrorOutline, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.error)
-                    else -> Icon(Icons.Filled.Close, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ToolStatus.DENIED -> Icon(Icons.Filled.Block, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (expanded) Icon(Icons.Filled.ExpandLess, null, Modifier.size(14.dp))
                 else Icon(Icons.Filled.ExpandMore, null, Modifier.size(14.dp))
@@ -230,7 +237,11 @@ fun ToolCard(msg: Message) {
             // 未展开时结果首行摘要
             if (!expanded && !result.isNullOrBlank()) {
                 Text(
-                    result.lineSequence().firstOrNull { it.isNotBlank() }?.take(56)?.plus("…") ?: "",
+                    run {
+                        val lines = result.lineSequence().filter { it.isNotBlank() }.toList()
+                        val first = lines.firstOrNull() ?: ""
+                        if (first.length > 56 || lines.size > 1) first.take(56) + "…" else first
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = Mono,
                     color = if (status == ToolStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -238,6 +249,21 @@ fun ToolCard(msg: Message) {
                 )
             }
             if (expanded) {
+                if (argsJson.isNotBlank() && argsJson != "{}") {
+                    Text(
+                        "参数",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    Text(
+                        argsJson.take(1200),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = Mono,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 result?.let {
                     Text(
                         it.take(3000),
