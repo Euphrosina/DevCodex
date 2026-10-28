@@ -9,48 +9,75 @@ import okhttp3.Request
 /** Anthropic Messages API */
 object AnthropicProvider {
 
-    private fun turnsToBlocks(turns: List<ChatTurn>): JsonArray = buildJsonArray {
-        turns.filter { it.role != "system" }.forEach { t ->
-            add(buildJsonObject {
-                put("role", if (t.role == "assistant") "assistant" else "user")
-                when {
-                    t.role == "assistant" && t.toolCalls.isNotEmpty() -> {
-                        put("content", buildJsonArray {
-                            if (t.content.isNotBlank()) add(buildJsonObject { put("type", "text"); put("text", t.content) })
-                            t.toolCalls.forEach { tc ->
-                                add(buildJsonObject {
-                                    put("type", "tool_use")
-                                    put("id", tc.id)
-                                    put("name", tc.name)
-                                    put("input", runCatching { LlmJson.parseToJsonElement(tc.argsJson) }.getOrDefault(buildJsonObject {}))
-                                })
-                            }
-                        })
-                    }
-                    t.role == "tool" -> {
-                        put("content", buildJsonArray {
-                            add(buildJsonObject {
-                                put("type", "tool_result")
-                                put("tool_use_id", t.toolCallId ?: "")
-                                put("content", t.content.take(4000))
-                            })
-                        })
-                    }
-                    else -> put("content", buildJsonArray { add(buildJsonObject { put("type", "text"); put("text", t.content) }) })
-                }
-            })
+    /**
+     * ChatTurn -> Anthropic messages。
+     * 1. 相邻同角色消息合并：同一轮的多个 tool_result 必须在同一条 user 消息里。
+     * 2. 带工具调用的 assistant 轮先回传 thinking 块（含 signature），否则开启 thinking 时续轮会 400。
+     * 3. 空文本块会被 API 拒绝，一律跳过。
+     */
+    private fun turnsToBlocks(turns: List<ChatTurn>): JsonArray {
+        val msgs = mutableListOf<Pair<String, MutableList<JsonObject>>>()
+        fun push(role: String, block: JsonObject) {
+            val last = msgs.lastOrNull()
+            if (last != null && last.first == role) last.second.add(block) else msgs.add(role to mutableListOf(block))
         }
+        turns.filter { it.role != "system" }.forEach { t ->
+            when {
+                t.role == "assistant" -> {
+                    if (t.toolCalls.isNotEmpty() && !t.thinking.isNullOrBlank() && !t.thinkingSignature.isNullOrBlank()) {
+                        push("assistant", buildJsonObject {
+                            put("type", "thinking")
+                            put("thinking", t.thinking)
+                            put("signature", t.thinkingSignature)
+                        })
+                    }
+                    if (t.content.isNotBlank()) push("assistant", buildJsonObject { put("type", "text"); put("text", t.content) })
+                    t.toolCalls.forEach { tc ->
+                        push("assistant", buildJsonObject {
+                            put("type", "tool_use")
+                            put("id", tc.id)
+                            put("name", tc.name)
+                            put("input", runCatching { LlmJson.parseToJsonElement(tc.argsJson) }.getOrDefault(buildJsonObject {}))
+                        })
+                    }
+                }
+                t.role == "tool" -> push("user", buildJsonObject {
+                    put("type", "tool_result")
+                    put("tool_use_id", t.toolCallId ?: "")
+                    put("content", t.content.take(4000))
+                })
+                else -> if (t.content.isNotBlank()) push("user", buildJsonObject { put("type", "text"); put("text", t.content) })
+            }
+        }
+        return buildJsonArray {
+            msgs.forEach { (role, blocks) ->
+                add(buildJsonObject {
+                    put("role", role)
+                    put("content", JsonArray(blocks))
+                })
+            }
+        }
+    }
+
+    /** thinking 预算；max_tokens 必须大于该值，调用处按 budget + 8192 计算 */
+    private fun thinkingBudget(effort: String): Int = when (effort) {
+        "low" -> 2048
+        "medium" -> 8192
+        "high" -> 16384
+        "xhigh" -> 24576
+        "max" -> 32768
+        else -> 65536
     }
 
     fun chatRequest(p: ProviderConfig, model: String, systemPrompt: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean, reasoningEffort: String = ""): Request {
         val body = buildJsonObject {
             put("model", model)
-            put("max_tokens", 8192)
+            put("max_tokens", if (reasoningEffort.isNotBlank()) thinkingBudget(reasoningEffort) + 8192 else 8192)
             put("stream", stream)
             if (systemPrompt.isNotBlank()) put("system", systemPrompt)
             if (reasoningEffort.isNotBlank()) {
                 // Anthropic: thinking budget 映射 low=2048 / medium=8192 / high=16384
-                val budget = when (reasoningEffort) { "low" -> 2048; "medium" -> 8192; "high" -> 16384; "xhigh" -> 24576; "max" -> 32768; else -> 65536 }
+                val budget = thinkingBudget(reasoningEffort)
                 put("thinking", buildJsonObject { put("type", "enabled"); put("budget_tokens", budget) })
             }
             put("messages", turnsToBlocks(turns))
@@ -79,14 +106,15 @@ object AnthropicProvider {
                 when (delta["type"]?.jsonPrimitive?.contentOrNull) {
                     "text_delta" -> listOf(StreamEvent.Delta(delta["text"]?.jsonPrimitive?.contentOrNull ?: ""))
                     "thinking_delta" -> listOf(StreamEvent.Reasoning(delta["thinking"]?.jsonPrimitive?.contentOrNull ?: ""))
-                    "input_json_delta" -> listOf(StreamEvent.ToolCallDelta(0, null, null, delta["partial_json"]?.jsonPrimitive?.contentOrNull ?: ""))
+                    "signature_delta" -> listOf(StreamEvent.ThinkingSignature(delta["signature"]?.jsonPrimitive?.contentOrNull ?: ""))
+                    "input_json_delta" -> listOf(StreamEvent.ToolCallDelta(obj["index"]?.jsonPrimitive?.intOrNull ?: 0, null, null, delta["partial_json"]?.jsonPrimitive?.contentOrNull ?: ""))
                     else -> emptyList()
                 }
             }
             "content_block_start" -> {
                 val cb = obj["content_block"]?.jsonObject ?: return emptyList()
                 if (cb["type"]?.jsonPrimitive?.contentOrNull == "tool_use") {
-                    listOf(StreamEvent.ToolCallDelta(0, cb["id"]?.jsonPrimitive?.contentOrNull, cb["name"]?.jsonPrimitive?.contentOrNull, ""))
+                    listOf(StreamEvent.ToolCallDelta(obj["index"]?.jsonPrimitive?.intOrNull ?: 0, cb["id"]?.jsonPrimitive?.contentOrNull, cb["name"]?.jsonPrimitive?.contentOrNull, ""))
                 } else emptyList()
             }
             "message_start" -> {

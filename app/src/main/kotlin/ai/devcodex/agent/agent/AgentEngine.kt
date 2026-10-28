@@ -85,10 +85,13 @@ class AgentEngine(
                 is StreamEvent.ToolCallDelta -> {
                     val ex = toolAgg[ev.index]
                     toolAgg[ev.index] = Triple(
-                        ev.id ?: ex?.first ?: "call_${ev.index}",
+                        ev.id ?: ex?.first ?: "call_${assistantId.take(8)}_${ev.index}",
                         ev.name ?: ex?.second ?: "",
                         StringBuilder(ex?.third ?: "").append(ev.argsFragment),
                     )
+                }
+                is StreamEvent.ThinkingSignature -> {
+                    current = current.patch(assistantId) { it.copy(thinkingSignature = (it.thinkingSignature ?: "") + ev.signature) }
                 }
                 is StreamEvent.Done -> Unit
                 is StreamEvent.Error -> throw RuntimeException(ev.throwable.message ?: "stream error")
@@ -180,7 +183,7 @@ class AgentEngine(
                                 val c = (m.llmContent ?: m.content)
                                 if (c.isNotBlank()) add(ChatTurn("user", c))
                             }
-                            "assistant" -> if (m.content.isNotBlank() || m.toolCalls.isNotEmpty()) add(ChatTurn("assistant", m.content, m.toolCalls))
+                            "assistant" -> if (m.content.isNotBlank() || m.toolCalls.isNotEmpty()) add(ChatTurn("assistant", m.content, m.toolCalls, thinking = m.thinking, thinkingSignature = m.thinkingSignature))
                             "tool" -> if (m.toolCallId != null) add(ChatTurn("tool", m.toolResult ?: "(空)", toolCallId = m.toolCallId, name = m.toolName))
                         }
                     }
