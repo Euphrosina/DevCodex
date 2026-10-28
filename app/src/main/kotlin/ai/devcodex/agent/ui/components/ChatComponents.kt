@@ -361,15 +361,16 @@ fun InputBar(
 ) {
     val effortLevels = listOf("", "low", "medium", "high", "xhigh", "max", "ultra")
     val effortLabels = mapOf("" to "Faster: Off", "low" to "Low", "medium" to "Medium", "high" to "High", "xhigh" to "xHigh", "max" to "Max", "ultra" to "Smarter: Ultra")
+    val optionsExpanded = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     // rikkahub 视觉：顶部大圆角浮层容器
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(26.dp, 26.dp, 26.dp, 26.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 0.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 8.dp).padding(bottom = 8.dp),
     ) {
-        Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().animateContentSize()) {
             // Aether 式用量可视化：上下文(primary)+输出(tertiary)双段+压缩按钮
             if (ctxUsedPct >= 20) {
                 val outPct = (usageOutTokens * 100 / 4000).coerceIn(0, 30)  // 输出段按 4K 归一
@@ -431,7 +432,20 @@ fun InputBar(
                         }
                     }
                 }
-                // ===== 第二行：推理档按钮组（7 档可选，横向滚动自适应任意屏宽） =====
+                if (running) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("● 运行中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    if (optionsExpanded.value) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    "推理档位",
+                    Modifier.size(20.dp).clickable { optionsExpanded.value = !optionsExpanded.value },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // 第二行：推理档按钮组（默认收起，7 档可选，横向滚动自适应任意屏宽）
+            if (optionsExpanded.value) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -457,10 +471,6 @@ fun InputBar(
                             )
                         }
                     }
-                if (running) {
-                    Spacer(Modifier.width(8.dp))
-                    Text("● 运行中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                }
                 }
             }
             Row(
@@ -473,7 +483,7 @@ fun InputBar(
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("询问 DevCodex…") },
                     maxLines = 6,
-                    shape = RoundedCornerShape(24.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
                     leadingIcon = {
                         Icon(
                             Icons.Filled.AttachFile, "上传附件",

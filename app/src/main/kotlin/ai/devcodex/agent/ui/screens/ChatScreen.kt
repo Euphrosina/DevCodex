@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -66,6 +67,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Scaffold
@@ -268,7 +271,7 @@ fun ChatScreen(vm: AppViewModel) {
                             Surface(
                                 color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                                         else androidx.compose.ui.graphics.Color.Transparent,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.small,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 10.dp, vertical = 2.dp)
@@ -349,21 +352,33 @@ fun ChatScreen(vm: AppViewModel) {
                         IconButton(onClick = { vm.navRequest.value = "workspace" }) {
                             Icon(Icons.Filled.Folder, "工作区")
                         }
-                        // 提供商直达（沉浸模式可达）
-                        IconButton(onClick = { vm.navRequest.value = "providers" }) {
-                            Icon(Icons.Filled.AutoAwesome, "提供商")
-                        }
-                        // 随时手动压缩会话
-                        IconButton(onClick = { vm.compactSessionNow() }) {
-                            Icon(Icons.Filled.Schedule, "压缩会话")
-                        }
-                        // 终端直达
-                        IconButton(onClick = { vm.navRequest.value = "terminal" }) {
-                            Icon(Icons.Filled.Dvr, "终端")
-                        }
                         // 沉浸模式下的设置出口（任何时候都可进）
                         IconButton(onClick = { vm.navRequest.value = "settings" }) {
                             Icon(Icons.Filled.Settings, "设置")
+                        }
+                        // 次要入口收进溢出菜单：提供商、压缩会话、终端
+                        var showMore by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { showMore = true }) {
+                                Icon(Icons.Filled.MoreVert, "更多")
+                            }
+                            DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("API 提供商") },
+                                    leadingIcon = { Icon(Icons.Filled.AutoAwesome, null) },
+                                    onClick = { showMore = false; vm.navRequest.value = "providers" },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("压缩会话") },
+                                    leadingIcon = { Icon(Icons.Filled.Schedule, null) },
+                                    onClick = { showMore = false; vm.compactSessionNow() },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("终端") },
+                                    leadingIcon = { Icon(Icons.Filled.Dvr, null) },
+                                    onClick = { showMore = false; vm.navRequest.value = "terminal" },
+                                )
+                            }
                         }
                     },
                 )
@@ -588,7 +603,7 @@ fun ChatScreen(vm: AppViewModel) {
                     val matches = cmds.filter { it.first.startsWith(input.removePrefix("/").take(2).ifBlank { "" }.let { p -> "/" + p }) || it.first.startsWith(input) }.take(8)
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         shadowElevation = 6.dp,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
                     ) {
@@ -788,7 +803,7 @@ fun ChatScreen(vm: AppViewModel) {
                     value = query, onValueChange = { query = it },
                     placeholder = { Text("搜索模型…") },
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.medium,
                     leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.size(18.dp)) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 )
@@ -1006,7 +1021,7 @@ private fun EmptyHint(onExample: (String) -> Unit) {
         ).forEach { line ->
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onExample(line) },
             ) {
                 Text(
@@ -1068,7 +1083,7 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thin
     )
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = RoundedCornerShape(10.dp),
+        shape = MaterialTheme.shapes.small,
         onClick = { expanded = !expanded },
         modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 6.dp),
     ) {
