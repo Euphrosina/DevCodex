@@ -35,6 +35,13 @@ android {
     }
 
     signingConfigs {
+        create("fixedDebug") {
+            storeFile = file("devcodex-debug.p12")
+            storeType = "pkcs12"
+            storePassword = "devcodex-debug"
+            keyAlias = "devcodex"
+            keyPassword = "devcodex-debug"
+        }
         create("release") {
             val ksPath = System.getenv("DC_KEYSTORE_PATH")
             val ksPwd = System.getenv("DC_KEYSTORE_PASSWORD") ?: ""
@@ -50,6 +57,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("fixedDebug")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = false
