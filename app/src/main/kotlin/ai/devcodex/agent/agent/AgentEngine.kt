@@ -216,6 +216,18 @@ class AgentEngine(
                         }
                     }
                 }
+                // 进程被杀或崩溃后历史里可能有工具调用缺少结果，发送前补占位结果，避免网关以 400 拒绝
+                turns = buildList {
+                    val answered = turns.filter { it.role == "tool" }.mapNotNull { it.toolCallId }.toSet()
+                    turns.forEach { t ->
+                        add(t)
+                        if (t.role == "assistant") {
+                            t.toolCalls.filter { it.id !in answered }.forEach { tc ->
+                                add(ChatTurn("tool", "ERROR: 工具未执行（会话曾中断）", toolCallId = tc.id, name = tc.name))
+                            }
+                        }
+                    }
+                }
                 // 自动压缩：按会话上下文档位（覆盖或模型上限）的 20% 触发（提前压缩防溢出）
                 if (s.autoCompact) {
                     val ctxLimit = (session.contextOverride.takeIf { it > 0 }

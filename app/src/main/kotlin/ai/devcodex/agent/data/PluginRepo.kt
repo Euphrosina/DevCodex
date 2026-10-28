@@ -34,6 +34,7 @@ class PluginRepo(private val context: Context) {
         require(m.id.matches(SAFE_ID) && m.id != "." && m.id != "..") { "插件 id 只能包含字母、数字、点、下划线和连字符" }
         require(m.tools.isNotEmpty()) { "插件至少要声明一个工具" }
         require(m.tools.all { it.name.isNotBlank() && it.endpoint.url.isNotBlank() }) { "工具缺少 name 或 url" }
+        require(m.tools.all { it.endpoint.url.trim().let { u -> u.startsWith("https://") || u.startsWith("http://") } }) { "工具 url 只允许 http 或 https" }
         require(m.tools.none { it.name.contains(" ") }) { "工具名不能含空格" }
         save(m)
         m

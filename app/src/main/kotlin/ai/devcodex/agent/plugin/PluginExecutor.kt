@@ -32,7 +32,7 @@ object PluginExecutor {
             name = t.name,
             description = t.description.ifBlank { "插件工具 ${t.name}" },
             parameters = schema,
-            risk = ToolDef.Risk.LOW,
+            risk = ToolDef.Risk.MEDIUM,
         ) { args -> executeTool(t, args) }
     }
 
@@ -40,7 +40,7 @@ object PluginExecutor {
     private suspend fun executeTool(t: PluginTool, argsJson: String): String = withContext(Dispatchers.IO) {
         try {
             val req = buildRequest(t, argsJson)
-            LlmClient.newCall(req).await().use { resp ->
+            SafeHttp.wrap(LlmClient).newCall(req).await().use { resp ->
                 val body = resp.body?.string() ?: ""
                 if (!resp.isSuccessful) return@withContext "HTTP ${resp.code}: ${body.take(500)}"
                 extractResult(t.endpoint.resultPath, body)
@@ -108,7 +108,7 @@ object PluginExecutor {
                     "application/json; charset=utf-8" else "text/plain; charset=utf-8"
                 builder.method(method, (body ?: "").toRequestBody(contentType.toMediaType()))
             }
-            LlmClient.newCall(builder.build()).await().use { resp ->
+            SafeHttp.wrap(LlmClient).newCall(builder.build()).await().use { resp ->
                 val respBody = resp.body?.string() ?: ""
                 if (!resp.isSuccessful) "HTTP ${resp.code}: ${respBody.take(500)}" else respBody.take(20000)
             }
