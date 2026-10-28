@@ -102,8 +102,6 @@ class AgentEngine(
 
     suspend fun run(session: ChatSession, onUpdate: (ChatSession) -> Unit) {
         val s = settings()
-        engineSessionAllows.clear()
-        var failStreak = 0  // 连续失败断路器：连续 3 次请求失败直接终止（防模型自主重试连环请求）
         val provider = s.providers.find { it.id == session.providerId && it.enabled }
             ?: s.providers.firstOrNull { it.enabled && it.enabledModels.isNotEmpty() }
             ?: run { events.emit(UiEvent.Error("未配置 API 提供商，请到「提供商」页添加并拉取模型")); return }
@@ -171,7 +169,8 @@ class AgentEngine(
         var current = session
         try {
             var steps = 0
-            while (true) {   // 已取消最大步数限制（按用户要求），由模型自主结束循环
+            // maxAgentSteps <= 0 表示不限步数
+            while (s.maxAgentSteps <= 0 || steps < s.maxAgentSteps) {
                 steps++
 
                 // ---- 1. 流式调 LLM ----
@@ -250,33 +249,27 @@ class AgentEngine(
                         onFirstDelta = { if (firstTokMs == 0L) firstTokMs = System.currentTimeMillis() - t0 })
                 }
 
-                try {
-                    runCatching { streamPost(LlmClient, request) { line -> current = consume(line) } }
-                        .onSuccess { failStreak = 0 }
-                        .onFailure {
-                            failStreak++
-                            if (failStreak >= 3) {
-                                events.emit(UiEvent.Error("连续 3 次请求失败，已自动停止（" + (it.message ?: "") + "）"))
-                                throw RuntimeException("连续 3 次请求失败，断路器触发")
-                            }
-                        }
-                } catch (e: Exception) {
-                    val msg = e.message ?: e.toString()
-                    if (msg.contains("HTTP 400") && effectiveSchemas.isNotEmpty()) {
-                        // 未知模型 400：降级去掉 tools 重试一次
+                // 请求：HTTP 400 且带 tools 时降级去掉 tools 重试一次；其他失败最多重试 2 次，仍失败则明确报错终止
+                var attempt = 0
+                var toolsDropped = effectiveSchemas.isEmpty()
+                while (true) {
+                    val r = runCatching { streamPost(LlmClient, request) { line -> current = consume(line) } }
+                    if (r.isSuccess) break
+                    val err = r.exceptionOrNull()!!
+                    if (err is CancellationException) throw err
+                    val msg = err.message ?: err.toString()
+                    // 丢弃半截流式缓冲，避免重试后内容重复
+                    text.clear(); think.clear(); toolAgg.clear()
+                    current = current.patch(assistantId) { it.copy(content = "", thinking = null, thinkingSignature = null) }
+                    onUpdate(current)
+                    if (!toolsDropped && msg.contains("HTTP 400")) {
+                        toolsDropped = true
                         request = ProviderGateway.chatRequest(provider, model, systemPrompt, turns, emptyList(), stream = true, reasoningEffort = effort)
-                        runCatching { streamPost(LlmClient, request) { line -> current = consume(line) } }
-                        .onSuccess { failStreak = 0 }
-                        .onFailure {
-                            failStreak++
-                            if (failStreak >= 3) {
-                                events.emit(UiEvent.Error("连续 3 次请求失败，已自动停止（" + (it.message ?: "") + "）"))
-                                throw RuntimeException("连续 3 次请求失败，断路器触发")
-                            }
-                        }
-                    } else {
-                        throw e
+                        continue
                     }
+                    attempt++
+                    if (attempt > 2) throw RuntimeException("请求失败，已重试 2 次：$msg")
+                    kotlinx.coroutines.delay(1000L * attempt)
                 }
 
                 val toolCalls = toolAgg.values.filter { it.second.isNotBlank() }.map {
@@ -334,28 +327,31 @@ class AgentEngine(
                         else -> !alwaysAllowed && (                          // ASSISTED：非 LOW 均审 + 沙箱外写必审
                                 def.risk != ToolDef.Risk.LOW || fsWriteOutside)
                     }
+                    // 先落一条工具消息：需审批时为 AWAITING_APPROVAL，否则直接 RUNNING
+                    current = current.copy(messages = current.messages + Message(
+                        id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
+                        toolStatus = if (needApproval) ToolStatus.AWAITING_APPROVAL else ToolStatus.RUNNING,
+                        timestamp = System.currentTimeMillis(),
+                    ))
+                    onUpdate(current)
                     if (needApproval) {
-                        val reason = when (def.risk) {
-                            ToolDef.Risk.HIGH -> "高危操作，需确认：${def.description.take(50)}"
-                            else -> "沙箱外写入，需确认"
+                        val reason = when {
+                            fsWriteOutside -> "写入工作区之外的路径，需确认"
+                            def.risk == ToolDef.Risk.HIGH -> "高危操作，需确认：${def.description.take(50)}"
+                            def.risk == ToolDef.Risk.MEDIUM -> "该工具会改变设备或外部状态，需确认：${def.description.take(50)}"
+                            else -> "当前审批模式要求逐步确认：${def.description.take(50)}"
                         }
                         val granted = requestApproval(ApprovalRequest(tc, reason) { true })
                         if (!granted) {
-                            current = current.copy(messages = current.messages + Message(
-                                id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
-                                toolResult = "用户拒绝执行该操作", toolStatus = ToolStatus.DENIED,
-                                timestamp = System.currentTimeMillis(),
-                            ))
+                            current = current.patch(toolMsgId) {
+                                it.copy(toolResult = "用户拒绝执行该操作", toolStatus = ToolStatus.DENIED)
+                            }
                             onUpdate(current)
                             continue
                         }
+                        current = current.patch(toolMsgId) { it.copy(toolStatus = ToolStatus.RUNNING) }
+                        onUpdate(current)
                     }
-                    // RUNNING → 执行 → DONE
-                    current = current.copy(messages = current.messages + Message(
-                        id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
-                        toolStatus = ToolStatus.RUNNING, timestamp = System.currentTimeMillis(),
-                    ))
-                    onUpdate(current)
                     val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         runCatching { def.execute(tc.argsJson) }
                     }
@@ -367,11 +363,24 @@ class AgentEngine(
                 }
                 // ---- 3. 循环：工具结果已在消息里，下一轮带给 LLM ----
             }
-            events.emit(UiEvent.Error("执行已中止"))
+            events.emit(UiEvent.Error("已达到最大步数 ${s.maxAgentSteps}，执行已停止，可在设置中调整"))
         } catch (e: CancellationException) {
-            current = current.copy(messages = current.messages.map { m ->
-                if (m.toolStatus == ToolStatus.RUNNING) m.copy(toolStatus = ToolStatus.ERROR, toolResult = "已中断") else m
-            })
+            // 中断收尾：运行中/待审批的工具消息标记已中断，并给没有结果的工具调用补写结果，保证下一轮请求结构合法
+            val answered = current.messages.filter { it.role == "tool" }.mapNotNull { it.toolCallId }.toSet()
+            val patched = current.messages.map { m ->
+                if (m.role == "tool" && (m.toolStatus == ToolStatus.RUNNING || m.toolStatus == ToolStatus.AWAITING_APPROVAL))
+                    m.copy(toolStatus = ToolStatus.ERROR, toolResult = "已中断")
+                else m
+            }
+            val missing = patched.filter { it.role == "assistant" }.flatMap { it.toolCalls }
+                .filter { it.id !in answered }
+                .map { tc ->
+                    Message(
+                        id = java.util.UUID.randomUUID().toString(), role = "tool", toolCallId = tc.id, toolName = tc.name,
+                        toolResult = "已中断", toolStatus = ToolStatus.ERROR, timestamp = System.currentTimeMillis(),
+                    )
+                }
+            current = current.copy(messages = patched + missing)
             onUpdate(current)
         } catch (e: Exception) {
             events.emit(UiEvent.Error(e.message ?: e.toString()))
