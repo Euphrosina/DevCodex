@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.LinearEasing
@@ -504,7 +503,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                     ai.devcodex.agent.m3l.LocalCodeTheme provides settings.theme.codeTheme,
-                                                    ai.devcodex.agent.m3l.LocalCodeBlockDark provides isSystemInDarkTheme(),
+                                                    ai.devcodex.agent.m3l.LocalCodeBlockDark provides (MaterialTheme.colorScheme.background.luminance() < 0.5f),
                                                         ai.devcodex.agent.m3l.LocalMarkdownRendererTheme provides ai.devcodex.agent.m3l.MarkdownRendererTheme(
                                                             primary = MaterialTheme.colorScheme.primary,
                                                             surface = MaterialTheme.colorScheme.surfaceContainerLow,
