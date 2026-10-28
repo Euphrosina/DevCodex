@@ -278,6 +278,7 @@ class AgentEngine(
                     val err = r.exceptionOrNull()!!
                     if (err is CancellationException) throw err
                     val msg = err.message ?: err.toString()
+                    ai.devcodex.agent.util.DebugLog.w("Agent", "request failed attempt=${attempt + 1} model=$model toolsDropped=$toolsDropped: $msg", err)
                     // 丢弃半截流式缓冲，避免重试后内容重复
                     text.clear(); think.clear(); toolAgg.clear()
                     current = current.patch(assistantId) { it.copy(content = "", thinking = null, thinkingSignature = null) }
@@ -368,10 +369,16 @@ class AgentEngine(
                         current = current.patch(toolMsgId) { it.copy(toolStatus = ToolStatus.RUNNING) }
                         onUpdate(current)
                     }
+                    val toolT0 = System.currentTimeMillis()
+                    ai.devcodex.agent.util.DebugLog.i("Tool", "start ${tc.name} id=${tc.id} args=${tc.argsJson.take(300)}")
                     val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         runCatching { def.execute(tc.argsJson) }
                     }
-                        .getOrElse { "ERROR: ${it.message}" }
+                        .getOrElse {
+                            ai.devcodex.agent.util.DebugLog.e("Tool", "exception in ${tc.name} id=${tc.id}", it)
+                            "ERROR: ${it.message}"
+                        }
+                    ai.devcodex.agent.util.DebugLog.i("Tool", "end ${tc.name} id=${tc.id} cost=${System.currentTimeMillis() - toolT0}ms error=${result.startsWith("ERROR")} resultLen=${result.length} head=${result.take(200)}")
                     current = current.patch(toolMsgId) {
                         it.copy(toolResult = result, toolStatus = if (result.startsWith("ERROR")) ToolStatus.ERROR else ToolStatus.DONE)
                     }
@@ -399,6 +406,7 @@ class AgentEngine(
             current = current.copy(messages = patched + missing)
             onUpdate(current)
         } catch (e: Exception) {
+            ai.devcodex.agent.util.DebugLog.e("Agent", "run aborted: ${e.message}", e)
             events.emit(UiEvent.Error(e.message ?: e.toString()))
             onUpdate(current)
         }
