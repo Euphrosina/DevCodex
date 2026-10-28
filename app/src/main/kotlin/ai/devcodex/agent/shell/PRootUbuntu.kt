@@ -58,7 +58,8 @@ object PRootUbuntu {
     fun exec(ctx: Context, command: String, timeoutSec: Int = 150): String {
         val root = rootfsDir(ctx)
         val proot = File(ctx.filesDir, "proot-bin/proot").absolutePath
-        val termuxLib = File(ctx.filesDir, "usr/lib").absolutePath
+        val termuxUsr = ai.devcodex.agent.shell.TermuxRuntime.prefix(ctx)
+        val termuxLib = File(termuxUsr, "lib").absolutePath
         val ws = ai.devcodex.agent.tools.BuiltinTools.workspaceRoot().absolutePath
         File(root, "root/workspace").mkdirs()
         val quoted = "'" + command.replace("'", "'\\''") + "'"
@@ -67,11 +68,15 @@ object PRootUbuntu {
             "-w /root/workspace -0 /usr/bin/env HOME=/root PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin " +
             "/bin/sh -c $quoted"
         return runCatching {
-            val bash = File(ctx.filesDir, "usr/bin/bash")
-            val pb = if (bash.exists()) ProcessBuilder(bash.absolutePath, "-c", full) else ProcessBuilder("sh", "-c", full)
+            val bash = ai.devcodex.agent.shell.TermuxRuntime.bash(ctx)
+            val bashUsable = bash.isFile && File(termuxLib, "libreadline.so.8").exists()
+            val prootTmp = File(ctx.cacheDir, "proot-tmp").apply { mkdirs() }
+            val pb = if (bashUsable) ProcessBuilder(bash.absolutePath, "-c", full) else ProcessBuilder("sh", "-c", full)
             pb.redirectErrorStream(true).apply {
                 environment()["LD_LIBRARY_PATH"] = termuxLib + ":" + (System.getenv("LD_LIBRARY_PATH") ?: "")
-                environment()["PATH"] = File(ctx.filesDir, "usr/bin").absolutePath + ":/system/bin:/system/xbin"
+                environment()["PATH"] = File(termuxUsr, "bin").absolutePath + ":/system/bin:/system/xbin"
+                environment()["PROOT_TMP_DIR"] = prootTmp.absolutePath
+                environment()["PROOT_NO_SECCOMP"] = "1"
             }
             val p = pb.start()
             val out = StringBuilder()
