@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Bolt
@@ -1221,8 +1223,8 @@ private fun MsgActionBar(
         }
         actBtn("复制", Icons.Filled.ContentCopy, onClick = { onCopy(msg.content) })
         if (msg.role == "user") {
-            actBtn("重发", FeatherIcons.Reply, onClick = onResend)
-            actBtn("回退", FeatherIcons.Rewind, onClick = onRewind)
+            actBtn("重发", Icons.Filled.Replay, onClick = onResend)
+            actBtn("回退", Icons.AutoMirrored.Filled.Undo, onClick = onRewind)
         }
         actBtn("删除", Icons.Filled.Delete, onClick = onDelete)
     }
@@ -1240,48 +1242,5 @@ private fun CharAvatarFallback(c: ai.devcodex.agent.data.CharacterCard) {
         contentAlignment = androidx.compose.ui.Alignment.Center,
     ) {
         Text(c.name.takeOrNull(1) ?: "角", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-    }
-}
-
-// ===== rikkahub feathericons 照搬（reply 重发 / rewind 回退）=====
-object FeatherIcons {
-    val Reply: androidx.compose.ui.graphics.vector.ImageVector by lazy {
-        androidx.compose.ui.graphics.vector.ImageVector.Builder(
-            name = "FeatherReply", defaultWidth = 24.dp, defaultHeight = 24.dp,
-            viewportWidth = 24f, viewportHeight = 24f,
-        ).apply {
-            path(
-                stroke = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
-                strokeLineWidth = 2f, strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
-                strokeLineJoin = androidx.compose.ui.graphics.StrokeJoin.Round,
-            ) {
-                moveTo(9f, 17f)
-                lineTo(4f, 12f)
-                lineTo(9f, 7f)
-                moveTo(20f, 18f)
-                lineTo(20f, 16f)
-                curveTo(20f, 13.79f, 18.21f, 12f, 16f, 12f)
-                lineTo(4f, 12f)
-            }
-        }.build()
-    }
-    val Rewind: androidx.compose.ui.graphics.vector.ImageVector by lazy {
-        androidx.compose.ui.graphics.vector.ImageVector.Builder(
-            name = "FeatherRewind", defaultWidth = 24.dp, defaultHeight = 24.dp,
-            viewportWidth = 24f, viewportHeight = 24f,
-        ).apply {
-            path(
-                stroke = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
-                strokeLineWidth = 2f, strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
-                strokeLineJoin = androidx.compose.ui.graphics.StrokeJoin.Round,
-            ) {
-                moveTo(11f, 19f)
-                lineTo(2f, 12f)
-                lineTo(11f, 5f)
-                moveTo(22f, 19f)
-                lineTo(13f, 12f)
-                lineTo(22f, 5f)
-            }
-        }.build()
     }
 }

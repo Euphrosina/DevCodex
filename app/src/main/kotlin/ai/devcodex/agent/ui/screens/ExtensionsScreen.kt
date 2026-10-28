@@ -90,7 +90,7 @@ fun ExtensionsScreen(vm: AppViewModel) {
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text("扩展", fontSize = 18.sp) },
+            title = { Text("扩展") },
             actions = {
                 IconButton(onClick = { scopeLaunch { load(sourceUrl) } }) { Icon(Icons.Filled.Refresh, "刷新") }
             },

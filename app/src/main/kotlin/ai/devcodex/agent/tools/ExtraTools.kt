@@ -520,7 +520,7 @@ object ExtraTools {
     // ============ 沙盒扩展工具（自动装包） ============
     val sandboxPkgInstall = ToolDef(
         name = "sandbox_pkg_install",
-        description = "Termux 沙盒联网安装软件包（apt）。如 python nodejs git ffmpeg rust golang openssh zip unzip 等。装完即可在 shell_exec 中使用。首次约 1-2 分钟",
+        description = "在 Linux 沙盒（优先 PRoot Ubuntu，失败回退 Termux）联网安装软件包（apt）。如 python nodejs git ffmpeg rust golang openssh zip unzip 等。装完即可在 shell_exec 中使用。首次约 1-2 分钟",
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -536,7 +536,7 @@ object ExtraTools {
 
     val pythonRun = ToolDef(
         name = "python_run",
-        description = "在 Termux 沙盒运行 Python 脚本（首次自动安装 python）。适合数据处理/爬虫/算法",
+        description = "在 Linux 沙盒运行 Python 脚本（首次自动安装 python）。适合数据处理/爬虫/算法",
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -559,7 +559,7 @@ object ExtraTools {
 
     val nodeRun = ToolDef(
         name = "node_run",
-        description = "在 Termux 沙盒运行 Node.js 脚本（首次自动安装 nodejs）。适合 JSON 处理/工具脚本",
+        description = "在 Linux 沙盒运行 Node.js 脚本（首次自动安装 nodejs）。适合 JSON 处理/工具脚本",
         parameters = obj {
             put("type", "object")
             put("properties", obj {
