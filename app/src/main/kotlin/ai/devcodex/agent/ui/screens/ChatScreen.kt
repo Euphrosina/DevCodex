@@ -1147,14 +1147,16 @@ private fun MessageStats(msg: Message, session: ChatSession? = null) {
                 ?: ai.devcodex.agent.provider.ModelRegistry.lookup(msg.model ?: "").contextLength
                 ?: 128_000)
             val pct = (ctx.toFloat() / limit).coerceIn(0f, 1f)
+            val ringTrack = MaterialTheme.colorScheme.outlineVariant
+            val ringFill = MaterialTheme.colorScheme.tertiary
             androidx.compose.foundation.Canvas(Modifier.size(14.dp)) {
                 drawArc(
-                    color = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.3f),
+                    color = ringTrack,
                     startAngle = -90f, sweepAngle = 360f, useCenter = false,
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f),
                 )
                 drawArc(
-                    color = androidx.compose.ui.graphics.Color(0xFFF59E0B),
+                    color = ringFill,
                     startAngle = -90f, sweepAngle = 360f * pct, useCenter = false,
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f),
                 )

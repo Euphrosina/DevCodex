@@ -427,7 +427,7 @@ fun InputBar(
                                 .clickable(enabled = support) { onCtx(opt) }
                                 .padding(horizontal = 8.dp, vertical = 3.dp),
                         ) {
-                            Text(label, style = MaterialTheme.typography.labelSmall, color = if (curCtx == opt && support) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(label, style = MaterialTheme.typography.labelSmall, color = if (curCtx == opt && support) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -453,7 +453,7 @@ fun InputBar(
                             Text(
                                 effortLabels[lv] ?: lv.ifBlank { "Off" },
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (sel) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (sel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
