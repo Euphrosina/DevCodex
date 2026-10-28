@@ -138,7 +138,7 @@ fun SettingsScreen(vm: AppViewModel) {
             "tools" -> ToolsPermPage(vm, settings, Modifier.padding(padding))
             "stats" -> ai.devcodex.agent.ui.screens.StatsScreen(vm) { page = "root" }
             "skills" -> SkillsPage(vm) { page = "root" }
-            "about" -> AboutPage { page = "root" }
+            "about" -> AboutPage(Modifier.padding(padding)) { page = "root" }
             else -> Column(
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             ) {
@@ -906,59 +906,11 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
 ## 删除数据
 卸载应用即删除全部本地数据。
 """.trim()
-    val pluginDocText = """
-# 插件（技能）开发指南
-
-## 结构
-技能 = Markdown 指令 + 可选工具。放置于技能页导入或手动放入技能目录。
-
-## Markdown 头
-\```
-name: 天气技能
-description: 查询天气并给出建议
-trigger: 天气|weather
-\```
-
-## 编写规则
-1. **name/description/trigger** 必填（trigger 用 | 分隔多个关键词
-2. 正文为 system 级指令（触发后注入
-3. 可引用工具：\{\{tools.list\}\} 查看可用工具
-4. 变量：\{\{user.name\}\}、\{\{time.now\}\}
-
-## 示例
-\```
-name: 翻译助手
-description: 中英互译
-trigger: 翻译|translate
----
-将用户内容翻译成中文（若已是中文则译成英文），只输出译文。
-\```
-""".trim()
     if (showPrivacyDoc) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showPrivacyDoc = false }) {
-            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("隐私政策", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
-                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = privacyDocText, textColor = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
-            }
-        }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = "隐私政策", markdown = privacyDocText) { showPrivacyDoc = false }
     }
     if (showPluginDoc) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginDoc = false }) {
-            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("插件开发文档", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
-                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = pluginDocText, textColor = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
-            }
-        }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = "插件开发文档", markdown = PLUGIN_DOC_MD) { showPluginDoc = false }
     }
     var skills by remember { mutableStateOf(listOf<ai.devcodex.agent.data.SkillRepo.Skill>()) }
     var msg by remember { mutableStateOf<String?>(null) }
@@ -1120,7 +1072,7 @@ trigger: 翻译|translate
 /** 关于页：作者/反馈/赞助/隐私政策 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AboutPage(onBack: () -> Unit) {
+fun AboutPage(modifier: Modifier = Modifier, onBack: () -> Unit) {
     val scroll = rememberScrollState()
     val context = androidx.compose.ui.platform.LocalContext.current
     fun openUri(u: String) = runCatching {
@@ -1144,65 +1096,17 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
 ## 删除数据
 卸载应用即删除全部本地数据。
 """.trim()
-    val pluginDocText = """
-# 插件（技能）开发指南
-
-## 结构
-技能 = Markdown 指令 + 可选工具。放置于技能页导入或手动放入技能目录。
-
-## Markdown 头
-\```
-name: 天气技能
-description: 查询天气并给出建议
-trigger: 天气|weather
-\```
-
-## 编写规则
-1. **name/description/trigger** 必填（trigger 用 | 分隔多个关键词
-2. 正文为 system 级指令（触发后注入
-3. 可引用工具：\{\{tools.list\}\} 查看可用工具
-4. 变量：\{\{user.name\}\}、\{\{time.now\}\}
-
-## 示例
-\```
-name: 翻译助手
-description: 中英互译
-trigger: 翻译|translate
----
-将用户内容翻译成中文（若已是中文则译成英文），只输出译文。
-\```
-""".trim()
     if (showPrivacyDoc) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showPrivacyDoc = false }) {
-            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("隐私政策", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
-                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = privacyDocText, textColor = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
-            }
-        }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = "隐私政策", markdown = privacyDocText) { showPrivacyDoc = false }
     }
     if (showPluginDoc) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showPluginDoc = false }) {
-            androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("插件开发文档", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
-                        ai.devcodex.agent.m3l.MixedMarkdownLatex(text = pluginDocText, textColor = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
-            }
-        }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = "插件开发文档", markdown = PLUGIN_DOC_MD) { showPluginDoc = false }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         // ===== rikkahub SettingAboutPage 完整复刻（136dp logo+两组 CardGroup）=====
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).verticalScroll(scroll),
+            modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
