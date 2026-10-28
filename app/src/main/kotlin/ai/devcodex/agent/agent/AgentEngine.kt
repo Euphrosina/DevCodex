@@ -13,6 +13,7 @@ import ai.devcodex.agent.provider.StreamEvent
 import ai.devcodex.agent.provider.streamPost
 import ai.devcodex.agent.tools.BuiltinTools
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.serialization.json.JsonObject
@@ -328,6 +329,16 @@ class AgentEngine(
                 for (tc in toolCalls) {
                     val def = toolDefs.find { it.name == tc.name }
                     val toolMsgId = java.util.UUID.randomUUID().toString()
+                    // 参数完整性闸门：流被截断（如命中 max_tokens）时 JSON 不完整，丢弃并回填错误，不执行
+                    if (def != null && runCatching { ai.devcodex.agent.provider.LlmJson.parseToJsonElement(tc.argsJson) }.getOrNull() !is kotlinx.serialization.json.JsonObject) {
+                        current = current.copy(messages = current.messages + Message(
+                            id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
+                            toolResult = "ERROR: 工具参数 JSON 不完整（参数流被截断，可能触及输出上限），已放弃执行，请缩小单次参数后重试",
+                            toolStatus = ToolStatus.ERROR, timestamp = System.currentTimeMillis(),
+                        ))
+                        onUpdate(current)
+                        continue
+                    }
                     if (def == null) {
                         current = current.copy(messages = current.messages + Message(
                             id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
@@ -379,13 +390,20 @@ class AgentEngine(
                     }
                     val toolT0 = System.currentTimeMillis()
                     ai.devcodex.agent.util.DebugLog.i("Tool", "start ${tc.name} id=${tc.id} args=${tc.argsJson.take(300)}")
-                    val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    // 工具执行超时兜底：独立 scope 不受父级等待子协程的约束，阻塞型工具不响应取消时也能按时返回
+                    val toolJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO).async {
                         runCatching { def.execute(tc.argsJson) }
                     }
-                        .getOrElse {
-                            ai.devcodex.agent.util.DebugLog.e("Tool", "exception in ${tc.name} id=${tc.id}", it)
-                            "ERROR: ${it.message}"
-                        }
+                    val outcome: Result<String> = try {
+                        kotlinx.coroutines.withTimeoutOrNull(300_000L) { toolJob.await() }
+                            ?: Result.success("ERROR: 工具执行超时（300s），已放弃等待")
+                    } finally {
+                        if (!toolJob.isCompleted) toolJob.cancel()
+                    }
+                    val result: String = outcome.getOrElse {
+                        ai.devcodex.agent.util.DebugLog.e("Tool", "exception in ${tc.name} id=${tc.id}", it)
+                        "ERROR: ${it.message}"
+                    }
                     ai.devcodex.agent.util.DebugLog.i("Tool", "end ${tc.name} id=${tc.id} cost=${System.currentTimeMillis() - toolT0}ms error=${result.startsWith("ERROR")} resultLen=${result.length} head=${result.take(200)}")
                     current = current.patch(toolMsgId) {
                         it.copy(toolResult = result, toolStatus = if (result.startsWith("ERROR")) ToolStatus.ERROR else ToolStatus.DONE)

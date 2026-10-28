@@ -86,14 +86,22 @@ suspend fun streamPost(
         throw IOException("HTTP ${response.code}: $body")
     }
     val reader = BufferedReader(InputStreamReader(response.body!!.byteStream()))
-    withContext(Dispatchers.IO) {
+    val job = kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+    // 取消时关闭响应体，打断阻塞中的 readLine
+    val cancelHandle = job?.invokeOnCompletion { cause ->
+        if (cause != null) runCatching { response.close() }
+    }
+    try {
         while (true) {
+            if (job?.isActive == false) throw java.util.concurrent.CancellationException("已停止")
             val line = reader.readLine() ?: break
             if (line.isEmpty()) continue
             onLine(line)
         }
+    } finally {
+        cancelHandle?.dispose()
+        runCatching { response.close() }
     }
-    response.close()
     response
 }
 

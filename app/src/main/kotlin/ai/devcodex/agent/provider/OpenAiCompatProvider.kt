@@ -78,6 +78,11 @@ object OpenAiCompatProvider {
         val obj = runCatching { LlmJson.parseToJsonElement(data) }.getOrNull()
             as? kotlinx.serialization.json.JsonObject ?: return emptyList()
         val events = mutableListOf<StreamEvent>()
+        // 网关在流中插入的 {"error":...}：明确报错，交给引擎重试，不再当作成功结束
+        (obj["error"] as? kotlinx.serialization.json.JsonObject)?.let { er ->
+            val msg = (er["message"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: er.toString().take(200)
+            return listOf(StreamEvent.Error(RuntimeException("流内错误: $msg")))
+        }
         // usage（部分服务在最后一个 chunk 带；字段可能为 null，逐个防御）
         (obj["usage"] as? kotlinx.serialization.json.JsonObject)?.let { u ->
             val it2 = (u["prompt_tokens"] as? kotlinx.serialization.json.JsonPrimitive)?.longOrNull ?: 0

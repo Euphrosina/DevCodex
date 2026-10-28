@@ -68,6 +68,9 @@ fun ExtensionsScreen(vm: AppViewModel) {
                     .newCall(req).execute().use { resp ->
                         if (!resp.isSuccessful) error("HTTP ${resp.code}")
                         val bytes = resp.body?.bytes() ?: error("空内容")
+                        // 路径穿越防护：远程清单的 name 只允许安全文件名字符，并限制内容大小
+                        if (!entry.name.matches(Regex("[A-Za-z0-9._一-龥-]+")) || entry.name == "." || entry.name == "..") error("扩展名称含非法字符")
+                        if (bytes.size > 2 * 1024 * 1024) error("扩展文件过大")
                         val ctx = BuiltinTools.appContext()
                         when (entry.type) {
                             "plugin" -> {

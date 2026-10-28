@@ -81,6 +81,15 @@ object AnthropicProvider {
         else -> 65536
     }
 
+    /** 仍接受 budget_tokens 的旧模型（3.x 与 4.0-4.5 系列）；其余一律走 adaptive */
+    private val legacyThinkingModel = Regex("""claude-3|(opus|sonnet|haiku)-4(-[0-5])?(-\d{8})?$""")
+    private fun usesAdaptiveThinking(model: String): Boolean = !legacyThinkingModel.containsMatchIn(model)
+    private fun adaptiveEffort(effort: String): String = when (effort) {
+        "low" -> "low"
+        "medium" -> "medium"
+        else -> "high"
+    }
+
     fun chatRequest(p: ProviderConfig, model: String, systemPrompt: String, turns: List<ChatTurn>, tools: List<JsonObject>, stream: Boolean, reasoningEffort: String = ""): Request {
         val body = buildJsonObject {
             put("model", model)
@@ -88,9 +97,15 @@ object AnthropicProvider {
             put("stream", stream)
             if (systemPrompt.isNotBlank()) put("system", systemPrompt)
             if (reasoningEffort.isNotBlank()) {
-                // Anthropic: thinking budget 映射 low=2048 / medium=8192 / high=16384
-                val budget = thinkingBudget(reasoningEffort)
-                put("thinking", buildJsonObject { put("type", "enabled"); put("budget_tokens", budget) })
+                if (usesAdaptiveThinking(model)) {
+                    // 新模型不再接受 budget_tokens（会 400），改用 adaptive thinking + effort
+                    put("thinking", buildJsonObject { put("type", "adaptive") })
+                    put("output_config", buildJsonObject { put("effort", adaptiveEffort(reasoningEffort)) })
+                } else {
+                    // 旧模型：thinking budget 映射 low=2048 / medium=8192 / high=16384
+                    val budget = thinkingBudget(reasoningEffort)
+                    put("thinking", buildJsonObject { put("type", "enabled"); put("budget_tokens", budget) })
+                }
             }
             put("messages", turnsToBlocks(turns))
             if (tools.isNotEmpty()) {
@@ -139,6 +154,10 @@ object AnthropicProvider {
             "message_delta" -> {
                 val u = obj["usage"]?.jsonObject
                 if (u != null) listOf(StreamEvent.Usage(0, u["output_tokens"]?.jsonPrimitive?.longOrNull ?: 0, 0)) else emptyList()
+            }
+            "error" -> {
+                val msg = obj["error"]?.jsonObject?.get("message")?.jsonPrimitive?.contentOrNull ?: data.take(200)
+                listOf(StreamEvent.Error(RuntimeException("流内错误: $msg")))
             }
             "message_stop" -> listOf(StreamEvent.Done("stop"))
             else -> emptyList()
