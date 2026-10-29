@@ -28,6 +28,12 @@ object CrashHandler {
                 })
                 // 只保留最近 5 份
                 dir.listFiles()?.sortedByDescending { it.name }?.drop(5)?.forEach { it.delete() }
+                // 镜像一份到外部私有目录（Android/data/<pkg>/files/crash），无需存储权限
+                runCatching {
+                    val ext = File(app.getExternalFilesDir(null), "crash").apply { mkdirs() }
+                    File(dir, name).copyTo(File(ext, name), overwrite = true)
+                    ext.listFiles()?.sortedByDescending { it.name }?.drop(5)?.forEach { it.delete() }
+                }
             }
             previous?.uncaughtException(thread, throwable)
         }

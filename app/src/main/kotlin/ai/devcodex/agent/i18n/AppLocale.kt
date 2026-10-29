@@ -102,12 +102,11 @@ object AppLocale {
     }
 
     /** 非 Compose 取串；格式化失败时返回未格式化的原文，避免崩溃。 */
-    fun string(base: Context, resId: Int, vararg args: Any): String {
+    fun string(base: Context, resId: Int, vararg args: Any): String = runCatching {
         val c = context(base)
-        return runCatching { if (args.isEmpty()) c.getString(resId) else c.getString(resId, *args) }
-            .getOrElse {
-                DebugLog.e("Locale", "取串失败 resId=$resId: ${it.message}", it)
-                runCatching { c.getString(resId) }.getOrDefault("")
-            }
+        if (args.isEmpty()) c.getString(resId) else c.getString(resId, *args)
+    }.getOrElse {
+        DebugLog.e("Locale", "取串失败 resId=$resId: ${it.message}", it)
+        runCatching { base.getString(resId) }.getOrDefault("")
     }
 }

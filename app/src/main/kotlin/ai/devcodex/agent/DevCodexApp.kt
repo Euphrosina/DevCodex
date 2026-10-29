@@ -25,9 +25,22 @@ class DevCodexApp : Application() {
         super.onCreate()
         ai.devcodex.agent.util.DebugLog.init(this)
         CrashHandler.install(this)
+        runCatching { initAll() }.onFailure { t ->
+            ai.devcodex.agent.util.DebugLog.e("App", "启动初始化失败", t)
+            runCatching {
+                java.io.File(filesDir, "last_start_error.txt")
+                    .writeText(android.util.Log.getStackTraceString(t))
+            }
+        }
+    }
+
+    /** 启动初始化：失败不致命，堆栈落盘后由崩溃页展示。 */
+    private fun initAll() {
         // 语言镜像需同步读取，放在其余初始化之前，保证后续取串与通知使用正确语言
-        ai.devcodex.agent.i18n.AppLocale.attach(this)
-        ai.devcodex.agent.i18n.AppLocale.init(this)
+        runCatching {
+            ai.devcodex.agent.i18n.AppLocale.attach(this)
+            ai.devcodex.agent.i18n.AppLocale.init(this)
+        }.onFailure { ai.devcodex.agent.util.DebugLog.e("Locale", "语言初始化失败", it) }
         instance = this
         settingsRepo = SettingsRepo(this)
         sessionRepo = SessionRepo(this)

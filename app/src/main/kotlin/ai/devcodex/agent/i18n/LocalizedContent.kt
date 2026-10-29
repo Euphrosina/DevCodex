@@ -20,13 +20,17 @@ import androidx.compose.ui.unit.LayoutDirection
 fun LocalizedContent(content: @Composable () -> Unit) {
     val language by AppLocale.effective.collectAsState()
     val base = LocalContext.current
-    val localized = remember(language, base) { AppLocale.localized(base, language.toLocale()) }
+    val localized = remember(language, base) {
+        runCatching { AppLocale.localized(base, language.toLocale()) }.getOrDefault(base)
+    }
     val direction = remember(language) {
-        if (android.text.TextUtils.getLayoutDirectionFromLocale(language.toLocale()) == android.view.View.LAYOUT_DIRECTION_RTL) {
-            LayoutDirection.Rtl
-        } else {
-            LayoutDirection.Ltr
-        }
+        runCatching {
+            if (android.text.TextUtils.getLayoutDirectionFromLocale(language.toLocale()) == android.view.View.LAYOUT_DIRECTION_RTL) {
+                LayoutDirection.Rtl
+            } else {
+                LayoutDirection.Ltr
+            }
+        }.getOrDefault(LayoutDirection.Ltr)
     }
     // 保留 Activity 引用：对话框、权限请求等仍需通过 Context 链找到 Activity
     val wrapped = remember(localized, base) { ActivityPreservingContext(localized, base) }
