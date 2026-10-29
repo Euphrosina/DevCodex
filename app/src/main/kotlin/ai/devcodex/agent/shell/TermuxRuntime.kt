@@ -85,6 +85,7 @@ object TermuxRuntime {
                 }
             }
             repairSymlinks(context)
+            rewriteShebangs(context)
             ready = true
             lastError = ""
             return true
@@ -126,6 +127,34 @@ object TermuxRuntime {
         return created
     }
 
+    /** 把脚本首行 #!/data/data/com.termux/files/usr 改写为本应用的实际前缀；标记文件保证只执行一次 */
+    fun rewriteShebangs(context: Context): Int {
+        val usr = prefix(context)
+        val marker = File(usr.parentFile, ".shebang_fixed")
+        if (marker.exists()) return 0
+        val old = "#!/data/data/com.termux/files/usr"
+        val oldBytes = old.toByteArray(Charsets.UTF_8)
+        var fixed = 0
+        runCatching {
+            for (sub in listOf("bin", "libexec")) {
+                File(usr, sub).walkTopDown().filter { it.isFile && !java.nio.file.Files.isSymbolicLink(it.toPath()) }.forEach { f ->
+                    val head = ByteArray(oldBytes.size)
+                    val n = f.inputStream().use { it.read(head) }
+                    if (n != oldBytes.size || !head.contentEquals(oldBytes)) return@forEach
+                    val text = f.readText(Charsets.UTF_8)
+                    val nl = text.indexOf('\n').let { if (it < 0) text.length else it }
+                    val first = "#!" + usr.absolutePath + text.substring(old.length, nl)
+                    f.writeText(first + text.substring(nl), Charsets.UTF_8)
+                    f.setExecutable(true, false)
+                    fixed++
+                }
+            }
+            marker.writeText("shebang-1")
+        }.onFailure { ai.devcodex.agent.util.DebugLog.e("Termux", "rewriteShebangs failed", it) }
+        ai.devcodex.agent.util.DebugLog.i("Termux", "rewriteShebangs fixed=$fixed")
+        return fixed
+    }
+
     /** bash 可跑则提示（可选） */
     fun bashReady(context: Context): Boolean = runCatching {
         val p = exec(context, "command -v bash >/dev/null && bash -c 'echo ok'", 8)
@@ -160,6 +189,13 @@ object TermuxRuntime {
                     env["TMPDIR"] = File(usr, "tmp").absolutePath
                     File(usr, "tmp").mkdirs()
                     env["PREFIX"] = usr.absolutePath
+                    env["TERMUX_PREFIX"] = usr.absolutePath
+                    val caBundle = File(usr, "etc/tls/cert.pem")
+                    if (caBundle.isFile) {
+                        env["SSL_CERT_FILE"] = caBundle.absolutePath
+                        env["CURL_CA_BUNDLE"] = caBundle.absolutePath
+                        env["GIT_SSL_CAINFO"] = caBundle.absolutePath
+                    }
                     env["LANG"] = "en_US.UTF-8"
                     env["TERM"] = "xterm-256color"
                 }
