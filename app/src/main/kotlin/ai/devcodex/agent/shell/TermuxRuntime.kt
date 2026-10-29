@@ -155,6 +155,46 @@ object TermuxRuntime {
         return fixed
     }
 
+    /** 生成 apt.conf，覆盖 apt/dpkg 编译进二进制的 /data/data/com.termux 路径；返回配置文件 */
+    fun writeAptConfig(context: Context): File {
+        val usr = prefix(context)
+        val p = usr.absolutePath
+        val conf = File(usr, "etc/apt/apt.conf")
+        listOf("var/lib/apt/lists/partial", "var/cache/apt/archives/partial", "var/log/apt", "var/lib/dpkg", "etc/apt/apt.conf.d", "etc/apt/sources.list.d").forEach { File(usr, it).mkdirs() }
+        val text = """
+            Dir "/";
+            Dir::Etc "$p/etc/apt";
+            Dir::Etc::sourcelist "$p/etc/apt/sources.list";
+            Dir::Etc::sourceparts "$p/etc/apt/sources.list.d";
+            Dir::Etc::trusted "$p/etc/apt/trusted.gpg";
+            Dir::Etc::trustedparts "$p/etc/apt/trusted.gpg.d";
+            Dir::Etc::preferences "$p/etc/apt/preferences";
+            Dir::Etc::preferencesparts "$p/etc/apt/preferences.d";
+            Dir::Etc::parts "$p/etc/apt/apt.conf.d";
+            Dir::State "$p/var/lib/apt";
+            Dir::State::status "$p/var/lib/dpkg/status";
+            Dir::Cache "$p/var/cache/apt";
+            Dir::Log "$p/var/log/apt";
+            Dir::Bin::dpkg "$p/bin/dpkg";
+            Dir::Bin::methods "$p/lib/apt/methods";
+            Dir::Bin::solvers "$p/lib/apt/solvers";
+            Dir::Bin::planners "$p/lib/apt/planners";
+            Dir::Bin::apt-key "$p/bin/apt-key";
+            Dir::Media::MountPath "$p/media";
+            DPkg::Options:: "--admindir=$p/var/lib/dpkg";
+            DPkg::Options:: "--force-not-root";
+            DPkg::Options:: "--force-confdef";
+            DPkg::Options:: "--force-confold";
+            APT::Sandbox::User "";
+            Acquire::AllowInsecureRepositories "false";
+            Acquire::https::CaInfo "$p/etc/tls/cert.pem";
+            Acquire::http::Proxy::AutoDetect "";
+        """.trimIndent() + "\n"
+        runCatching { if (!conf.isFile || conf.readText() != text) conf.writeText(text) }
+            .onFailure { ai.devcodex.agent.util.DebugLog.e("Termux", "writeAptConfig failed", it) }
+        return conf
+    }
+
     /** bash 可跑则提示（可选） */
     fun bashReady(context: Context): Boolean = runCatching {
         val p = exec(context, "command -v bash >/dev/null && bash -c 'echo ok'", 8)
@@ -190,6 +230,7 @@ object TermuxRuntime {
                     File(usr, "tmp").mkdirs()
                     env["PREFIX"] = usr.absolutePath
                     env["TERMUX_PREFIX"] = usr.absolutePath
+                    env["APT_CONFIG"] = writeAptConfig(context).absolutePath
                     val caBundle = File(usr, "etc/tls/cert.pem")
                     if (caBundle.isFile) {
                         env["SSL_CERT_FILE"] = caBundle.absolutePath
