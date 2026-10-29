@@ -48,6 +48,15 @@ private class ActivityPreservingContext(
     private val localized: Context,
     private val original: Context,
 ) : ContextWrapper(localized) {
+    /**
+     * findActivity() 沿 getBaseContext() 链向上查找 Activity。
+     * localized 是 createConfigurationContext 产出的 ContextImpl，链上不含 Activity，
+     * 若不覆盖这里，rememberLauncherForActivityResult 会抛
+     * "No ActivityResultRegistryOwner was provided via LocalActivityResultRegistryOwner"。
+     * 资源仍由 ContextWrapper 的 mBase(localized) 提供，不受影响。
+     */
+    override fun getBaseContext(): Context = original
+
     override fun getSystemService(name: String): Any? = original.getSystemService(name)
     override fun getApplicationContext(): Context = original.applicationContext
 }
