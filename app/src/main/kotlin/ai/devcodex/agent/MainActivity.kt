@@ -24,27 +24,27 @@ class MainActivity : ComponentActivity() {
     }
 
     /** 不依赖 Compose 的崩溃报告页：Compose 崩掉时也能把堆栈给用户复制出来。 */
-    private fun showCrashReport(text: String) {
+    private fun showCrashReport(report: String) {
         val d = resources.displayMetrics.density
         fun dp(v: Int) = (v * d).toInt()
         val tv = android.widget.TextView(this).apply {
-            this.text = text
+            this.text = report
             textSize = 10f
             setTextIsSelectable(true)
             setPadding(dp(12), dp(12), dp(12), dp(12))
         }
         val copy = android.widget.Button(this).apply {
-            text = "复制崩溃报告"
+            this.text = "复制崩溃报告"
             setOnClickListener {
                 runCatching {
                     val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    cm.setPrimaryClip(android.content.ClipData.newPlainText("crash", text))
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("crash", report))
                     android.widget.Toast.makeText(this@MainActivity, "已复制，请发给开发者", android.widget.Toast.LENGTH_LONG).show()
                 }
             }
         }
         val skip = android.widget.Button(this).apply {
-            text = "清除并继续启动"
+            this.text = "清除并继续启动"
             setOnClickListener {
                 runCatching { ai.devcodex.agent.util.CrashHandler.clear(this@MainActivity) }
                 runCatching { java.io.File(filesDir, "last_start_error.txt").delete() }
