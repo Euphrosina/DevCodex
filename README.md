@@ -28,7 +28,7 @@ DevCodex 是运行在你 Android 设备上的**智能体（Agent）**：模型�
 **🛠 真 Agent 工具集（27+）**
 - 文件系统：读写/搜索/目录树/压缩
 - Web：URL 抓取（M3L 渲染）、图片保存
-- Linux 沙盒：**PRoot 运行 Alpine 3.21 或 Ubuntu 24.04**（内置 rootfs，免 root，`apk`/`apt` 装包，工作区挂载）
+- Linux 沙盒：**PRoot 运行 Ubuntu 26.10**（内置 rootfs，免 root，`apt` 装包，工作区挂载）
 - 执行通道自动选择：**Shizuku（ADB 权限）> Root > Termux（RUN_COMMAND 原生）> AXS > Linux 沙盒→toybox 自动降级**
 - SSH 隧道（JSch）：远程执行 + 端口转发
 - 应用管理：安装/卸载/启动、通知、剪贴板、截图（Shizuku）
@@ -89,7 +89,7 @@ The model doesn't just talk — it invokes **real tools**: reads/writes files, e
 **🛠 Real Tooling (27+)**
 - Filesystem: read/write/search/tree/archive
 - Web: URL fetch (rendered), image save
-- Linux sandbox: **PRoot running Alpine 3.21 or Ubuntu 24.04** (bundled rootfs, no root needed, `apk`/`apt` install, workspace bind-mount)
+- Linux sandbox: **PRoot running Ubuntu 26.10** (bundled rootfs, no root needed, `apt` install, workspace bind-mount)
 - Auto channel selection: **Shizuku (ADB) > Root > Termux (native RUN_COMMAND) > AXS > sandbox→toybox fallback**
 - SSH tunnels (JSch): remote exec + port forwarding
 - App management, notifications, clipboard, screenshots (via Shizuku)
@@ -135,7 +135,7 @@ cd DevCodex
 **🛠 本物のツールセット（27 以上）**
 - ファイルシステム：読み書き／検索／ツリー／圧縮
 - Web：URL 取得（レンダリング済み）、画像保存
-- Linux サンドボックス：**PRoot で Alpine 3.21 または Ubuntu 24.04 を実行**（rootfs 同梱、root 不要、`apk`／`apt` でパッケージ導入、ワークスペース バインドマウント）
+- Linux サンドボックス：**PRoot で Ubuntu 26.10 を実行**（rootfs 同梱、root 不要、`apt` でパッケージ導入、ワークスペース バインドマウント）
 - 実行チャネル自動選択：**Shizuku（ADB 権限）> Root > Termux（RUN_COMMAND ネイティブ）> AXS > サンドボックス→toybox 自動フォールバック**
 - SSH トンネル（JSch）：リモート実行 + ポートフォワーディング
 - アプリ管理、通知、クリップボード、スクリーンショット（Shizuku 経由）

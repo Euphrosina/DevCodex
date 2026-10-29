@@ -85,7 +85,7 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
                 ai.devcodex.agent.shell.ShellAccess.Mode.SHIZUKU -> "Shizuku（特权）"
                 ai.devcodex.agent.shell.ShellAccess.Mode.ROOT -> "Root（特权）"
                 ai.devcodex.agent.shell.ShellAccess.Mode.AXS -> "AXS/Termux 服务（ADB 级）"
-                ai.devcodex.agent.shell.ShellAccess.Mode.LINUX -> "Linux 沙盒（Alpine·PRoot，busybox 全套 + /workspace 挂载）"
+                ai.devcodex.agent.shell.ShellAccess.Mode.LINUX -> "Linux 沙盒（Ubuntu·PRoot，/workspace 挂载）"
                 ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX -> "备用 toybox 沙盒"
             }
             Text(

@@ -95,7 +95,7 @@ object ShellAccess {
         shizukuService != null || (shizukuAvailable() && shizukuPermissionGranted()) -> Mode.SHIZUKU
         rootAvailable() -> Mode.ROOT
         axsUrl.isNotBlank() -> Mode.AXS
-        else -> Mode.LINUX   // 完整 Linux 沙盒（PRoot+Alpine）
+        else -> Mode.LINUX   // 完整 Linux 沙盒（PRoot+Ubuntu）
     }
 
     /** AXS/Termux 服务执行：POST {url} body=命令，响应纯文本即输出 */
