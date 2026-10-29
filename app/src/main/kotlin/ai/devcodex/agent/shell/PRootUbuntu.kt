@@ -14,7 +14,8 @@ object PRootUbuntu {
 
     fun rootfsDir(ctx: Context): File = File(ctx.filesDir, "ubuntu")
 
-    /** 首次解压 proot 二进制 + rootfs（~80MB 解压后），进度回调 0..100 */
+    /** 首次解压 proot 二进制 + rootfs（~80MB 解压后），进度回调 0..100；加锁避免并发解压互删 ubuntu.tmp */
+    @Synchronized
     fun ensure(ctx: Context, onProgress: (Int) -> Unit = {}): Boolean {
         if (initialized && rootfsDir(ctx).resolve("bin").exists()) return true
         return runCatching {
