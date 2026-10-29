@@ -2,6 +2,8 @@ package ai.devcodex.agent.i18n
 
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -34,12 +36,26 @@ fun LocalizedContent(content: @Composable () -> Unit) {
     }
     // 保留 Activity 引用：对话框、权限请求等仍需通过 Context 链找到 Activity
     val wrapped = remember(localized, base) { ActivityPreservingContext(localized, base) }
-    CompositionLocalProvider(
-        LocalContext provides wrapped,
-        LocalConfiguration provides localized.resources.configuration,
-        LocalLayoutDirection provides direction,
-    ) {
-        content()
+    // 双保险：即便 Context 链某天再次断开，也直接提供 ActivityResultRegistryOwner，
+    // 使 rememberLauncherForActivityResult 不再抛 "No ActivityResultRegistryOwner was provided"。
+    val registryOwner = remember(base) { base.activityOrNull() as? ActivityResultRegistryOwner }
+    if (registryOwner != null) {
+        CompositionLocalProvider(
+            LocalContext provides wrapped,
+            LocalConfiguration provides localized.resources.configuration,
+            LocalLayoutDirection provides direction,
+            LocalActivityResultRegistryOwner provides registryOwner,
+        ) {
+            content()
+        }
+    } else {
+        CompositionLocalProvider(
+            LocalContext provides wrapped,
+            LocalConfiguration provides localized.resources.configuration,
+            LocalLayoutDirection provides direction,
+        ) {
+            content()
+        }
     }
 }
 
@@ -59,4 +75,11 @@ private class ActivityPreservingContext(
 
     override fun getSystemService(name: String): Any? = original.getSystemService(name)
     override fun getApplicationContext(): Context = original.applicationContext
+}
+
+/** 沿 Context 链向上找 Activity；ActivityPreservingContext 的 getBaseContext 指向原始 Context，不会死循环。 */
+private fun Context.activityOrNull(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is ContextWrapper -> baseContext.activityOrNull()
+    else -> null
 }
