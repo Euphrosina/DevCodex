@@ -77,7 +77,9 @@ fun ExtensionsScreen(vm: AppViewModel) {
                                 ai.devcodex.agent.data.PluginRepo(ctx).installFromText(String(bytes, Charsets.UTF_8)).getOrThrow()
                             }
                             else -> {
-                                ai.devcodex.agent.data.SkillRepo(ctx).install(String(bytes, Charsets.UTF_8)).getOrThrow()
+                                val raw = String(bytes, Charsets.UTF_8).trimStart('\uFEFF')
+                                val text = if (Regex("^---\\s*\\n").containsMatchIn(raw.replace("\r\n", "\n"))) raw else "---\nname: ${entry.name}\ndescription: ${entry.desc.replace('\n', ' ')}\n---\n\n$raw"
+                                ai.devcodex.agent.data.SkillRepo(ctx).install(text).getOrThrow()
                             }
                         }
                         message = "✓ 已安装「${entry.name}」（可在${if (entry.type == "plugin") "插件" else "技能"}页管理）"
