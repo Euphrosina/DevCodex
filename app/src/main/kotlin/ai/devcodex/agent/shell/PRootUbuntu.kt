@@ -39,7 +39,9 @@ object PRootUbuntu {
             // rootfs（大文件解压一次）
             val root = rootfsDir(ctx)
             val readyMark = File(root, ".devcodex_ready")
-            if (!readyMark.exists() || !root.resolve("bin").exists()) {
+            // 内置 rootfs 版本；升级内置包时同步修改，已安装旧版的设备会据此重新解压
+            val rootfsVersion = "ubuntu-26.10"
+            if (!readyMark.exists() || readyMark.readText().trim() != rootfsVersion || !root.resolve("bin").exists()) {
                 onProgress(5)
                 // 应用内 Java 层解压到临时目录，成功后原子改名，避免半成品 rootfs
                 val staging = File(ctx.filesDir, "ubuntu.tmp")
@@ -67,7 +69,7 @@ object PRootUbuntu {
                 ai.devcodex.agent.util.DebugLog.i("PRoot", "rootfs 解压完成 files=${result.files} dirs=${result.dirs} links=${result.links} skipped=${result.skipped}")
                 if (!staging.renameTo(root)) error("rootfs 改名失败 ${staging.path} -> ${root.path}")
                 onProgress(95)
-                File(root, ".devcodex_ready").writeText("ok")
+                File(root, ".devcodex_ready").writeText(rootfsVersion)
             }
             // resolv.conf（联网）
             runCatching {
