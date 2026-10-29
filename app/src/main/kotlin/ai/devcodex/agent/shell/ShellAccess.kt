@@ -163,6 +163,10 @@ object ShellAccess {
     /** Linux 沙盒执行（内嵌 Termux 原生 bootstrap，bash/apt 全套） */
     fun linuxExec(command: String, cwd: String = "/root"): String {
         val c = ai.devcodex.agent.tools.BuiltinTools.appContext()
+        // Ubuntu PRoot 优先：首次调用自动解压内置 rootfs，失败则回退 Termux 原生沙盒
+        if (runCatching { ai.devcodex.agent.shell.PRootUbuntu.ensure(c) }.getOrDefault(false)) {
+            return ai.devcodex.agent.shell.PRootUbuntu.exec(c, command, 120)
+        }
         if (!ai.devcodex.agent.shell.TermuxRuntime.ensure(c)) return "ERROR: Termux 原生引擎未就绪（" + ai.devcodex.agent.shell.TermuxRuntime.lastError + ")"
         return ai.devcodex.agent.shell.TermuxRuntime.exec(c, command, 30, cwd)
     }

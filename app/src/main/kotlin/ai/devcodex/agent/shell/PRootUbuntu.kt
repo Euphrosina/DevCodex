@@ -44,7 +44,17 @@ object PRootUbuntu {
                 // 应用内 Java 层解压到临时目录，成功后原子改名，避免半成品 rootfs
                 val staging = File(ctx.filesDir, "ubuntu.tmp")
                 if (staging.exists()) staging.deleteRecursively()
-                if (root.exists()) root.deleteRecursively()
+                if (root.exists()) {
+                    // 旧 rootfs 可能被改成无 x 权限的目录，先恢复权限再删除（不跟随符号链接）
+                    java.nio.file.Files.walkFileTree(root.toPath(), object : java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
+                        override fun preVisitDirectory(dir: java.nio.file.Path, attrs: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult {
+                            val d = dir.toFile()
+                            d.setReadable(true, true); d.setWritable(true, true); d.setExecutable(true, true)
+                            return java.nio.file.FileVisitResult.CONTINUE
+                        }
+                    })
+                    root.deleteRecursively()
+                }
                 val result = try {
                     ctx.assets.open("ubuntu-rootfs.tar.gz").use { input ->
                         TarExtractor.extractTarGz(input, staging) { n -> onProgress(5 + minOf(85, n / 40)) }
