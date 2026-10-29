@@ -67,8 +67,10 @@ object AppLocale {
     }
 
     private fun systemLocales(ctx: Context): List<Locale> {
-        val cfg = ctx.applicationContext?.resources?.system?.configuration
-            ?: android.content.res.Resources.getSystem().configuration
+        // 取系统级 configuration（不受本应用 localeConfig 影响），用于「跟随系统」解析
+        @Suppress("UNUSED_PARAMETER")
+        val unused = ctx
+        val cfg = android.content.res.Resources.getSystem().configuration
         return if (Build.VERSION.SDK_INT >= 24) {
             val list = cfg.locales
             List(list.size()) { list.get(it) }
