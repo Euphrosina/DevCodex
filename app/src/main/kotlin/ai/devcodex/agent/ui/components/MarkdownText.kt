@@ -57,7 +57,7 @@ fun MarkdownText(content: String, modifier: Modifier = Modifier) {
                                 modifier = Modifier.weight(1f).padding(top = 4.dp),
                             )
                             TextButton(onClick = { clipboard.setText(AnnotatedString(block.code)) }) {
-                                Text("复制", style = MaterialTheme.typography.labelSmall)
+                                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_copy), style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         Text(

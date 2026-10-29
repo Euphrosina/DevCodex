@@ -119,11 +119,19 @@ class AgentEngine(
         val s = settings()
         val provider = s.providers.find { it.id == session.providerId && it.enabled }
             ?: s.providers.firstOrNull { it.enabled && it.enabledModels.isNotEmpty() }
-            ?: run { events.emit(UiEvent.Error("未配置 API 提供商，请到「提供商」页添加并拉取模型")); return }
+            ?: run {
+                val c = ai.devcodex.agent.tools.BuiltinTools.appContext()
+                events.emit(UiEvent.Error(ai.devcodex.agent.i18n.AppLocale.string(c, ai.devcodex.agent.R.string.agent_err_no_provider)))
+                return
+            }
         val chatModels = provider.enabledModels.filter { ModelRegistry.isChatModel(it) }
         val model = session.modelId?.takeIf { chatModels.contains(it) }
             ?: chatModels.firstOrNull()
-            ?: run { events.emit(UiEvent.Error("该提供商没有可用的聊天模型（生图与视频模型不能作为聊天主模型）")); return }
+            ?: run {
+                val c = ai.devcodex.agent.tools.BuiltinTools.appContext()
+                events.emit(UiEvent.Error(ai.devcodex.agent.i18n.AppLocale.string(c, ai.devcodex.agent.R.string.agent_err_no_chat_model)))
+                return
+            }
 
         // MCP 工具拉取（启用中的服务器，单服务器 8s 超时保护）
         val mcpTools = s.mcpServers.filter { it.enabled }.flatMap { cfg ->
@@ -148,7 +156,10 @@ class AgentEngine(
                     }.getOrNull() ?: buildJsonObject { put("type", "object"); put("properties", buildJsonObject {}) },
                 ) { argsJson ->
                     val cfg = s.mcpServers.firstOrNull { it.id == mt.serverId }
-                        ?: return@ToolDef "ERROR: MCP 服务器已移除"
+                        ?: return@ToolDef ai.devcodex.agent.i18n.AppLocale.string(
+                            ai.devcodex.agent.tools.BuiltinTools.appContext(),
+                            ai.devcodex.agent.R.string.agent_err_mcp_removed,
+                        )
                     val sid = runCatching {
                         kotlinx.coroutines.withTimeoutOrNull(8000) {
                             ai.devcodex.agent.provider.McpClient.initialize(cfg).getOrNull()
@@ -165,22 +176,28 @@ class AgentEngine(
                 put("parameters", t.parameters)
             }
         }
-        val basePrompt = session.systemPrompt ?: DEFAULT_SYSTEM_PROMPT
+        val basePrompt = session.systemPrompt
+            ?: ai.devcodex.agent.i18n.PromptProvider.systemPrompt(ai.devcodex.agent.tools.BuiltinTools.appContext())
         val skillSection = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
                 val repo = ai.devcodex.agent.data.SkillRepo(ai.devcodex.agent.tools.BuiltinTools.appContext())
                 val list = repo.list().filter { it.enabled }
-                if (list.isEmpty()) "" else "\n\n已安装技能（调用 skill_read 工具获取某个技能的详细用法）：\n" +
+                if (list.isEmpty()) "" else "\n\n" +
+                    ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_skill_section_header) + "\n" +
                     list.joinToString("\n") { "- ${it.name}: ${it.description.take(120)}" }
             }.getOrDefault("")
         }
-        val customSection = if (s.customSystemPrompt.isBlank()) "" else "\n\n【用户自定义系统提示词】\n" + s.customSystemPrompt.trim()
+        val customSection = if (s.customSystemPrompt.isBlank()) "" else
+            "\n\n" + ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_custom_prompt_header) + "\n" + s.customSystemPrompt.trim()
         var systemPrompt = basePrompt + customSection + skillSection
         // 角色卡/会话内 system 消息（如角色设定）拼进系统提示（修复角色卡提示词无法注入）
         val extraSys = session.messages.filter { it.role == "system" && it.content.isNotBlank() }.joinToString("\n\n") { it.content }
         if (extraSys.isNotBlank()) systemPrompt += "\n\n" + extraSys
         if (session.webSearch) {
-            systemPrompt += "\n\n联网搜索模式已开启：对时效性问题，先用 http_request 工具搜索（可用 https://www.bing.com/search?q=... 或 https://duckduckgo.com/html/?q=... 抓取结果页并引用来源），综合搜索结果回答。"
+            systemPrompt += "\n\n" + ai.devcodex.agent.i18n.AppLocale.string(
+                ai.devcodex.agent.tools.BuiltinTools.appContext(),
+                ai.devcodex.agent.R.string.agent_web_search_note,
+            )
         }
         val effort = if (session.deepThink) "high" else s.reasoningEffort
 
@@ -211,7 +228,7 @@ class AgentEngine(
                                 if (c.isNotBlank() || imgs.isNotEmpty()) add(ChatTurn("user", c, images = imgs))
                             }
                             "assistant" -> if (m.content.isNotBlank() || m.toolCalls.isNotEmpty()) add(ChatTurn("assistant", m.content, m.toolCalls, thinking = m.thinking, thinkingSignature = m.thinkingSignature))
-                            "tool" -> if (m.toolCallId != null) add(ChatTurn("tool", m.toolResult ?: "(空)", toolCallId = m.toolCallId, name = m.toolName))
+                            "tool" -> if (m.toolCallId != null) add(ChatTurn("tool", m.toolResult ?: ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_empty_tool_result), toolCallId = m.toolCallId, name = m.toolName))
                         }
                     }
                 }
@@ -222,7 +239,14 @@ class AgentEngine(
                         add(t)
                         if (t.role == "assistant") {
                             t.toolCalls.filter { it.id !in answered }.forEach { tc ->
-                                add(ChatTurn("tool", "ERROR: 工具未执行（会话曾中断）", toolCallId = tc.id, name = tc.name))
+                                add(
+                                    ChatTurn(
+                                        "tool",
+                                        ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.R.string.agent_tool_not_executed),
+                                        toolCallId = tc.id,
+                                        name = tc.name,
+                                    ),
+                                )
                             }
                         }
                     }
@@ -239,25 +263,28 @@ class AgentEngine(
                         val dropped = turns.subList(keepHead, turns.size - keepTail)
                         // taixu 式失败记忆：ERROR 工具结果全量保留（agent 不重复踩坑）
                         val failures = dropped.filter { it.role == "tool" && it.content.startsWith("ERROR") }
+                        val pctx = ai.devcodex.agent.tools.BuiltinTools.appContext()
+                        val userPrefix = ai.devcodex.agent.i18n.AppLocale.string(pctx, ai.devcodex.agent.R.string.agent_summary_user_prefix)
+                        fun toolPrefix(n: String) = ai.devcodex.agent.i18n.AppLocale.string(pctx, ai.devcodex.agent.R.string.agent_summary_tool_prefix_fmt, n)
                         val summary = buildString {
-                            append("（前文摘要：以下为较早对话的压缩记录）\n")
+                            append(ai.devcodex.agent.i18n.AppLocale.string(pctx, ai.devcodex.agent.R.string.agent_summary_header)).append("\n")
                             dropped.forEach { t ->
                                 when (t.role) {
-                                    "user" -> append("[用户] ").append(t.content.take(120)).append("\n")
+                                    "user" -> append(userPrefix).append(" ").append(t.content.take(120)).append("\n")
                                     "assistant" -> append("[AI] ").append(t.content.take(150)).append("\n")
-                                    "tool" -> append("[工具 ").append(t.name ?: "").append("] ").append((t.content).take(80)).append("\n")
+                                    "tool" -> append(toolPrefix(t.name ?: "")).append(" ").append((t.content).take(80)).append("\n")
                                 }
                             }
                             if (failures.isNotEmpty()) {
-                                append("\n（失败记录——注意规避同类错误）\n")
+                                append("\n").append(ai.devcodex.agent.i18n.AppLocale.string(pctx, ai.devcodex.agent.R.string.agent_summary_failures_header)).append("\n")
                                 failures.forEach { t ->
-                                    append("[工具 ").append(t.name ?: "").append("] ")
+                                    append(toolPrefix(t.name ?: "")).append(" ")
                                         .append(t.content.take(400)).append("\n")
                                 }
                             }
                         }
                         turns = turns.subList(0, keepHead) +
-                            listOf(ChatTurn("user", summary), ChatTurn("assistant", "（已了解前文摘要，继续）")) +
+                            listOf(ChatTurn("user", summary), ChatTurn("assistant", ai.devcodex.agent.i18n.AppLocale.string(pctx, ai.devcodex.agent.R.string.agent_summary_ack))) +
                             turns.subList(turns.size - keepTail, turns.size)
                     }
                 }
@@ -309,7 +336,13 @@ class AgentEngine(
                         continue
                     }
                     attempt++
-                    if (attempt > 2) throw RuntimeException("请求失败，已重试 2 次：$msg")
+                    if (attempt > 2) throw RuntimeException(
+                        ai.devcodex.agent.i18n.AppLocale.string(
+                            ai.devcodex.agent.tools.BuiltinTools.appContext(),
+                            ai.devcodex.agent.R.string.agent_err_retry_fmt,
+                            msg,
+                        )
+                    )
                     kotlinx.coroutines.delay(1000L * attempt)
                 }
 
@@ -320,7 +353,7 @@ class AgentEngine(
                 if (toolCalls.isEmpty()) {
                     // 最终回答
                     current = current.patch(assistantId) { it.copy(
-                        content = text.toString().ifBlank { "(空回复)" },
+                        content = text.toString().ifBlank { ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_empty_reply) },
                         inputTokens = inTok, outputTokens = outTok, cachedTokens = cacheTok,
                         firstTokenMs = firstTokMs, totalMs = System.currentTimeMillis() - t0,
                     ) }
@@ -344,7 +377,7 @@ class AgentEngine(
                     if (def != null && runCatching { ai.devcodex.agent.provider.LlmJson.parseToJsonElement(tc.argsJson) }.getOrNull() !is kotlinx.serialization.json.JsonObject) {
                         current = current.copy(messages = current.messages + Message(
                             id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
-                            toolResult = "ERROR: 工具参数 JSON 不完整（参数流被截断，可能触及输出上限），已放弃执行，请缩小单次参数后重试",
+                            toolResult = ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_err_bad_args),
                             toolStatus = ToolStatus.ERROR, timestamp = System.currentTimeMillis(),
                         ))
                         onUpdate(current)
@@ -353,7 +386,7 @@ class AgentEngine(
                     if (def == null) {
                         current = current.copy(messages = current.messages + Message(
                             id = toolMsgId, role = "tool", toolCallId = tc.id, toolName = tc.name,
-                            toolResult = "ERROR: 未知工具 ${tc.name}", toolStatus = ToolStatus.ERROR,
+                            toolResult = ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_err_unknown_tool_fmt, tc.name), toolStatus = ToolStatus.ERROR,
                             timestamp = System.currentTimeMillis(),
                         ))
                         onUpdate(current)
@@ -401,7 +434,7 @@ class AgentEngine(
                         val granted = requestApproval(ApprovalRequest(tc, reason) { true })
                         if (!granted) {
                             current = current.patch(toolMsgId) {
-                                it.copy(toolResult = "用户拒绝执行该操作", toolStatus = ToolStatus.DENIED)
+                                it.copy(toolResult = ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_denied_by_user), toolStatus = ToolStatus.DENIED)
                             }
                             onUpdate(current)
                             continue
@@ -417,7 +450,7 @@ class AgentEngine(
                     }
                     val outcome: Result<String> = try {
                         kotlinx.coroutines.withTimeoutOrNull(300_000L) { toolJob.await() }
-                            ?: Result.success("ERROR: 工具执行超时（300s），已放弃等待")
+                            ?: Result.success(ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_err_tool_timeout))
                     } finally {
                         if (!toolJob.isCompleted) toolJob.cancel()
                     }
@@ -438,7 +471,7 @@ class AgentEngine(
             val answered = current.messages.filter { it.role == "tool" }.mapNotNull { it.toolCallId }.toSet()
             val patched = current.messages.map { m ->
                 if (m.role == "tool" && (m.toolStatus == ToolStatus.RUNNING || m.toolStatus == ToolStatus.AWAITING_APPROVAL))
-                    m.copy(toolStatus = ToolStatus.ERROR, toolResult = "已中断")
+                    m.copy(toolStatus = ToolStatus.ERROR, toolResult = ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_interrupted))
                 else m
             }
             val missing = patched.filter { it.role == "assistant" }.flatMap { it.toolCalls }
@@ -446,7 +479,7 @@ class AgentEngine(
                 .map { tc ->
                     Message(
                         id = java.util.UUID.randomUUID().toString(), role = "tool", toolCallId = tc.id, toolName = tc.name,
-                        toolResult = "已中断", toolStatus = ToolStatus.ERROR, timestamp = System.currentTimeMillis(),
+                        toolResult = ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_interrupted), toolStatus = ToolStatus.ERROR, timestamp = System.currentTimeMillis(),
                     )
                 }
             current = current.copy(messages = patched + missing)
@@ -474,7 +507,7 @@ private fun customToolDefs(defs: List<ai.devcodex.agent.data.CustomToolDef>): Li
         }
         ToolDef(
             name = ct.name,
-            description = ct.description.ifBlank { "自定义工具 ${ct.name}（shell 模板）" },
+            description = ct.description.ifBlank { ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), ai.devcodex.agent.R.string.agent_custom_tool_desc_fmt, ct.name) },
             parameters = schema,
             risk = ToolDef.Risk.MEDIUM,
         ) { argsJson ->
@@ -485,17 +518,4 @@ private fun customToolDefs(defs: List<ai.devcodex.agent.data.CustomToolDef>): Li
         }
     }
 
-val DEFAULT_SYSTEM_PROMPT = """你是 DevCodex，一个运行在 Android 手机上的 AI 智能体（Agent）。
-你可以通过工具读写手机本地文件、执行 shell 命令、发 HTTP 请求、读取屏幕内容、做界面自动化。
 
-工作区：用户上传的文件都在工作区，工具用相对路径即可访问（如 fs_read "报告.md"）。
-用户消息中出现 [附件 文件名] 标记时，表示该工作区文件已随消息附上内容，直接使用即可，不必重复读取。
-在非明确要求时，产出文件也写到工作区（相对路径），方便用户在「工作区」页查看。
-
-行为准则：
-1. 需要信息时主动调用工具获取，不要凭空编造手机上的内容。
-2. 文件操作给出明确路径；危险操作前先说明意图。
-3. 工具返回 ERROR 时分析原因，换路径或方案重试，同一方案不要重试超过 2 次。
-4. 回答简洁、直接、面向行动。用中文交流。
-5. 超出工具能力的请求如实说明，不要假装已执行。
-6. linux_exec 运行在应用内置的 Ubuntu 26.10（PRoot）环境中，首次调用会自动解压内置 rootfs，直接使用即可，用 apt 装包。禁止在其中手工下载、解压、替换系统镜像，也禁止对 rootfs 目录执行 chmod、chown 或删除操作，否则会破坏沙盒环境。"""

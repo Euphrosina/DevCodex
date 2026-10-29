@@ -50,6 +50,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val isRunning = MutableStateFlow(false)
 
     val toast = MutableStateFlow<String?>(null)
+    private fun tr(id: Int, vararg args: Any): String =
+        ai.devcodex.agent.i18n.AppLocale.string(ai.devcodex.agent.tools.BuiltinTools.appContext(), id, *args)
+
     val navRequest = MutableStateFlow<String?>(null)   // "settings" 等页面跳转请求
     val settingsPageRequest = MutableStateFlow<String?>(null)  // 设置内子页跳转（stats 等）
 
@@ -127,13 +130,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val entry = workspaceRepo.list().firstOrNull { it.name.equals(name, ignoreCase = true) } ?: continue
                 if (!entry.isDir && entry.file.extension.lowercase() in setOf("png", "jpg", "jpeg", "webp")) {
                     imagePaths += entry.relativePath
-                    sb.append("\n\n[图片 ").append(entry.name).append("]")
+                    sb.append("\n\n").append(tr(ai.devcodex.agent.R.string.vm_attach_image_fmt, entry.name))
                 } else if (workspaceRepo.isTextFile(entry)) {
-                    sb.append("\n\n[附件 ").append(entry.name).append("]\n")
+                    sb.append("\n\n").append(tr(ai.devcodex.agent.R.string.vm_attach_file_fmt, entry.name)).append("\n")
                         .append(WorkspaceRepo.textPreview(entry.file, 15000))
                 } else {
-                    sb.append("\n\n[附件 ").append(entry.name).append("]（二进制文件，大小 ")
-                        .append(workspaceRepo.formatSize(entry.size)).append("，可用工具按相对路径访问）")
+                    sb.append("\n\n").append(tr(ai.devcodex.agent.R.string.vm_attach_binary_fmt, entry.name, workspaceRepo.formatSize(entry.size)))
                 }
             }
             llmContent = sb.toString()
@@ -145,7 +147,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         )
         val updated = session.copy(
             messages = session.messages + userMsg,
-            title = if (session.title == "新会话") display.take(20) else session.title,
+            title = if (session.title.isBlank()) display.take(20) else session.title,
             updatedAt = System.currentTimeMillis(),
         )
         _activeSession.value = updated
@@ -191,7 +193,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (e: Exception) {
                 // 请求失败明示（不再静默——模型收到失败结果会自主重试造成连环请求）
-                toast.value = "请求失败: " + (e.message ?: "未知错误").take(80)
+                toast.value = tr(ai.devcodex.agent.R.string.vm_request_failed_fmt, (e.message ?: tr(ai.devcodex.agent.R.string.vm_unknown_error)).take(80))
             } finally {
                 // 旧代次已被新运行或删除/清空作废：不改 UI 状态、不存盘，避免覆盖新状态或让已删会话复活
                 if (gen != runGen) return@launch
@@ -202,7 +204,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching {
                     val last = finalSession.messages.lastOrNull { it.role == "assistant" }
                     if (coroutineContext[kotlinx.coroutines.Job]?.isActive != false && last != null && last.content.isBlank() && last.toolCalls.isEmpty() && last.thinking.isNullOrBlank() && last.toolResult.isNullOrBlank()) {
-                        val fixed = last.copy(content = "（模型未返回正文：可能被截断或接口异常，请重试或换模型）")
+                        val fixed = last.copy(content = tr(ai.devcodex.agent.R.string.vm_empty_reply_fix))
                         finalSession = finalSession.copy(messages = finalSession.messages.map { if (it.id == last.id) fixed else it })
                         _activeSession.value = finalSession
                     }
@@ -260,12 +262,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val keepTail = 4
         val dropped = msgs.subList(keepHead, msgs.size - keepTail)
         val summary = buildString {
-            append("（前文摘要：较早对话已压缩）\n")
+            append(tr(ai.devcodex.agent.R.string.vm_compact_auto_header)).append("\n")
             dropped.forEach { m ->
                 when (m.role) {
-                    "user" -> append("[用户] ").append(m.content.take(120)).append("\n")
+                    "user" -> append(tr(ai.devcodex.agent.R.string.vm_summary_user_prefix)).append(" ").append(m.content.take(120)).append("\n")
                     "assistant" -> append("[AI] ").append(m.content.take(150)).append("\n")
-                    "tool" -> append("[工具 ").append(m.toolName ?: "").append("] ").append((m.toolResult ?: "").take(80)).append("\n")
+                    "tool" -> append(tr(ai.devcodex.agent.R.string.vm_summary_tool_prefix_fmt, m.toolName ?: "")).append(" ").append((m.toolResult ?: "").take(80)).append("\n")
                 }
             }
         }
@@ -278,9 +280,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun exportSession() {
         val cur = _activeSession.value ?: return
         val md = buildString {
-            append("# ${cur.title.ifBlank { "会话" }}\n\n")
+            append("# ${cur.title.ifBlank { tr(ai.devcodex.agent.R.string.vm_export_default_title) }}\n\n")
             cur.messages.filter { it.role != "tool" }.forEach { m ->
-                append(if (m.role == "user") "**我：**\n" else "**AI：**\n")
+                append(if (m.role == "user") tr(ai.devcodex.agent.R.string.vm_export_user_prefix) else tr(ai.devcodex.agent.R.string.vm_export_ai_prefix))
                 append(m.content).append("\n\n")
             }
         }
@@ -337,35 +339,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun compactSessionNow() {
         val s = _activeSession.value ?: return
         val msgs = s.messages
-        if (msgs.size <= 8) { toast.value = "会话太短，无需压缩"; return }
+        if (msgs.size <= 8) { toast.value = tr(ai.devcodex.agent.R.string.vm_compact_too_short); return }
         val keepHead = 2
         val keepTail = 6
-        val sb = StringBuilder("（前文摘要：手动压缩于 " + java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date()) + "）\n")
+        val sb = StringBuilder(tr(ai.devcodex.agent.R.string.vm_compact_manual_header_fmt, java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())) + "\n")
         msgs.drop(keepHead).dropLast(keepTail).forEach { m ->
             when (m.role) {
-                "user" -> sb.append("[用户] ").append(m.content.take(120)).append("\n")
+                "user" -> sb.append(tr(ai.devcodex.agent.R.string.vm_summary_user_prefix)).append(" ").append(m.content.take(120)).append("\n")
                 "assistant" -> sb.append("[AI] ").append(m.content.take(150)).append("\n")
-                "tool" -> sb.append("[工具 ").append(m.toolName ?: "").append("] ").append((m.toolResult ?: "").take(80)).append("\n")
+                "tool" -> sb.append(tr(ai.devcodex.agent.R.string.vm_summary_tool_prefix_fmt, m.toolName ?: "")).append(" ").append((m.toolResult ?: "").take(80)).append("\n")
             }
         }
         val compacted = s.copy(messages = msgs.take(keepHead) + listOf(
             ai.devcodex.agent.data.Message(id = java.util.UUID.randomUUID().toString(), role = "user", content = sb.toString(), timestamp = System.currentTimeMillis()),
-            ai.devcodex.agent.data.Message(id = java.util.UUID.randomUUID().toString(), role = "assistant", content = "（已了解前文摘要，继续）", timestamp = System.currentTimeMillis()),
+            ai.devcodex.agent.data.Message(id = java.util.UUID.randomUUID().toString(), role = "assistant", content = tr(ai.devcodex.agent.R.string.vm_compact_ack), timestamp = System.currentTimeMillis()),
         ) + msgs.takeLast(keepTail), updatedAt = System.currentTimeMillis())
         _activeSession.value = compacted
         viewModelScope.launch { sessionRepo.save(compacted); reloadSessions() }
-        toast.value = "已压缩：保留头 2 尾 6 + 摘要"
+        toast.value = tr(ai.devcodex.agent.R.string.vm_compact_done)
     }
 
     // 角色卡开聊（Operit 式：设定→system，开场白→assistant 首条）
     fun startWithCharacter(c: ai.devcodex.agent.data.CharacterCard) {
         val sys = buildString {
-            append("你将扮演角色：").append(c.name).append("\n")
-            if (c.description.isNotBlank()) append("【角色设定】\n").append(c.description).append("\n")
-            if (c.personality.isNotBlank()) append("【性格】\n").append(c.personality).append("\n")
-            if (c.scenario.isNotBlank()) append("【场景】\n").append(c.scenario).append("\n")
-            if (c.systemPrompt.isNotBlank()) append("【系统指令】\n").append(c.systemPrompt).append("\n")
-            if (c.postHistoryInstructions.isNotBlank()) append("【持续指令】\n").append(c.postHistoryInstructions).append("\n")
+            append(tr(ai.devcodex.agent.R.string.vm_role_play_header_fmt, c.name)).append("\n")
+            if (c.description.isNotBlank()) append(tr(ai.devcodex.agent.R.string.vm_role_desc)).append("\n").append(c.description).append("\n")
+            if (c.personality.isNotBlank()) append(tr(ai.devcodex.agent.R.string.vm_role_personality)).append("\n").append(c.personality).append("\n")
+            if (c.scenario.isNotBlank()) append(tr(ai.devcodex.agent.R.string.vm_role_scenario)).append("\n").append(c.scenario).append("\n")
+            if (c.systemPrompt.isNotBlank()) append(tr(ai.devcodex.agent.R.string.vm_role_system)).append("\n").append(c.systemPrompt).append("\n")
+            if (c.postHistoryInstructions.isNotBlank()) append(tr(ai.devcodex.agent.R.string.vm_role_post_history)).append("\n").append(c.postHistoryInstructions).append("\n")
         }
         val s = sessionRepo.newSession()
         var msgs = buildList {
@@ -384,7 +386,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 id = java.util.UUID.randomUUID().toString(), role = "system", content = lore,
                 timestamp = System.currentTimeMillis()))
         }
-        val withChar = s.copy(title = "角色 · " + c.name, messages = msgs)
+        val withChar = s.copy(title = tr(ai.devcodex.agent.R.string.vm_role_title_fmt, c.name), messages = msgs)
         sessionRepo.save(withChar)
         _activeSession.value = withChar
         reloadSessions()

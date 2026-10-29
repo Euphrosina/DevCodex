@@ -48,9 +48,19 @@ class SettingsRepo(private val context: Context) {
     }
 
     suspend fun update(transform: (AppSettings) -> AppSettings) {
+        var newLanguage: String? = null
         context.dataStore.edit { p ->
             val cur = p[key]?.let { runCatching { json.decodeFromString<AppSettings>(it) }.getOrNull() } ?: AppSettings()
-            p[key] = json.encodeToString(AppSettings.serializer(), transform(cur))
+            val next = transform(cur)
+            newLanguage = next.language
+            p[key] = json.encodeToString(AppSettings.serializer(), next)
+        }
+        // 语言镜像：DataStore 异步读取，冷启动需同步拿到语言，所以每次保存后同步写入 SharedPreferences
+        newLanguage?.let { lang ->
+            val target = ai.devcodex.agent.i18n.AppLanguage.fromStored(lang)
+            if (ai.devcodex.agent.i18n.AppLocale.setting.value != target) {
+                ai.devcodex.agent.i18n.AppLocale.set(context, target)
+            }
         }
     }
 }

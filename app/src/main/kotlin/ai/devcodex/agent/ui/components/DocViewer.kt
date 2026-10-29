@@ -51,7 +51,7 @@ fun DocViewerDialog(
                     TopAppBar(
                         title = { Text(title) },
                         navigationIcon = {
-                            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "关闭") }
+                            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_close)) }
                         },
                     )
                 },

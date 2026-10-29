@@ -57,12 +57,12 @@ fun CustomPromptPage(vm: AppViewModel, settings: AppSettings, modifier: Modifier
             val result = withContext(Dispatchers.IO) { runCatching { readPromptFile(context, uri) } }
             result.onSuccess { (name, content) ->
                 if (content.isBlank()) {
-                    info = "文件内容为空：$name"
+                    info = context.getString(ai.devcodex.agent.R.string.prompt_info_empty_file_fmt, name)
                 } else {
                     text = if (appendMode && text.isNotBlank()) text.trimEnd() + "\n\n" + content else content
-                    info = "已导入 $name（${content.length} 字），点击保存后生效"
+                    info = context.getString(ai.devcodex.agent.R.string.prompt_info_imported_fmt, name, content.length)
                 }
-            }.onFailure { info = "导入失败：${it.message}" }
+            }.onFailure { info = context.getString(ai.devcodex.agent.R.string.prompt_info_import_failed_fmt, it.message ?: "") }
         }
     }
 
@@ -70,9 +70,9 @@ fun CustomPromptPage(vm: AppViewModel, settings: AppSettings, modifier: Modifier
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text("自定义系统提示词", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_title), style = MaterialTheme.typography.titleMedium)
         Text(
-            "追加在内置系统提示词之后，对所有新请求生效。支持直接编辑，或导入 .md / .txt / .json 等文本文件（单文件上限 512KB）。",
+            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_desc),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -80,35 +80,38 @@ fun CustomPromptPage(vm: AppViewModel, settings: AppSettings, modifier: Modifier
             value = text,
             onValueChange = { text = it },
             modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
-            label = { Text("提示词内容") },
-            placeholder = { Text("例如：回答使用中文，代码先给结论再给解释") },
+            label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_label)) },
+            placeholder = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_placeholder)) },
         )
         Text(
-            "${text.length} 字" + if (text.trim() == settings.customSystemPrompt.trim()) "（已保存）" else "（未保存）",
+            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_char_count_fmt, text.length) +
+                if (text.trim() == settings.customSystemPrompt.trim())
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_saved_suffix)
+                else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_unsaved_suffix),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = { appendMode = false; picker.launch("*/*") }, modifier = Modifier.weight(1f)) { Text("导入覆盖") }
-            OutlinedButton(onClick = { appendMode = true; picker.launch("*/*") }, modifier = Modifier.weight(1f)) { Text("导入追加") }
+            OutlinedButton(onClick = { appendMode = false; picker.launch("*/*") }, modifier = Modifier.weight(1f)) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_import_overwrite)) }
+            OutlinedButton(onClick = { appendMode = true; picker.launch("*/*") }, modifier = Modifier.weight(1f)) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_import_append)) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(
                 onClick = {
                     val v = text.trim()
                     vm.saveSettings { it.copy(customSystemPrompt = v) }
-                    info = if (v.isEmpty()) "已保存：自定义提示词为空，不注入" else "已保存，下一条消息起生效"
+                    info = context.getString(if (v.isEmpty()) ai.devcodex.agent.R.string.prompt_info_saved_empty else ai.devcodex.agent.R.string.prompt_info_saved)
                 },
                 modifier = Modifier.weight(1f),
-            ) { Text("保存") }
+            ) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_save)) }
             OutlinedButton(
                 onClick = {
                     text = ""
                     vm.saveSettings { it.copy(customSystemPrompt = "") }
-                    info = "已清空"
+                    info = context.getString(ai.devcodex.agent.R.string.prompt_info_cleared)
                 },
                 modifier = Modifier.weight(1f),
-            ) { Text("清空") }
+            ) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prompt_clear)) }
         }
         if (info.isNotEmpty()) {
             Text(info, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
@@ -127,11 +130,11 @@ private fun readPromptFile(context: android.content.Context, uri: Uri): Pair<Str
             val n = ins.read(chunk)
             if (n < 0) break
             buf.write(chunk, 0, n)
-            if (buf.size() > MAX_IMPORT_BYTES) throw IllegalStateException("文件超过 512KB")
+            if (buf.size() > MAX_IMPORT_BYTES) throw IllegalStateException(context.getString(ai.devcodex.agent.R.string.prompt_err_too_large))
         }
         buf.toByteArray()
-    } ?: throw IllegalStateException("无法打开文件")
-    if (bytes.any { it == 0.toByte() }) throw IllegalStateException("不是文本文件")
+    } ?: throw IllegalStateException(context.getString(ai.devcodex.agent.R.string.prompt_err_open_failed))
+    if (bytes.any { it == 0.toByte() }) throw IllegalStateException(context.getString(ai.devcodex.agent.R.string.prompt_err_not_text))
     var raw = String(bytes, Charsets.UTF_8)
     if (raw.startsWith("\uFEFF")) raw = raw.substring(1)
     val content = if (name.lowercase().endsWith(".json") || raw.trimStart().startsWith("{") || raw.trimStart().startsWith("[")) {
@@ -146,7 +149,7 @@ private fun displayName(context: android.content.Context, uri: Uri): String {
             if (c.moveToFirst()) c.getString(0) else null
         }
     }.getOrNull()
-    return fromProvider ?: uri.lastPathSegment ?: "文件"
+    return fromProvider ?: uri.lastPathSegment ?: context.getString(ai.devcodex.agent.R.string.prompt_default_name)
 }
 
 private fun extractFromJson(raw: String): String {

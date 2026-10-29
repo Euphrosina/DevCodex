@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material3.OutlinedButton
@@ -112,17 +113,18 @@ fun SettingsScreen(vm: AppViewModel) {
     Scaffold(topBar = {
         TopAppBar(title = {
             Text(when (page) {
-                "theme" -> "主题与字体"
-                "tools" -> "工具与权限"
-                "prompt" -> "自定义系统提示词"
-                "stats" -> "使用统计"
-                "skills" -> "技能"
-                "about" -> "关于"
-                else -> "设置"
+                "theme" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_title)
+                "language" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_language_title)
+                "tools" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_title)
+                "prompt" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_prompt_title)
+                "stats" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_stats_title)
+                "skills" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_title)
+                "about" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_title)
+                else -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_title)
             })
         }, navigationIcon = {
             if (page != "root") IconButton(onClick = { page = "root" }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_back))
             }
         })
     }) { padding ->
@@ -137,6 +139,7 @@ fun SettingsScreen(vm: AppViewModel) {
         }
         when (page) {
             "theme" -> ThemePage(vm, settings, Modifier.padding(padding))
+            "language" -> LanguagePage(vm, settings, Modifier.padding(padding))
             "tools" -> ToolsPermPage(vm, settings, Modifier.padding(padding))
             "prompt" -> CustomPromptPage(vm, settings, Modifier.padding(padding))
             "stats" -> ai.devcodex.agent.ui.screens.StatsScreen(vm) { page = "root" }
@@ -146,39 +149,45 @@ fun SettingsScreen(vm: AppViewModel) {
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             ) {
                 ListItem(
-                    headlineContent = { Text("自定义系统提示词") },
-                    supportingContent = { Text("手动编辑 · 导入 md / txt / json 文件") },
+                    headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_prompt_title)) },
+                    supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_prompt_desc)) },
                     leadingContent = { Icon(Icons.Filled.Edit, null) },
                     modifier = Modifier.clickable { page = "prompt" },
                 )
                 ListItem(
-                    headlineContent = { Text("技能 Skills") },
-                    supportingContent = { Text("SKILL.md 技能包 · 安装/开关/删除") },
+                    headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_entry_title)) },
+                    supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_desc)) },
                     leadingContent = { Icon(Icons.Filled.School, null) },
                     modifier = Modifier.clickable { page = "skills" },
                 )
                 ListItem(
-                    headlineContent = { Text("使用统计") },
-                    supportingContent = { Text("消息热力图 · 今日/累计数据") },
+                    headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_stats_title)) },
+                    supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_stats_desc)) },
                     leadingContent = { Icon(Icons.Filled.BarChart, null) },
                     modifier = Modifier.clickable { page = "stats" },
                 )
                 ListItem(
-                    headlineContent = { Text("主题与字体") },
-                    supportingContent = { Text("预设主题 · 深色模式 · AMOLED · 字体") },
+                    headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_title)) },
+                    supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_desc)) },
                     leadingContent = { Icon(Icons.Filled.Palette, null) },
                     modifier = Modifier.clickable { page = "theme" },
                 )
                 ListItem(
-                    headlineContent = { Text("工具与权限") },
-                    supportingContent = { Text("内置工具开关 · Shizuku · Root · 无障碍") },
+                    headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_language_title)) },
+                    supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_language_desc)) },
+                    leadingContent = { Icon(Icons.Filled.Language, null) },
+                    modifier = Modifier.clickable { page = "language" },
+                )
+                ListItem(
+                    headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_title)) },
+                    supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_desc)) },
                     leadingContent = { Icon(Icons.Filled.Construction, null) },
                     modifier = Modifier.clickable { page = "tools" },
                 )
                 HorizontalDivider()
                 ListItem(
-                    headlineContent = { Text("关于与赞助") },
-                    supportingContent = { Text("作者 · 反馈 · 喝杯奶茶 · 隐私政策") },
+                    headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_entry_title)) },
+                    supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_entry_desc)) },
                     leadingContent = { Icon(Icons.Filled.Favorite, null) },
                     modifier = Modifier.clickable { page = "about" },
                 )
@@ -195,17 +204,17 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         // ===== 个性化：昵称与头像 =====
-        Text("个性化", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_personalize), style = MaterialTheme.typography.titleMedium)
         ListItem(
-            headlineContent = { Text("显示昵称") },
-            supportingContent = { Text("在头像上方显示 AI 与用户昵称") },
+            headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_show_nick)) },
+            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_show_nick_desc)) },
             trailingContent = {
                 Switch(checked = t.showNick, onCheckedChange = { on -> save { it.copy(showNick = on) } })
             },
         )
         ListItem(
-            headlineContent = { Text("显示头像") },
-            supportingContent = { Text("关闭后聊天两侧不显示头像（昵称开关独立）") },
+            headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_show_avatar)) },
+            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_show_avatar_desc)) },
             trailingContent = {
                 Switch(checked = t.showAvatar, onCheckedChange = { on -> save { it.copy(showAvatar = on) } })
             },
@@ -215,14 +224,14 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             ai.devcodex.agent.ui.components.Avatar(name = t.userNick, avatarFile = t.userAvatar, defaultColor = androidx.compose.ui.graphics.Color(0xFF059669), size = 44.dp)
             Spacer(Modifier.width(10.dp))
-            OutlinedTextField(value = userNick, onValueChange = { userNick = it }, label = { Text("你的昵称") }, singleLine = true, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = { save { it.copy(userNick = userNick) } }) { Text("保存") }
+            OutlinedTextField(value = userNick, onValueChange = { userNick = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_user_nick)) }, singleLine = true, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = { save { it.copy(userNick = userNick) } }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_save)) }
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             ai.devcodex.agent.ui.components.Avatar(name = t.aiNick, avatarFile = t.aiAvatar, defaultColor = androidx.compose.ui.graphics.Color(0xFF4F46E5), size = 44.dp)
             Spacer(Modifier.width(10.dp))
-            OutlinedTextField(value = aiNick, onValueChange = { aiNick = it }, label = { Text("AI 昵称") }, singleLine = true, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = { save { it.copy(aiNick = aiNick) } }) { Text("保存") }
+            OutlinedTextField(value = aiNick, onValueChange = { aiNick = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_ai_nick)) }, singleLine = true, modifier = Modifier.weight(1f), textStyle = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = { save { it.copy(aiNick = aiNick) } }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_save)) }
         }
         // 头像从图库选择（复制进 filesDir/avatars）
         val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -249,30 +258,34 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { userImgPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("更换你的头像") }
-            OutlinedButton(onClick = { aiImgPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("更换 AI 头像") }
+            OutlinedButton(onClick = { userImgPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_change_user_avatar)) }
+            OutlinedButton(onClick = { aiImgPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_change_ai_avatar)) }
         }
         Spacer(Modifier.padding(10.dp))
 
         // ===== 界面偏好 =====
-        Text("界面偏好", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_ui_prefs), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.padding(6.dp))
-        Text("导航位置", style = MaterialTheme.typography.labelLarge)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_nav_position), style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-            listOf("bottom" to "底部", "rail" to "左侧", "immersive" to "沉浸").forEach { (v, label) ->
-                FilterChip(selected = t.navPosition == v, onClick = { save { it.copy(navPosition = v) } }, label = { Text(label) })
+            listOf(
+                "bottom" to ai.devcodex.agent.R.string.settings_theme_nav_bottom,
+                "rail" to ai.devcodex.agent.R.string.settings_theme_nav_rail,
+                "immersive" to ai.devcodex.agent.R.string.settings_theme_nav_immersive,
+            ).forEach { (v, labelRes) ->
+                FilterChip(selected = t.navPosition == v, onClick = { save { it.copy(navPosition = v) } }, label = { Text(androidx.compose.ui.res.stringResource(labelRes)) })
             }
         }
         if (t.navPosition == "immersive") {
             Text(
-                "沉浸模式：仅对话页全屏无导航，通过会话抽屉右上角齿轮回到设置",
+                androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_immersive_hint),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         ListItem(
-            headlineContent = { Text("沉浸模式（对话页隐藏导航）") },
-            supportingContent = { Text("底部/左侧导航时也可单独开启") },
+            headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_immersive_title)) },
+            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_immersive_desc)) },
             trailingContent = {
                 Switch(checked = t.immersive, onCheckedChange = { on -> save { it.copy(immersive = on) } })
             },
@@ -281,7 +294,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         HorizontalDivider()
         Spacer(Modifier.padding(12.dp))
 
-        Text("主题预设", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_presets), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.padding(6.dp))
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
@@ -318,7 +331,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                             Box(Modifier.size(10.dp).clip(CircleShape).background(preset.light.secondary))
                             Spacer(Modifier.width(4.dp))
                             Box(Modifier.clip(RoundedCornerShape(6.dp)).background(preset.light.surfaceVariant).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                                Text("AI 回复", style = MaterialTheme.typography.labelSmall, color = preset.light.onSurface)
+                                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_preview_ai_reply), style = MaterialTheme.typography.labelSmall, color = preset.light.onSurface)
                             }
                         }
                         Column(
@@ -353,7 +366,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         // 代码块配色预览（MChat 式）
         Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             Column(Modifier.padding(12.dp)) {
-                Text("代码块配色预览", style = MaterialTheme.typography.titleSmall)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_code_preview), style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(6.dp))
                 val pv = ai.devcodex.agent.m3l.darkPaletteForTheme(t.codeTheme)
                 Column(
@@ -362,11 +375,12 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                 ) {
                     Text("fun bubble(msg: Message) {", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.text)
                     Text("    val color = Color(0xFF4285F4)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.string)
-                    Text("    // 主题注释色", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.comment)
+                    Text("    // " + androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_code_comment), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.comment)
                     Text("    return shape(color)", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = pv.keyword)
                 }
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    listOf("github" to "GitHub", "dracula" to "Dracula", "onedark" to "One Dark", "solar" to "Solarized", "monokai" to "Monokai", "nord" to "Nord", "gruvbox" to "Gruvbox", "vscode" to "VSCode", "highcontrast" to "高对比").forEach { (v, label) ->
+                    listOf("github" to "GitHub", "dracula" to "Dracula", "onedark" to "One Dark", "solar" to "Solarized", "monokai" to "Monokai", "nord" to "Nord", "gruvbox" to "Gruvbox", "vscode" to "VSCode", "highcontrast" to "").forEach { (v, rawLabel) ->
+                        val label = if (v == "highcontrast") androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_code_high_contrast) else rawLabel
                         FilterChip(selected = t.codeTheme == v, onClick = {
                             save { it.copy(codeTheme = v) }
                             ai.devcodex.agent.m3l.CodeThemeHolder.current = v
@@ -375,26 +389,32 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                 }
             }
         }
-        Text("外观模式", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_appearance), style = MaterialTheme.typography.titleMedium)
         ListItem(
-            headlineContent = { Text("思考内容自动折叠") },
-            supportingContent = { Text("开启后，思考结束将自动折叠思考内容") },
+            headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_auto_collapse)) },
+            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_auto_collapse_desc)) },
             trailingContent = {
                 Switch(checked = t.autoCollapseThinking, onCheckedChange = { on -> save { it.copy(autoCollapseThinking = on) } })
             },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-            listOf("SYSTEM" to "跟随系统", "LIGHT" to "浅色", "DARK" to "深色").forEach { (v, label) ->
-                FilterChip(selected = t.colorMode == v, onClick = { save { it.copy(colorMode = v) } }, label = { Text(label) })
+            listOf(
+                "SYSTEM" to ai.devcodex.agent.R.string.settings_theme_mode_system,
+                "LIGHT" to ai.devcodex.agent.R.string.settings_theme_mode_light,
+                "DARK" to ai.devcodex.agent.R.string.settings_theme_mode_dark,
+            ).forEach { (v, labelRes) ->
+                FilterChip(selected = t.colorMode == v, onClick = { save { it.copy(colorMode = v) } }, label = { Text(androidx.compose.ui.res.stringResource(labelRes)) })
             }
         }
         Spacer(Modifier.padding(8.dp))
 
-        Text("字体", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_fonts), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.padding(6.dp))
         // MChat 式：两行各带预览文字的字体选择
-        val appFonts = listOf("gsf" to "Sans Flex", "serif" to "衬线", "anthropic" to "Anthropic", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to "系统默认")
-        val chatFonts = listOf("gsf" to "Sans Flex", "serif" to "衬线", "anthropic" to "Anthropic Serif", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to "系统默认")
+        val fontSerifLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_font_serif)
+        val fontSystemLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_font_system)
+        val appFonts = listOf("gsf" to "Sans Flex", "serif" to fontSerifLabel, "anthropic" to "Anthropic", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to fontSystemLabel)
+        val chatFonts = listOf("gsf" to "Sans Flex", "serif" to fontSerifLabel, "anthropic" to "Anthropic Serif", "oplus" to "Oplus Serif", "mono" to "JetBrains Mono", "system" to fontSystemLabel)
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             appFonts.forEach { (v, label) ->
                 FilterChip(
@@ -413,6 +433,8 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         Spacer(Modifier.height(8.dp))
         Spacer(Modifier.height(4.dp))
         // 自定义字体导入（rikkahub 式：选 ttf/otf → filesDir/fonts → 芯片列表可选）
+        val fontImportedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_font_imported)
+        val fontImportFailed = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_font_import_failed)
         val fontPicker = rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.GetContent()
         ) { uri: android.net.Uri? ->
@@ -422,7 +444,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
                     val tmp = java.io.File(fCtx.cacheDir, "font_import_" + System.currentTimeMillis())
                     fCtx.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
                     val name = ai.devcodex.agent.theme.CustomFonts.import(fCtx, tmp)
-                    if (name != null) { save { it.copy(chatFont = "custom:" + name) }; vm.toast.value = "字体已导入: " + name } else vm.toast.value = "导入失败"
+                    if (name != null) { save { it.copy(chatFont = "custom:" + name) }; vm.toast.value = String.format(fontImportedFmt, name) } else vm.toast.value = fontImportFailed
                     tmp.delete()
                 }
             }
@@ -430,7 +452,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         OutlinedButton(onClick = { fontPicker.launch("*/*") }) {
             Icon(Icons.Filled.Add, null, Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            Text("导入自定义字体（ttf/otf）", style = MaterialTheme.typography.labelSmall)
+            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_font_import), style = MaterialTheme.typography.labelSmall)
         }
         val fCtx2 = ai.devcodex.agent.tools.BuiltinTools.appContext()
         val customFontNames = androidx.compose.runtime.remember { ai.devcodex.agent.theme.CustomFonts.list(fCtx2) }
@@ -447,7 +469,7 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("对话字体（聊天气泡）", style = MaterialTheme.typography.labelLarge)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_chat_font), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             chatFonts.forEach { (v, label) ->
@@ -467,15 +489,15 @@ private fun ThemePage(vm: AppViewModel, settings: AppSettings, modifier: Modifie
         Spacer(Modifier.padding(12.dp))
 
         ListItem(
-            headlineContent = { Text("AMOLED 纯黑") },
-            supportingContent = { Text("深色模式下使用纯黑背景（省电）") },
+            headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_amoled)) },
+            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_amoled_desc)) },
             trailingContent = {
                 Switch(checked = t.amoled, onCheckedChange = { on -> save { it.copy(amoled = on) } })
             },
         )
         ListItem(
-            headlineContent = { Text("动态取色") },
-            supportingContent = { Text("Android 12+ 跟随壁纸取色（覆盖预设）") },
+            headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_dynamic)) },
+            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_theme_dynamic_desc)) },
             trailingContent = {
                 Switch(checked = t.dynamicColor, onCheckedChange = { on -> save { it.copy(dynamicColor = on) } })
             },
@@ -491,66 +513,67 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
 
         // ============ AXS / Termux 服务 ============
-        Text("AXS / Termux 服务", style = MaterialTheme.typography.titleMedium)
-        Text("在 Termux 里启动 AXS 等 HTTP shell 服务后填地址，本应用获得 ADB 级特权通道（优先于沙盒）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_axs_title), style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_axs_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         var axsInput by remember { mutableStateOf(settings.axsUrl) }
         OutlinedTextField(
             value = axsInput, onValueChange = { axsInput = it },
-            label = { Text("服务地址（如 http://127.0.0.1:8912）") },
+            label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_axs_url_label)) },
             singleLine = true, textStyle = MaterialTheme.typography.bodySmall,
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         )
         val axsScope = androidx.compose.runtime.rememberCoroutineScope()
+        val axsTestFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_axs_test_result)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
                 vm.saveSettings { it.copy(axsUrl = axsInput.trim()) }
                 ai.devcodex.agent.shell.ShellAccess.axsUrl = axsInput.trim()
-            }) { Text("应用") }
+            }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_apply)) }
             TextButton(onClick = {
                 axsScope.launch {
                     ai.devcodex.agent.shell.ShellAccess.axsUrl = axsInput.trim()
                     val test = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ai.devcodex.agent.shell.ShellAccess.axsExec("id") }
-                    vm.toast.value = "AXS 测试: " + test.take(200)
+                    vm.toast.value = String.format(axsTestFmt, test.take(200))
                 }
-            }) { Text("测试(id)") }
+            }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_axs_test)) }
         }
         Spacer(Modifier.padding(10.dp))
 
         // ============ SSH 隧道 ============
-        Text("SSH 隧道", style = MaterialTheme.typography.titleMedium)
-        Text("连接远程服务器：AI 可 ssh_exec 远程执行、ssh_forward 建本地端口转发隧道（映射内网 LLM API 等）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_title), style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         var sshHost by remember { mutableStateOf(settings.sshHost) }
         var sshPort by remember { mutableStateOf(settings.sshPort.toString()) }
         var sshUser by remember { mutableStateOf(settings.sshUser) }
         var sshPass by remember { mutableStateOf(settings.sshPassword) }
         var sshKey by remember { mutableStateOf(settings.sshKeyPath) }
-        OutlinedTextField(value = sshHost, onValueChange = { sshHost = it }, label = { Text("主机") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = sshHost, onValueChange = { sshHost = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_host)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = sshPort, onValueChange = { sshPort = it }, label = { Text("端口") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.3f))
-            OutlinedTextField(value = sshUser, onValueChange = { sshUser = it }, label = { Text("用户名") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.7f))
+            OutlinedTextField(value = sshPort, onValueChange = { sshPort = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_port)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.3f))
+            OutlinedTextField(value = sshUser, onValueChange = { sshUser = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_user)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.7f))
         }
-        OutlinedTextField(value = sshPass, onValueChange = { sshPass = it }, label = { Text("密码（或留空用密钥）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
-        OutlinedTextField(value = sshKey, onValueChange = { sshKey = it }, label = { Text("私钥路径（可选，如 /sdcard/id_rsa）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = sshPass, onValueChange = { sshPass = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_password)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = sshKey, onValueChange = { sshKey = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_key)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
                 vm.saveSettings { it.copy(sshHost = sshHost.trim(), sshPort = sshPort.toIntOrNull() ?: 22, sshUser = sshUser.trim(), sshPassword = sshPass, sshKeyPath = sshKey.trim()) }
                 ai.devcodex.agent.shell.SshClient.config = if (sshHost.isNotBlank()) ai.devcodex.agent.shell.SshClient.SshConfig(sshHost.trim(), sshPort.toIntOrNull() ?: 22, sshUser.trim(), sshPass, sshKey.trim()) else null
-            }) { Text("保存") }
+            }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_save)) }
             TextButton(onClick = {
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                     ai.devcodex.agent.shell.SshClient.config = ai.devcodex.agent.shell.SshClient.SshConfig(sshHost.trim(), sshPort.toIntOrNull() ?: 22, sshUser.trim(), sshPass, sshKey.trim())
                     val r = ai.devcodex.agent.shell.SshClient.exec("echo ok && uname -n")
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { sshHost = sshHost }
                 }
-            }) { Text("测试连接") }
+            }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_ssh_test)) }
         }
         Spacer(Modifier.padding(10.dp))
 
         // ============ 后台保护 ============
-        Text("后台保护", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_background_title), style = MaterialTheme.typography.titleMedium)
         ListItem(
-            headlineContent = { Text("电池优化豁免") },
-            supportingContent = { Text("长对话/后台任务不被系统杀（跳系统设置，需手动允许）") },
+            headlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_battery_title)) },
+            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_battery_desc)) },
             modifier = Modifier.clickable {
                 runCatching {
                     context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
@@ -561,8 +584,8 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         Spacer(Modifier.padding(10.dp))
 
         // ============ 工具权限（全局默认） ============
-        Text("工具权限", style = MaterialTheme.typography.titleMedium)
-        Text("允许：全部直接执行 · 询问（默认）：低风险直接执行，其余执行前询问 · 禁止：全部不执行。单工具的设置优先于全局默认。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_perm_title), style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_perm_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val curLevel = ai.devcodex.agent.agent.PermissionLevel.parse(settings.permissionDefault).name
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -570,11 +593,15 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         ) {
             Column(Modifier.padding(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    listOf("ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止").forEach { (v, label) ->
+                    listOf(
+                        "ALLOW" to ai.devcodex.agent.R.string.settings_tools_perm_allow,
+                        "ASK" to ai.devcodex.agent.R.string.settings_tools_perm_ask,
+                        "FORBID" to ai.devcodex.agent.R.string.settings_tools_perm_forbid,
+                    ).forEach { (v, labelRes) ->
                         FilterChip(
                             selected = curLevel == v,
                             onClick = { vm.saveSettings { s -> s.copy(permissionDefault = v) } },
-                            label = { Text(label, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                            label = { Text(androidx.compose.ui.res.stringResource(labelRes), modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -582,9 +609,9 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                 Spacer(Modifier.padding(4.dp))
                 Text(
                     when (curLevel) {
-                        "ALLOW" -> "当前：所有工具直接执行，不再弹出审批。"
-                        "FORBID" -> "当前：所有工具一律不执行，除非单工具另行允许。"
-                        else -> "当前：低风险工具直接执行，其余在执行前询问。"
+                        "ALLOW" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_perm_state_allow)
+                        "FORBID" -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_perm_state_forbid)
+                        else -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_perm_state_ask)
                     },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
@@ -593,44 +620,47 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         }
 
         // ============ 工作区（Operit 式自定义） ============
-        Text("工作区", style = MaterialTheme.typography.titleMedium)
-        val curWs = settings.workspaceDir.ifBlank {
-            "应用私有目录（${context.filesDir.absolutePath}/workspace）"
-        }
-        Text("当前: $curWs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_title), style = MaterialTheme.typography.titleMedium)
+        val privateWsLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_private_dir, context.filesDir.absolutePath)
+        val curWs = settings.workspaceDir.ifBlank { privateWsLabel }
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_current, curWs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
         var wsInput by remember { mutableStateOf(settings.workspaceDir) }
         OutlinedTextField(
             value = wsInput, onValueChange = { wsInput = it },
-            label = { Text("自定义工作区绝对路径（留空=应用私有）") },
+            label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_path_label)) },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodySmall,
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 2.dp)) {
-            listOf("" to "私有目录", "/sdcard/DevCodex" to "DevCodex", "/sdcard/Documents" to "Documents", "/sdcard/Download" to "Download").forEach { (v, label) ->
+            val wsPrivateChip = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_chip_private)
+            listOf("" to wsPrivateChip, "/sdcard/DevCodex" to "DevCodex", "/sdcard/Documents" to "Documents", "/sdcard/Download" to "Download").forEach { (v, label) ->
                 FilterChip(selected = wsInput == v, onClick = { wsInput = v }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
             }
         }
         var wsMsg by remember { mutableStateOf<String?>(null) }
+        val wsRestoredMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_restored)
+        val wsAppliedMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_applied)
+        val wsNotWritableMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_workspace_not_writable)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
                 val dir = wsInput.trim()
                 val f = java.io.File(dir)
                 val ok = f.exists() && f.isDirectory && f.canWrite() || (f.mkdirs() && f.canWrite())
-                wsMsg = if (dir.isBlank()) "已恢复应用私有工作区"
-                        else if (ok) "目录可写，已应用"
-                        else "目录不可写（需存储权限或改用已存在目录）"
+                wsMsg = if (dir.isBlank()) wsRestoredMsg
+                        else if (ok) wsAppliedMsg
+                        else wsNotWritableMsg
                 if (dir.isBlank() || ok) {
                     vm.saveSettings { it.copy(workspaceDir = dir) }
                     ai.devcodex.agent.data.WorkspaceConfig.dir = dir
                 }
-            }) { Text("应用") }
+            }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_apply)) }
             if (wsMsg != null) Text(wsMsg!!, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp))
         }
         Spacer(Modifier.padding(10.dp))
 
         // ============ 权限通道 ============
-        Text("权限通道", style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_channels_title), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.padding(6.dp))
 
         // Shizuku
@@ -640,9 +670,9 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                     Icon(Icons.Filled.AdminPanelSettings, null)
                     Spacer(Modifier.padding(6.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Shizuku（ADB 权限）", style = MaterialTheme.typography.titleSmall)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_shizuku_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            if (ShellAccess.shizukuAvailable()) "服务运行中" else "未检测到 Shizuku 服务",
+                            if (ShellAccess.shizukuAvailable()) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_shizuku_running) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_shizuku_missing),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (ShellAccess.shizukuAvailable()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -650,7 +680,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                 }
                 Spacer(Modifier.padding(4.dp))
                 Text(
-                    "通过 Shizuku 获得 ADB 级权限执行 shell 与文件操作。需要先安装 Shizuku App 并按其指引启动服务。",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_shizuku_desc),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -663,9 +693,9 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                     }) {
                         Text(
                             when {
-                                !ShellAccess.shizukuAvailable() -> "获取 Shizuku"
-                                !ShellAccess.shizukuPermissionGranted() -> "授权"
-                                else -> "重新绑定服务"
+                                !ShellAccess.shizukuAvailable() -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_shizuku_get)
+                                !ShellAccess.shizukuPermissionGranted() -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_shizuku_grant)
+                                else -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_shizuku_rebind)
                             }
                         )
                     }
@@ -683,15 +713,15 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                     Column {
                         Text("Root", style = MaterialTheme.typography.titleSmall)
                         Text(
-                            rootChecked?.let { if (it) "已授权" else "不可用" } ?: "未检测",
+                            rootChecked?.let { if (it) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_root_granted) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_root_unavailable) } ?: androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_root_unchecked),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (rootChecked == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
                 Spacer(Modifier.padding(4.dp))
-                Text("通过 su 执行特权命令（无 Shizuku 时的备选通道）。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = { rootChecked = ShellAccess.rootAvailable() }) { Text("检测 Root") }
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_root_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = { rootChecked = ShellAccess.rootAvailable() }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_root_check)) }
             }
         }
         Spacer(Modifier.padding(8.dp))
@@ -703,26 +733,26 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                     Icon(Icons.Filled.Accessibility, null)
                     Spacer(Modifier.padding(6.dp))
                     Column {
-                        Text("无障碍服务（界面自动化）", style = MaterialTheme.typography.titleSmall)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_a11y_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            if (ai.devcodex.agent.service.DcAccessibilityService.isEnabled()) "已启用" else "未启用",
+                            if (ai.devcodex.agent.service.DcAccessibilityService.isEnabled()) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_a11y_enabled) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_a11y_disabled),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (ai.devcodex.agent.service.DcAccessibilityService.isEnabled()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
                 Spacer(Modifier.padding(4.dp))
-                Text("启用后智能体可读取屏幕内容、点击、滑动（ui_snapshot / ui_tap 等工具）。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_a11y_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = {
                     runCatching { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-                }) { Text("去系统设置开启") }
+                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_a11y_open)) }
             }
         }
         Spacer(Modifier.padding(16.dp))
 
         // ============ 思考推理等级 ============
-        Text("思考推理等级", style = MaterialTheme.typography.titleMedium)
-        Text("控制模型的思考深度（支持 OpenAI o/gpt-5 系与 Claude 3.7+）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_reasoning_title), style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_reasoning_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val efforts = listOf("", "low", "medium", "high", "xhigh", "max", "ultra")
         val eLabels = listOf("Off", "Low", "Medium", "High", "xHigh", "Max", "Ultra")
         val eCur = efforts.indexOf(settings.reasoningEffort).coerceAtLeast(0)
@@ -740,15 +770,15 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
             Text("Smarter", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
-            "当前：${eLabels[eCur]}（Faster 响应快 · Smarter 思考深）",
+            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_reasoning_current, eLabels[eCur]),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.padding(8.dp))
 
         // ============ MCP 服务器 ============
-        Text("MCP 服务器", style = MaterialTheme.typography.titleMedium)
-        Text("连接 Streamable HTTP 协议的 MCP 服务，其工具自动注入本应用", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_title), style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.padding(6.dp))
         settings.mcpServers.forEach { m ->
             ListItem(
@@ -762,7 +792,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                         })
                         IconButton(onClick = {
                             vm.saveSettings { s -> s.copy(mcpServers = s.mcpServers.filter { it.id != m.id }) }
-                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                        }) { Icon(Icons.Filled.Delete, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_delete), Modifier.size(18.dp)) }
                     }
                 },
             )
@@ -771,15 +801,15 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         var newMcpUrl by remember { mutableStateOf("") }
         var newMcpProto by remember { mutableStateOf("auto") }
         var newMcpHeaders by remember { mutableStateOf("") }
-        OutlinedTextField(value = newMcpName, onValueChange = { newMcpName = it }, label = { Text("名称") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
-        OutlinedTextField(value = newMcpUrl, onValueChange = { newMcpUrl = it }, label = { Text("MCP URL（streamable 填完整端点 / SSE 填 /sse 端点）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = newMcpName, onValueChange = { newMcpName = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_name)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = newMcpUrl, onValueChange = { newMcpUrl = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_url)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-            Text("协议", style = MaterialTheme.typography.labelSmall)
-            listOf("auto" to "自动", "streamable" to "Streamable", "sse" to "SSE").forEach { (v, label) ->
-                FilterChip(selected = newMcpProto == v, onClick = { newMcpProto = v }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_protocol), style = MaterialTheme.typography.labelSmall)
+            listOf("auto" to ai.devcodex.agent.R.string.settings_tools_mcp_proto_auto, "streamable" to null, "sse" to null).forEach { (v, labelRes) ->
+                FilterChip(selected = newMcpProto == v, onClick = { newMcpProto = v }, label = { Text(if (labelRes != null) androidx.compose.ui.res.stringResource(labelRes) else if (v == "streamable") "Streamable" else "SSE", style = MaterialTheme.typography.labelSmall) })
             }
         }
-        OutlinedTextField(value = newMcpHeaders, onValueChange = { newMcpHeaders = it }, label = { Text("自定义头（可选，每行 Key: Value，如 Authorization: Bearer xxx）") }, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = newMcpHeaders, onValueChange = { newMcpHeaders = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_headers)) }, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
         TextButton(onClick = {
             if (newMcpUrl.isNotBlank()) {
                 val id = java.util.UUID.randomUUID().toString().take(8)
@@ -790,16 +820,16 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                 vm.saveSettings { s -> s.copy(mcpServers = s.mcpServers + ai.devcodex.agent.provider.McpClient.McpServerConfig(id, newMcpName.ifBlank { "MCP-" + id }, newMcpUrl.trim(), protocol = newMcpProto, headers = hdrs)) }
                 newMcpName = ""; newMcpUrl = ""; newMcpHeaders = ""
             }
-        }) { Icon(Icons.Filled.Add, null, Modifier.size(16.dp)); Spacer(Modifier.padding(4.dp)); Text("添加 MCP 服务器") }
+        }) { Icon(Icons.Filled.Add, null, Modifier.size(16.dp)); Spacer(Modifier.padding(4.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_add)) }
         Spacer(Modifier.padding(10.dp))
 
         // ============ 自定义工具 ============
-        Text("自定义工具", style = MaterialTheme.typography.titleMedium)
-        Text("shell 命令模板，{{参数名}} 会被 AI 填的参数替换，走 Shizuku/Root 执行", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_custom_title), style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_custom_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.padding(6.dp))
         settings.customTools.forEach { ct ->
             ListItem(
-                overlineContent = { Text("自定义", style = MaterialTheme.typography.labelSmall) },
+                overlineContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_custom_tag), style = MaterialTheme.typography.labelSmall) },
                 headlineContent = { Text(ct.name, fontFamily = FontFamily.Monospace) },
                 supportingContent = { Text(ct.command, maxLines = 2, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) },
                 trailingContent = {
@@ -809,7 +839,7 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                         })
                         IconButton(onClick = {
                             vm.saveSettings { s -> s.copy(customTools = s.customTools.filter { it.name != ct.name }) }
-                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                        }) { Icon(Icons.Filled.Delete, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_delete), Modifier.size(18.dp)) }
                     }
                 },
             )
@@ -817,20 +847,20 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
         var ctName by remember { mutableStateOf("") }
         var ctDesc by remember { mutableStateOf("") }
         var ctCmd by remember { mutableStateOf("") }
-        OutlinedTextField(value = ctName, onValueChange = { ctName = it }, label = { Text("工具名（英文）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
-        OutlinedTextField(value = ctDesc, onValueChange = { ctDesc = it }, label = { Text("描述（AI 靠它判断何时用）") }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
-        OutlinedTextField(value = ctCmd, onValueChange = { ctCmd = it }, label = { Text("命令模板，如 pm list packages | grep {{keyword}}") }, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = ctName, onValueChange = { ctName = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_custom_name)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = ctDesc, onValueChange = { ctDesc = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_custom_description)) }, singleLine = true, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        OutlinedTextField(value = ctCmd, onValueChange = { ctCmd = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_custom_cmd)) }, textStyle = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
         TextButton(onClick = {
             if (ctName.isNotBlank() && ctCmd.isNotBlank()) {
                 vm.saveSettings { s -> s.copy(customTools = s.customTools + ai.devcodex.agent.data.CustomToolDef(ctName.trim(), ctDesc.trim(), "{}", ctCmd.trim())) }
                 ctName = ""; ctDesc = ""; ctCmd = ""
             }
-        }) { Icon(Icons.Filled.Add, null, Modifier.size(16.dp)); Spacer(Modifier.padding(4.dp)); Text("添加自定义工具") }
+        }) { Icon(Icons.Filled.Add, null, Modifier.size(16.dp)); Spacer(Modifier.padding(4.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_custom_add)) }
         Spacer(Modifier.padding(12.dp))
 
         // ============ 内置工具开关 ============
-        Text("内置工具", style = MaterialTheme.typography.titleMedium)
-        Text("关闭后智能体将看不到对应能力", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_builtin_title), style = MaterialTheme.typography.titleMedium)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_builtin_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.padding(6.dp))
         (ai.devcodex.agent.tools.BuiltinTools.all + ai.devcodex.agent.tools.AdvancedFsTools.all + ai.devcodex.agent.tools.ExtraTools.all + ai.devcodex.agent.tools.MediaTools.all).forEach { tool ->
             val enabled = settings.enabledTools.contains(tool.name)
@@ -857,21 +887,21 @@ private fun ToolsPermPage(vm: AppViewModel, settings: AppSettings, modifier: Mod
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
                 ) {
-                    Text("权限：", style = MaterialTheme.typography.labelSmall)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_perm_label), style = MaterialTheme.typography.labelSmall)
                     var menuOpen by remember { mutableStateOf(false) }
-                    val options = listOf<Pair<String?, String>>(null to "跟随全局", "ALLOW" to "允许", "ASK" to "询问", "FORBID" to "禁止")
+                    val options = listOf<Pair<String?, Int>>(null to ai.devcodex.agent.R.string.settings_tools_perm_global, "ALLOW" to ai.devcodex.agent.R.string.settings_tools_perm_allow, "ASK" to ai.devcodex.agent.R.string.settings_tools_perm_ask, "FORBID" to ai.devcodex.agent.R.string.settings_tools_perm_forbid)
                     Box {
                         OutlinedButton(
                             onClick = { menuOpen = true },
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                         ) {
-                            Text(options.firstOrNull { it.first == toolLevel }?.second ?: "跟随全局", style = MaterialTheme.typography.labelSmall)
+                            Text(androidx.compose.ui.res.stringResource(options.firstOrNull { it.first == toolLevel }?.second ?: ai.devcodex.agent.R.string.settings_tools_perm_global), style = MaterialTheme.typography.labelSmall)
                             Icon(Icons.Filled.ArrowDropDown, null, Modifier.size(16.dp))
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             options.forEach { (v, label) ->
                                 DropdownMenuItem(
-                                    text = { Text(label) },
+                                    text = { Text(androidx.compose.ui.res.stringResource(label)) },
                                     onClick = {
                                         menuOpen = false
                                         vm.saveSettings { s ->
@@ -898,27 +928,12 @@ private fun SkillsPage(vm: AppViewModel, onBack: () -> Unit) {
     }
     var showPrivacyDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showPluginDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    val privacyDocText = """
-# DevCodex 隐私政策
-
-## 数据收集
-DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、工作区文件均存储在设备本地（应用私有目录）。
-
-## 网络传输
-仅当你配置了 AI 提供商（如 DeepSeek/OpenAI）时，聊天内容会直接发送到**你配置的** API 端点。DevCodex 不经过任何第三方中转服务器。
-
-## 权限使用
-- 存储权限：仅用于读写你指定的工作区文件
-- 网络权限：仅用于调用你配置的 AI API
-
-## 删除数据
-卸载应用即删除全部本地数据。
-""".trim()
+    val privacyDocText = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_privacy_doc_md)
     if (showPrivacyDoc) {
-        ai.devcodex.agent.ui.components.DocViewerDialog(title = "隐私政策", markdown = privacyDocText) { showPrivacyDoc = false }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_privacy_title), markdown = privacyDocText) { showPrivacyDoc = false }
     }
     if (showPluginDoc) {
-        ai.devcodex.agent.ui.components.DocViewerDialog(title = "插件开发文档", markdown = PLUGIN_DOC_MD) { showPluginDoc = false }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_plugin_doc_title), markdown = pluginDocMarkdown()) { showPluginDoc = false }
     }
     var skills by remember { mutableStateOf(listOf<ai.devcodex.agent.data.SkillRepo.Skill>()) }
     var msg by remember { mutableStateOf<String?>(null) }
@@ -928,6 +943,13 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
     LaunchedEffect(Unit) { reload() }
 
     val repo = ai.devcodex.agent.data.SkillRepo(context)
+    val skillReadFailedMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_read_failed)
+    val skillReadFailedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_read_failed_fmt, "%1\$s")
+    val skillInstalledFullFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_installed_full, "%1\$s")
+    val skillInstalledFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_installed, "%1\$s")
+    val skillInstallFailedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_install_failed, "%1\$s")
+    val skillGhInstalledFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_gh_installed, "%1\$s")
+    val skillGhFailedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_gh_failed, "%1\$s")
     var ghUrl by remember { mutableStateOf("") }
     var ghBusy by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -938,20 +960,20 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
             scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching {
                     val name = (uri.lastPathSegment ?: "").lowercase()
-                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw IllegalStateException("读取失败")
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw IllegalStateException(skillReadFailedMsg)
                     if (name.endsWith(".zip") || name.endsWith(".skill")) {
                         val tmp = java.io.File(context.cacheDir, "import_skill.zip")
                         tmp.writeBytes(bytes)
                         repo.installFromZipFile(tmp)
-                            .onSuccess { reload(); msg = "已安装技能（含附属文件）：${it.name}" }
-                            .onFailure { msg = "安装失败：${it.message}" }
+                            .onSuccess { reload(); msg = skillInstalledFullFmt.replace("%1\$s", it.name) }
+                            .onFailure { msg = skillInstallFailedFmt.replace("%1\$s", it.message.orEmpty()) }
                         tmp.delete()
                     } else {
                         repo.install(String(bytes))
-                            .onSuccess { reload(); msg = "已安装技能：${it.name}" }
-                            .onFailure { msg = "安装失败：${it.message}" }
+                            .onSuccess { reload(); msg = skillInstalledFmt.replace("%1\$s", it.name) }
+                            .onFailure { msg = skillInstallFailedFmt.replace("%1\$s", it.message.orEmpty()) }
                     }
-                }.onFailure { msg = "读取失败：${it.message}" }
+                }.onFailure { msg = skillReadFailedFmt.replace("%1\$s", it.message.orEmpty()) }
             }
         }
     }
@@ -961,7 +983,7 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
             androidx.compose.material3.ExtendedFloatingActionButton(
                 onClick = { picker.launch("*/*") },
                 icon = { Icon(Icons.Filled.School, null) },
-                text = { Text("导入技能包/文件") },
+                text = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_import_fab)) },
             )
         },
     ) { pad ->
@@ -973,9 +995,9 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(Modifier.padding(14.dp)) {
-                    Text("技能 = AI 的说明书", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_card_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     Text(
-                        "SKILL.md 格式：简介常驻提示词，正文由 AI 按需读取（skill_read）。\n兼容 agentskills.io 标准，Claude Code / android-skills 生态的技能直接装。",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_card_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
                     )
@@ -984,8 +1006,8 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
             // GitHub 导入卡
             Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Column(Modifier.padding(12.dp)) {
-                    Text("从 GitHub 导入", style = MaterialTheme.typography.titleSmall)
-                    Text("支持 owner/repo、/tree/分支、子目录路径（取该目录 SKILL.md + 附属文件）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_gh_title), style = MaterialTheme.typography.titleSmall)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_gh_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                         OutlinedTextField(
                             value = ghUrl, onValueChange = { ghUrl = it },
@@ -999,13 +1021,13 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                                 ghBusy = true
                                 scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                     repo.installFromGithub(ghUrl)
-                                        .onSuccess { reload(); msg = "已从 GitHub 安装：${it.name}" }
-                                        .onFailure { msg = "GitHub 导入失败：${it.message}" }
+                                        .onSuccess { reload(); msg = skillGhInstalledFmt.replace("%1\$s", it.name) }
+                                        .onFailure { msg = skillGhFailedFmt.replace("%1\$s", it.message.orEmpty()) }
                                     ghBusy = false
                                 }
                             },
                             enabled = ghUrl.isNotBlank() && !ghBusy,
-                        ) { Text("导入") }
+                        ) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_gh_import)) }
                     }
                     if (ghBusy) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp))
                 }
@@ -1024,9 +1046,9 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                         Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                     )
                     Spacer(Modifier.padding(10.dp))
-                    Text("还没有技能", style = MaterialTheme.typography.titleMedium)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_empty_title), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "点右下角安装 SKILL.md，或去 GitHub 搜\nagentskills / android-skills 下载技能文件",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_empty_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp),
@@ -1034,7 +1056,7 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                 }
             } else {
                 Spacer(Modifier.padding(8.dp))
-                Text("已安装 ${skills.size} 个", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_count, skills.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.padding(4.dp))
                 skills.forEach { sk ->
                     Card(
@@ -1049,7 +1071,7 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(sk.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                                 Text(
-                                    if (sk.enabled) "已启用" else "已停用",
+                                    if (sk.enabled) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_enabled) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_disabled),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (sk.enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.clickable {
@@ -1061,7 +1083,7 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                                 })
                                 IconButton(onClick = {
                                     ai.devcodex.agent.data.SkillRepo(context).delete(sk.name); reload()
-                                }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                        }) { Icon(Icons.Filled.Delete, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_tools_mcp_delete), Modifier.size(18.dp)) }
                             }
                             Text(
                                 sk.description,
@@ -1088,27 +1110,12 @@ fun AboutPage(modifier: Modifier = Modifier, onBack: () -> Unit) {
     }
     var showPrivacyDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showPluginDoc by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    val privacyDocText = """
-# DevCodex 隐私政策
-
-## 数据收集
-DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、工作区文件均存储在设备本地（应用私有目录）。
-
-## 网络传输
-仅当你配置了 AI 提供商（如 DeepSeek/OpenAI）时，聊天内容会直接发送到**你配置的** API 端点。DevCodex 不经过任何第三方中转服务器。
-
-## 权限使用
-- 存储权限：仅用于读写你指定的工作区文件
-- 网络权限：仅用于调用你配置的 AI API
-
-## 删除数据
-卸载应用即删除全部本地数据。
-""".trim()
+    val privacyDocText = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_privacy_doc_md)
     if (showPrivacyDoc) {
-        ai.devcodex.agent.ui.components.DocViewerDialog(title = "隐私政策", markdown = privacyDocText) { showPrivacyDoc = false }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_privacy_title), markdown = privacyDocText) { showPrivacyDoc = false }
     }
     if (showPluginDoc) {
-        ai.devcodex.agent.ui.components.DocViewerDialog(title = "插件开发文档", markdown = PLUGIN_DOC_MD) { showPluginDoc = false }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_plugin_doc_title), markdown = pluginDocMarkdown()) { showPluginDoc = false }
     }
 
     Column(modifier.fillMaxSize()) {
@@ -1146,12 +1153,12 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                     "DevCodex",
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Black),
                 )
-                Text("手机上的 AI 编程助手", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_tagline), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 androidx.compose.material3.Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.secondaryContainer) {
                     Text("v" + ai.devcodex.agent.BuildConfig.VERSION_NAME, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 }
             }
-            Text("应用信息", Modifier.fillMaxWidth().padding(start = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_section_info), Modifier.fillMaxWidth().padding(start = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             val c1 = MaterialTheme.colorScheme.primaryContainer
             val t1 = MaterialTheme.colorScheme.onPrimaryContainer
             ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
@@ -1160,7 +1167,7 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                         Box(Modifier.size(38.dp).background(c1, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Code, null, Modifier.size(20.dp), tint = t1) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("版本", style = MaterialTheme.typography.bodyLarge)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_version), style = MaterialTheme.typography.bodyLarge)
                             Text(ai.devcodex.agent.BuildConfig.VERSION_NAME + " / " + ai.devcodex.agent.BuildConfig.VERSION_CODE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -1168,13 +1175,13 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                         Box(Modifier.size(38.dp).background(c1, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Smartphone, null, Modifier.size(20.dp), tint = t1) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("系统", style = MaterialTheme.typography.bodyLarge)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_system), style = MaterialTheme.typography.bodyLarge)
                             Text(android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL + " / Android " + android.os.Build.VERSION.RELEASE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
-            Text("社区与文档", Modifier.fillMaxWidth().padding(start = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_section_community), Modifier.fillMaxWidth().padding(start = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             val c2 = MaterialTheme.colorScheme.tertiaryContainer
             val t2 = MaterialTheme.colorScheme.onTertiaryContainer
             ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
@@ -1183,7 +1190,7 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Public, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("官网", style = MaterialTheme.typography.bodyLarge)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_website), style = MaterialTheme.typography.bodyLarge)
                             Text("github.com/Moirania/DevCodex", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -1199,23 +1206,23 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Chat, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("QQ 群 · DeepSeek", style = MaterialTheme.typography.bodyLarge)
-                            Text("208181604（点击加入群聊）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_qq_title), style = MaterialTheme.typography.bodyLarge)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_qq_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Row(Modifier.fillMaxWidth().clickable { showPluginDoc = true }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Extension, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("插件开发文档", style = MaterialTheme.typography.bodyLarge)
-                            Text("点击查看（应用内展示）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_plugin_doc_title), style = MaterialTheme.typography.bodyLarge)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_tap_to_view), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Row(Modifier.fillMaxWidth().clickable { openUri("https://github.com/Moirania/DevCodex#readme") }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.MenuBook, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("开发文档", style = MaterialTheme.typography.bodyLarge)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_dev_docs), style = MaterialTheme.typography.bodyLarge)
                             Text("github.com/Moirania/DevCodex#readme", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -1223,13 +1230,15 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                         Box(Modifier.size(38.dp).background(c2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Filled.PrivacyTip, null, Modifier.size(20.dp), tint = t2) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("隐私政策", style = MaterialTheme.typography.bodyLarge)
-                            Text("点击查看（应用内展示）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_privacy_title), style = MaterialTheme.typography.bodyLarge)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_tap_to_view), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
             val exportScope = androidx.compose.runtime.rememberCoroutineScope()
+            val exportDoneMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_export_done)
+            val exportFailedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_export_failed, "%1\$s")
             val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
                 androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip"),
             ) { uri ->
@@ -1239,20 +1248,20 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                     }
                     android.widget.Toast.makeText(
                         context,
-                        if (r.isSuccess) "调试日志已导出" else "导出失败：" + r.exceptionOrNull()?.message,
+                        if (r.isSuccess) exportDoneMsg else exportFailedFmt.replace("%1\$s", r.exceptionOrNull()?.message.orEmpty()),
                         android.widget.Toast.LENGTH_LONG,
                     ).show()
                 }
             }
-            OutlinedButton(onClick = { exportLauncher.launch("devcodex-debug-" + System.currentTimeMillis() + ".zip") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("导出调试日志（zip）", style = MaterialTheme.typography.labelLarge) }
-            OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex/issues") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("反馈意见", style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { exportLauncher.launch("devcodex-debug-" + System.currentTimeMillis() + ".zip") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_export_logs), style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { openUri("https://github.com/Moirania/DevCodex/issues") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Feedback, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_feedback), style = MaterialTheme.typography.labelLarge) }
             var showReward by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-            OutlinedButton(onClick = { showReward = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("微信赞助 / 请喝奶茶", style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(onClick = { showReward = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Icon(Icons.Filled.Favorite, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_reward_button), style = MaterialTheme.typography.labelLarge) }
             if (showReward) {
                 androidx.compose.ui.window.Dialog(onDismissRequest = { showReward = false }) {
                     androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large) {
                         Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("微信赞赏", style = MaterialTheme.typography.titleMedium)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_reward_title), style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(12.dp))
                             val ctx = androidx.compose.ui.platform.LocalContext.current
                             val bmp = androidx.compose.runtime.remember {
@@ -1263,12 +1272,12 @@ DevCodex **不收集任何用户数据**。所有会话、角色卡、设置、�
                             if (bmp != null) {
                                 Image(
                                     bitmap = bmp.asImageBitmap(),
-                                    contentDescription = "微信收款码",
+                                    contentDescription = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_reward_qr_desc),
                                     modifier = Modifier.size(260.dp),
                                 )
-                            } else Text("（收款码加载失败）", style = MaterialTheme.typography.bodySmall)
+                            } else Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_reward_qr_failed), style = MaterialTheme.typography.bodySmall)
                             Spacer(Modifier.height(8.dp))
-                            Text("感谢支持 DevCodex 开发", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_about_reward_thanks), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

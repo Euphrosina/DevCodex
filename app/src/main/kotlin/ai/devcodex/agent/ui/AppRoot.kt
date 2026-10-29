@@ -46,14 +46,20 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 
 @Composable
 fun AppRoot(vm: AppViewModel) {
-    val tabs = remember {
+    val navChat = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.nav_chat)
+    val navWorkspace = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.nav_workspace)
+    val navProviders = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.nav_providers)
+    val navPlugins = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.nav_plugins)
+    val navExtensions = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.nav_extensions)
+    val navSettings = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.nav_settings)
+    val tabs = remember(navChat, navWorkspace, navProviders, navPlugins, navExtensions, navSettings) {
         listOf(
-            Tab("chat", "对话", Icons.Filled.Chat),
-            Tab("workspace", "工作区", Icons.Filled.Folder),
-            Tab("providers", "提供商", Icons.Filled.AutoAwesome),
-            Tab("plugins", "插件", Icons.Filled.Extension),
-            Tab("extensions", "扩展", Icons.Filled.Download),
-            Tab("settings", "设置", Icons.Filled.Settings),
+            Tab("chat", navChat, Icons.Filled.Chat),
+            Tab("workspace", navWorkspace, Icons.Filled.Folder),
+            Tab("providers", navProviders, Icons.Filled.AutoAwesome),
+            Tab("plugins", navPlugins, Icons.Filled.Extension),
+            Tab("extensions", navExtensions, Icons.Filled.Download),
+            Tab("settings", navSettings, Icons.Filled.Settings),
         )
     }
     var tabIdx by remember { mutableIntStateOf(0) }

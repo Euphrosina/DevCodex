@@ -71,6 +71,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    // 只保留应用支持的六种语言，剔除三方库带入的其余语言资源
+    androidResources {
+        localeFilters += listOf("en", "zh-rCN", "zh-rTW", "zh-rHK", "ja", "ko")
+    }
     buildFeatures {
         compose = true
         aidl = true
@@ -123,6 +127,9 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.github.ivan-magda:kotlin-textmate-core:0.3.0")
     implementation("com.github.mwiede:jsch:0.2.18")
+
+    // 单元测试：语言解析、各语言资源 key 与格式参数一致性
+    testImplementation("junit:junit:4.13.2")
 }
 
 tasks.matching { it.name == "compileReleaseArtProfile" }.configureEach {

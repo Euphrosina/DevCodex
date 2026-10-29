@@ -65,6 +65,9 @@ fun WorkspaceScreen(vm: AppViewModel) {
     var entries by remember { mutableStateOf(repo.list("")) }
     var preview by remember { mutableStateOf<WorkspaceRepo.Entry?>(null) }
     var refresh by remember { mutableStateOf(0) }
+    val rootDirLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_root_dir)
+    val createFailedMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_create_failed)
+    val copiedRefMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_copied_ref)
     // 进入目录后重读
     androidx.compose.runtime.LaunchedEffect(currentDir, refresh) {
         entries = repo.list(currentDir)
@@ -79,14 +82,14 @@ fun WorkspaceScreen(vm: AppViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (currentDir.isBlank()) "工作区" else currentDir) },
+                title = { Text(if (currentDir.isBlank()) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_title) else currentDir) },
                 navigationIcon = {
                     if (currentDir.isNotBlank()) {
                         IconButton(onClick = {
                             // 修根级目录无法返回：substring 不变时回根
                             val parent = currentDir.substringBeforeLast('/')
                             currentDir = if (parent == currentDir) "" else parent
-                        }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                        }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_back)) }
                     }
                 },
                 actions = {
@@ -94,22 +97,22 @@ fun WorkspaceScreen(vm: AppViewModel) {
                     var showNewMenu by remember { mutableStateOf(false) }
                     var showNewFile by remember { mutableStateOf(false) }
                     var showNewDir by remember { mutableStateOf(false) }
-                    IconButton(onClick = { showNewMenu = true }) { Icon(Icons.Filled.Add, "新建") }
+                    IconButton(onClick = { showNewMenu = true }) { Icon(Icons.Filled.Add, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_new)) }
                     DropdownMenu(expanded = showNewMenu, onDismissRequest = { showNewMenu = false }) {
-                        DropdownMenuItem(text = { Text("新建文件") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.InsertDriveFile, null, Modifier.size(18.dp)) }, onClick = { showNewMenu = false; showNewFile = true })
-                        DropdownMenuItem(text = { Text("新建文件夹") }, leadingIcon = { Icon(Icons.Filled.Folder, null, Modifier.size(18.dp)) }, onClick = { showNewMenu = false; showNewDir = true })
+                        DropdownMenuItem(text = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_new_file)) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.InsertDriveFile, null, Modifier.size(18.dp)) }, onClick = { showNewMenu = false; showNewFile = true })
+                        DropdownMenuItem(text = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_new_dir)) }, leadingIcon = { Icon(Icons.Filled.Folder, null, Modifier.size(18.dp)) }, onClick = { showNewMenu = false; showNewDir = true })
                     }
                     if (showNewFile || showNewDir) {
                         var name by remember(showNewFile, showNewDir) { mutableStateOf("") }
                         AlertDialog(
                             onDismissRequest = { showNewFile = false; showNewDir = false },
-                            title = { Text(if (showNewFile) "新建文件" else "新建文件夹") },
+                            title = { Text(if (showNewFile) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_new_file) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_new_dir)) },
                             text = {
                                 OutlinedTextField(
                                     value = name, onValueChange = { name = it },
-                                    label = { Text("名称") },
+                                    label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_name)) },
                                     singleLine = true,
-                                    supportingText = { Text("在 " + (currentDir.ifBlank { "工作区根目录" }) + " 下创建") },
+                                    supportingText = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_create_in_fmt, currentDir.ifBlank { rootDirLabel })) },
                                 )
                             },
                             confirmButton = {
@@ -117,12 +120,12 @@ fun WorkspaceScreen(vm: AppViewModel) {
                                     if (name.isNotBlank()) {
                                         val path = (currentDir.ifBlank { "" }) + (if (currentDir.isNotBlank()) "/" else "") + name.trim()
                                         val ok = if (showNewFile) repo.createFile(path) else repo.createDir(path)
-                                        if (ok) refresh++ else vm.toast.value = "创建失败（可能已存在）"
+                                        if (ok) refresh++ else vm.toast.value = createFailedMsg
                                     }
                                     showNewFile = false; showNewDir = false
-                                }) { Text("创建") }
+                                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_create)) }
                             },
-                            dismissButton = { TextButton(onClick = { showNewFile = false; showNewDir = false }) { Text("取消") } },
+                            dismissButton = { TextButton(onClick = { showNewFile = false; showNewDir = false }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_cancel)) } },
                         )
                     }
                 },
@@ -130,19 +133,16 @@ fun WorkspaceScreen(vm: AppViewModel) {
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { picker.launch("*/*") }) {
-                Icon(Icons.Filled.UploadFile, "上传文件")
+                Icon(Icons.Filled.UploadFile, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_upload))
             }
         },
     ) { padding ->
         if (entries.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
-                Text("工作区是空的", style = MaterialTheme.typography.titleMedium)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_empty_title), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "点右下角上传文件（文档/代码/图片…）。" +
-                        "上传后：\n· 聊天输入栏 📎 可引用文件让 AI 处理\n" +
-                        "· AI 工具用相对路径即可读写（fs_read \"文件名\"）\n" +
-                        "· 高危路径操作仍需你的授权",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_empty_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -157,7 +157,11 @@ fun WorkspaceScreen(vm: AppViewModel) {
                         },
                         supportingContent = {
                             Text(
-                                (if (e.isDir) "目录" else repo.formatSize(e.size)) + " · " + repo.formatDate(e.modified),
+                                androidx.compose.ui.res.stringResource(
+                                    ai.devcodex.agent.R.string.ws_size_date_fmt,
+                                    if (e.isDir) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_dir) else repo.formatSize(e.size),
+                                    repo.formatDate(e.modified),
+                                ),
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         },
@@ -171,7 +175,7 @@ fun WorkspaceScreen(vm: AppViewModel) {
                         trailingContent = {
                             IconButton(onClick = {
                                 repo.delete(e.relativePath); refresh++
-                            }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp)) }
+                            }) { Icon(Icons.Filled.Delete, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_delete), Modifier.size(18.dp)) }
                         },
                         modifier = Modifier.clickable {
                             if (e.isDir) currentDir = e.relativePath
@@ -211,7 +215,7 @@ fun WorkspaceScreen(vm: AppViewModel) {
                             contentDescription = e.name,
                             modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
                         )
-                    } else Text("（图片解码失败）", style = MaterialTheme.typography.bodySmall)
+                    } else Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_image_decode_failed), style = MaterialTheme.typography.bodySmall)
                 } else if (repo.isTextFile(e)) {
                     val content = WorkspaceRepo.textPreview(e.file)
                     val isDiff = e.file.extension.lowercase() in listOf("diff", "patch") || content.trimStart().startsWith("@@ -") || (content.lines().firstOrNull()?.startsWith("--- ") == true && content.contains("@@ "))
@@ -289,7 +293,7 @@ fun WorkspaceScreen(vm: AppViewModel) {
                     }
                 } else {
                     Text(
-                        "（二进制文件，AI 可通过路径访问：${e.relativePath}）",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_binary_fmt, e.relativePath),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -297,9 +301,9 @@ fun WorkspaceScreen(vm: AppViewModel) {
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                     val clipboard = LocalClipboardManager.current
-                    TextButton(onClick = { clipboard.setText(AnnotatedString("@${e.name}")); vm.toast.value = "已复制引用" }) { Text("复制引用") }
-                    TextButton(onClick = { repo.delete(e.relativePath); preview = null; refresh++ }) { Text("删除", color = MaterialTheme.colorScheme.error) }
-                    androidx.compose.material3.Button(onClick = { preview = null }) { Text("关闭") }
+                    TextButton(onClick = { clipboard.setText(AnnotatedString("@${e.name}")); vm.toast.value = copiedRefMsg }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ws_copy_ref)) }
+                    TextButton(onClick = { repo.delete(e.relativePath); preview = null; refresh++ }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_delete), color = MaterialTheme.colorScheme.error) }
+                    androidx.compose.material3.Button(onClick = { preview = null }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_close)) }
                 }
             }
         }

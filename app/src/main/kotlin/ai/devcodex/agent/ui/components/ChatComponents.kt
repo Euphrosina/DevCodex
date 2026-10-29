@@ -79,7 +79,7 @@ private val Mono = FontFamily.Monospace
 
 // ============ 用户消息：rikkahub 式右侧主色气泡 ============
 @Composable
-fun UserBubble(msg: Message, nick: String = "我") {
+fun UserBubble(msg: Message, nick: String = "") {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // 随消息发送的图片缩略图（仅显示工作区内真实存在的文件）
@@ -144,7 +144,7 @@ fun AssistantMessage(msg: Message, showAvatar: Boolean = true) {
                     Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
                     Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), CircleShape))
                     Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape))
-                    Text("思考中…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_thinking), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else if (msg.content.isNotBlank()) {
                 Text(
@@ -173,7 +173,7 @@ fun ThinkingBlock(text: String) {
                     Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary,
                 )
                 Text(
-                    if (expanded) "思考过程" else "已深度思考",
+                    androidx.compose.ui.res.stringResource(if (expanded) ai.devcodex.agent.R.string.chat_think_expanded else ai.devcodex.agent.R.string.chat_think_collapsed),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -279,7 +279,7 @@ fun ToolCard(msg: Message, argsJson: String = "", live: Boolean = true) {
             if (expanded) {
                 if (argsJson.isNotBlank() && argsJson != "{}") {
                     Text(
-                        "参数",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_tool_args),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.padding(top = 6.dp),
@@ -324,7 +324,7 @@ fun ApprovalCard(
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Filled.Warning, null, Modifier.size(16.dp))
-                Text("权限确认 · $toolName", style = MaterialTheme.typography.titleSmall)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_approval_title_fmt, toolName), style = MaterialTheme.typography.titleSmall)
             }
             Spacer(Modifier.padding(3.dp))
             Text(reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
@@ -334,7 +334,7 @@ fun ApprovalCard(
                 var showArgs by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Text(
-                        if (showArgs) "▾ 参数" else "▸ 参数",
+                        androidx.compose.ui.res.stringResource(if (showArgs) ai.devcodex.agent.R.string.chat_args_show else ai.devcodex.agent.R.string.chat_args_hide),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.clickable { showArgs = !showArgs },
@@ -356,10 +356,10 @@ fun ApprovalCard(
             }
             Spacer(Modifier.padding(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.align(Alignment.End)) {
-                TextButton(onClick = onDeny) { Text("拒绝") }
-                TextButton(onClick = onAlwaysAllow) { Text("总是允许") }
+                TextButton(onClick = onDeny) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_deny)) }
+                TextButton(onClick = onAlwaysAllow) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_always_allow)) }
                 FilledIconButton(onClick = onAllow, modifier = Modifier.heightIn(min = 36.dp)) {
-                    Icon(Icons.Filled.PlayArrow, "允许一次")
+                    Icon(Icons.Filled.PlayArrow, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_allow_once))
                 }
             }
         }
@@ -406,7 +406,7 @@ fun InputBar(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
                 ) {
-                    Text("上下文", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_ctx_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(6.dp))
                     Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
                         Row(Modifier.fillMaxSize()) {
@@ -417,7 +417,7 @@ fun InputBar(
                     Spacer(Modifier.width(6.dp))
                     Text("$ctxUsedPct%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = onCompact, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
-                        Text("压缩", style = MaterialTheme.typography.labelSmall)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_compact), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -433,7 +433,7 @@ fun InputBar(
                     ai.devcodex.agent.ui.components.ModelLogo(modelId.ifBlank { "?" }, 18.dp)
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        modelLabel ?: "＋ 选择模型",
+                        modelLabel ?: androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_pick_model),
                         style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -447,7 +447,7 @@ fun InputBar(
                     Modifier.background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)).padding(1.dp),
                     horizontalArrangement = Arrangement.spacedBy(1.dp),
                 ) {
-                    listOf(0 to "默认", 262144 to "256k", 1048576 to "1M").forEach { (opt, label) ->
+                    listOf(0 to androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_ctx_default), 262144 to "256k", 1048576 to "1M").forEach { (opt, label) ->
                         val support = opt == 0 || opt <= modelMaxCtx
                         Box(
                             Modifier
@@ -462,12 +462,12 @@ fun InputBar(
                 }
                 if (running) {
                     Spacer(Modifier.width(8.dp))
-                    Text("● 运行中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_running), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
                 Spacer(Modifier.weight(1f))
                 Icon(
                     if (optionsExpanded.value) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    "推理档位",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_effort_level),
                     Modifier.size(20.dp).clickable { optionsExpanded.value = !optionsExpanded.value },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -481,7 +481,7 @@ fun InputBar(
                         .padding(horizontal = 10.dp, vertical = 2.dp)
                         .horizontalScroll(rememberScrollState()),
                 ) {
-                    Text("思考 ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_think_label) + " ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                     effortLevels.forEachIndexed { idx, lv ->
                         val sel = effort == lv
                         Box(
@@ -509,12 +509,12 @@ fun InputBar(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("询问 DevCodex…") },
+                    placeholder = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_input_placeholder)) },
                     maxLines = 6,
                     shape = MaterialTheme.shapes.extraLarge,
                     leadingIcon = {
                         Icon(
-                            Icons.Filled.AttachFile, "上传附件",
+                            Icons.Filled.AttachFile, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_attach),
                             Modifier.clickable { onAttach() },
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -526,8 +526,8 @@ fun InputBar(
                     modifier = Modifier.size(52.dp),
                     shape = CircleShape,
                 ) {
-                    if (running) Icon(Icons.Filled.Stop, "停止")
-                    else Icon(Icons.AutoMirrored.Filled.Send, "发送")
+                    if (running) Icon(Icons.Filled.Stop, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_stop))
+                    else Icon(Icons.AutoMirrored.Filled.Send, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_send))
                 }
             }
         }

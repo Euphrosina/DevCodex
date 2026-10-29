@@ -77,19 +77,19 @@ fun ProvidersScreen(vm: AppViewModel) {
     var busy by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("API 提供商") }) },
+        topBar = { TopAppBar(title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_title)) }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { creating = true }) {
-                Icon(Icons.Filled.Add, "添加提供商")
+                Icon(Icons.Filled.Add, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_add))
             }
         },
     ) { padding ->
         if (settings.providers.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
-                Text("还没有配置提供商", style = MaterialTheme.typography.titleMedium)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_empty_title), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.padding(8.dp))
                 Text(
-                    "支持 OpenAI 兼容协议（GLM/DeepSeek/Kimi/OpenAI/OpenRouter）、Anthropic、Ollama。\n点击右下角 + 添加，填入 Base URL 和 API Key 后可自动识别模型。",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_empty_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -116,12 +116,12 @@ fun ProvidersScreen(vm: AppViewModel) {
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(p.name.ifBlank { "未命名" }, style = MaterialTheme.typography.titleMedium)
+                                        Text(p.name.ifBlank { androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_unnamed) }, style = MaterialTheme.typography.titleMedium)
                                         if (p.isDefault) {
                                             Spacer(Modifier.width(6.dp))
                                             androidx.compose.material3.AssistChip(
                                                 onClick = {},
-                                                label = { Text("默认", style = MaterialTheme.typography.labelSmall) },
+                                                label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_default_chip), style = MaterialTheme.typography.labelSmall) },
                                                 modifier = Modifier.height(22.dp),
                                             )
                                         }
@@ -130,14 +130,14 @@ fun ProvidersScreen(vm: AppViewModel) {
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("${p.enabledModels.size}/${p.models.size}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                                    Text("模型", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_models_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Row {
                                         if (busy) CircularProgressIndicator(Modifier.size(18.dp))
                                         IconButton(onClick = { vm.setDefaultProvider(p.id) }, modifier = Modifier.size(32.dp)) {
-                                            Icon(Icons.Filled.CheckCircle, "设为默认", Modifier.size(18.dp))
+                                            Icon(Icons.Filled.CheckCircle, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_set_default), Modifier.size(18.dp))
                                         }
                                         IconButton(onClick = { vm.deleteProvider(p.id) }, modifier = Modifier.size(32.dp)) {
-                                            Icon(Icons.Filled.Delete, "删除", Modifier.size(18.dp))
+                                            Icon(Icons.Filled.Delete, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_delete), Modifier.size(18.dp))
                                         }
                                     }
                                 }
@@ -155,10 +155,10 @@ fun ProvidersScreen(vm: AppViewModel) {
         if (presetChosen == null) {
             AlertDialog(
                 onDismissRequest = { creating = false },
-                title = { Text("选择提供商预设") },
+                title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_preset_title)) },
                 text = {
                     Column {
-                        Text("选一个快速开始（Base URL 已填好，只需填 Key）；或拉到底选「自定义」", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_preset_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         // 双列卡片（Operit 式）
                         LazyVerticalGrid(
                             columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(4),
@@ -195,7 +195,7 @@ fun ProvidersScreen(vm: AppViewModel) {
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = { creating = false }) { Text("取消") } },
+                dismissButton = { TextButton(onClick = { creating = false }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_cancel)) } },
             )
         } else {
             ProviderEditDialog(
@@ -247,6 +247,19 @@ private fun ProviderEditDialog(
     var testResult by remember { mutableStateOf<Pair<String, ModelTestResult>?>(null) }
     var manualModel by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val connCtx = androidx.compose.ui.platform.LocalContext.current
+    val tagImage = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tag_image)
+    val tagVideo = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tag_video)
+    val tagTools = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tag_tools)
+    val tagNoTools = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tag_no_tools)
+    val tagVision = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tag_vision)
+    val tagReasoning = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tag_reasoning)
+    val resUnreachable = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_unreachable)
+    val resStreamOk = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_stream_ok)
+    val resStreamFail = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_stream_fail)
+    val resToolsOk = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tools_ok)
+    val resToolsFail = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_tools_fail)
+    val hostFallback = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_host_fallback)
 
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
@@ -258,44 +271,44 @@ private fun ProviderEditDialog(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp).heightIn(max = 640.dp),
         ) {
             Column(Modifier.padding(16.dp)) {
-                Text(if (initial.name.isBlank()) "添加提供商" else "编辑提供商", style = MaterialTheme.typography.titleLarge)
+                Text(if (initial.name.isBlank()) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_add) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_edit), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
                 Column(
                     Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).weight(1f, fill = false),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = type == ProviderType.OPENAI_COMPAT, onClick = { type = ProviderType.OPENAI_COMPAT; baseUrl = baseUrl.ifBlank { "https://api.openai.com/v1" } }, label = { Text("OpenAI 兼容") })
+                    FilterChip(selected = type == ProviderType.OPENAI_COMPAT, onClick = { type = ProviderType.OPENAI_COMPAT; baseUrl = baseUrl.ifBlank { "https://api.openai.com/v1" } }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_type_openai_compat)) })
                     FilterChip(selected = type == ProviderType.ANTHROPIC, onClick = { type = ProviderType.ANTHROPIC; baseUrl = baseUrl.ifBlank { "https://api.anthropic.com" } }, label = { Text("Anthropic") })
                     FilterChip(selected = type == ProviderType.OLLAMA, onClick = { type = ProviderType.OLLAMA; baseUrl = baseUrl.ifBlank { "http://127.0.0.1:11434" } }, label = { Text("Ollama") })
                 }
                 // 本地模型连接提示
                 Text(
-                    "本地模型：LM Studio / PocketPal / Layla 选 OpenAI 兼容，填 http://127.0.0.1:1234/v1；Ollama（含 Termux 版）选 Ollama，填 http://127.0.0.1:11434；局域网电脑主机填 http://192.168.x.x:端口",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_local_hint),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedTextField(value = name, onValueChange = { name = it }, placeholder = { Text("名称（如 GLM / DeepSeek）") }, singleLine = true, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                OutlinedTextField(value = name, onValueChange = { name = it }, placeholder = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_name_placeholder)) }, singleLine = true, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                 // 分区卡片：接入信息
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             ai.devcodex.agent.ui.components.ModelLogo(name, 24.dp)
                             Spacer(Modifier.width(8.dp))
-                            Text("接入信息", style = MaterialTheme.typography.titleSmall)
+                            Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_access_info), style = MaterialTheme.typography.titleSmall)
                         }
                         Spacer(Modifier.height(6.dp))
                         var keyVisible by remember { mutableStateOf(false) }
                         OutlinedTextField(
                             value = apiKey, onValueChange = { apiKey = it },
-                            placeholder = { Text("API Key（sk-…）") },
+                            placeholder = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_apikey_placeholder)) },
                             maxLines = if (keyVisible) 3 else 1,
                             visualTransformation = if (keyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
                             trailingIcon = {
                                 androidx.compose.material3.IconButton(onClick = { keyVisible = !keyVisible }) {
                                     Icon(
                                         if (keyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                        if (keyVisible) "隐藏" else "显示",
+                                        if (keyVisible) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_key_hide) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_key_show),
                                         Modifier.size(18.dp),
                                     )
                                 }
@@ -306,7 +319,7 @@ private fun ProviderEditDialog(
                         Spacer(Modifier.height(6.dp))
                         OutlinedTextField(
                             value = baseUrl, onValueChange = { baseUrl = it },
-                            placeholder = { Text("Base URL（如 https://api.xxx.com/v1）") },
+                            placeholder = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_baseurl_placeholder)) },
                             singleLine = true,
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
@@ -326,14 +339,14 @@ private fun ProviderEditDialog(
                                                 .build()
                                             okhttp3.OkHttpClient.Builder().callTimeout(10, java.util.concurrent.TimeUnit.SECONDS).build()
                                                 .newCall(req).execute().use { resp ->
-                                                    if (resp.isSuccessful) "✓ 连接成功（HTTP ${resp.code}）" else "✗ HTTP ${resp.code}"
+                                                    if (resp.isSuccessful) connCtx.getString(ai.devcodex.agent.R.string.prov_test_ok_fmt, resp.code) else "✗ HTTP ${resp.code}"
                                                 }
                                         }.getOrElse { "✗ ${it.message}" }
                                         testing = null
                                     }
                                 },
                                 enabled = baseUrl.isNotBlank() && testing == null,
-                            ) { Text(if (testing != null) "测试中…" else "测试连接") }
+                            ) { Text(if (testing != null) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_testing) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_test_conn)) }
                             Spacer(Modifier.width(8.dp))
                             testResult?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = if (it.startsWith("✓")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error) }
                         }
@@ -350,13 +363,13 @@ private fun ProviderEditDialog(
                                     baseUrl = cleaned
                                     val list = ProviderGateway.listModels(initial.copy(name = name, type = type, baseUrl = cleaned, apiKey = apiKey))
                                     if (list.isEmpty()) {
-                                        fetchError = "接口返回空列表，可手动添加模型"
+                                        fetchError = connCtx.getString(ai.devcodex.agent.R.string.prov_fetch_empty)
                                     } else {
                                         models = list
                                         enabledModels = list  // 全选，用户自行取消
                                     }
                                 } catch (e: Exception) {
-                                    fetchError = "识别失败: ${e.describe().take(200)}（URL: ${normalizeBaseUrl(baseUrl)}/models）——可手动在下方添加"
+                                    fetchError = connCtx.getString(ai.devcodex.agent.R.string.prov_fetch_failed_fmt, e.describe().take(200), normalizeBaseUrl(baseUrl))
                                 }
                                 fetching = false
                             }
@@ -365,7 +378,7 @@ private fun ProviderEditDialog(
                     ) {
                         if (fetching) CircularProgressIndicator(Modifier.padding(end = 6.dp))
                         Icon(Icons.Filled.Refresh, null, Modifier.padding(end = 6.dp))
-                        Text("自动识别模型")
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_auto_detect))
                     }
                 }
                 fetchError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -373,31 +386,31 @@ private fun ProviderEditDialog(
                 // 媒体模型：生图与视频（由 Agent 工具调用，不作为聊天主模型）
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("媒体模型（生图与视频）", style = MaterialTheme.typography.titleSmall)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "生图默认请求 Base URL 加 /images/generations（OpenAI 兼容）；视频按「提交、轮询、下载」流程，地址与字段路径按厂商文档填写，查询地址可用 {{task_id}} 占位。留空表示不启用。",
+                            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_desc),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        MediaField("生图模型 ID", imageModel, { imageModel = it }, "如 gpt-image-1 / cogview-4")
-                        MediaField("图片接口地址（可选）", imageEndpoint, { imageEndpoint = it }, "留空则用 Base URL/images/generations")
-                        MediaField("视频模型 ID", videoModel, { videoModel = it }, "如 cogvideox-3")
-                        MediaField("视频提交地址", videoSubmitUrl, { videoSubmitUrl = it }, "POST，完整 URL")
-                        MediaField("视频查询地址", videoStatusUrl, { videoStatusUrl = it }, "GET，含 {{task_id}}")
-                        MediaField("任务 ID 路径", videoTaskIdPath, { videoTaskIdPath = it }, "默认 id，嵌套用 data.id")
-                        MediaField("状态字段路径", videoStatusPath, { videoStatusPath = it }, "默认 status")
-                        MediaField("视频地址路径", videoResultPath, { videoResultPath = it }, "默认 video_url，数组用下标如 data.0.url")
-                        MediaField("成功状态值（逗号分隔）", videoSuccess, { videoSuccess = it }, "succeeded,success,completed")
-                        MediaField("失败状态值（逗号分隔）", videoFail, { videoFail = it }, "failed,error,cancelled")
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_image_model), imageModel, { imageModel = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_image_model_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_image_endpoint), imageEndpoint, { imageEndpoint = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_image_endpoint_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_video_model), videoModel, { videoModel = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_video_model_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_video_submit), videoSubmitUrl, { videoSubmitUrl = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_video_submit_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_video_status), videoStatusUrl, { videoStatusUrl = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_video_status_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_task_id_path), videoTaskIdPath, { videoTaskIdPath = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_task_id_path_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_status_path), videoStatusPath, { videoStatusPath = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_status_path_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_result_path), videoResultPath, { videoResultPath = it }, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_result_path_hint))
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_success_values), videoSuccess, { videoSuccess = it }, "succeeded,success,completed")
+                        MediaField(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_media_fail_values), videoFail, { videoFail = it }, "failed,error,cancelled")
                     }
                 }
 
-                Text("模型（勾选启用，可手动添加）—— 当前 ${models.size} 个，已启用 ${enabledModels.size} 个：", style = MaterialTheme.typography.labelLarge)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_models_header_fmt, models.size, enabledModels.size), style = MaterialTheme.typography.labelLarge)
                 // 手动添加模型行
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = manualModel, onValueChange = { manualModel = it },
-                        placeholder = { Text("手动输入模型名，点 + 添加") }, singleLine = true,
+                        placeholder = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_model_manual_placeholder)) }, singleLine = true,
                         modifier = Modifier.weight(1f),
                         textStyle = MaterialTheme.typography.bodySmall,
                     )
@@ -408,11 +421,11 @@ private fun ProviderEditDialog(
                             enabledModels = enabledModels + m
                         }
                         manualModel = ""
-                    }) { Icon(Icons.Filled.Add, "添加") }
+                    }) { Icon(Icons.Filled.Add, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_model_add)) }
                 }
                 if (models.isEmpty()) {
                     Text(
-                        "尚未识别到模型 —— 点上方「自动识别」拉取，或直接手动输入模型名添加",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_models_empty_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -437,13 +450,13 @@ private fun ProviderEditDialog(
                                 val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
                                 val tags = buildList {
                                     when (meta.kind) {
-                                        ai.devcodex.agent.provider.ModelKind.IMAGE -> add("生图")
-                                        ai.devcodex.agent.provider.ModelKind.VIDEO -> add("视频")
-                                        else -> meta.tools?.let { add(if (it) "工具" else "无工具") }
+                                        ai.devcodex.agent.provider.ModelKind.IMAGE -> add(tagImage)
+                                        ai.devcodex.agent.provider.ModelKind.VIDEO -> add(tagVideo)
+                                        else -> meta.tools?.let { add(if (it) tagTools else tagNoTools) }
                                     }
-                                    if (meta.vision) add("视觉")
-                                    if (meta.reasoning) add("推理")
-                                    meta.contextLength?.let { add("${it / 1000}k上下文") }
+                                    if (meta.vision) add(tagVision)
+                                    if (meta.reasoning) add(tagReasoning)
+                                    meta.contextLength?.let { add(connCtx.getString(ai.devcodex.agent.R.string.prov_tag_context_fmt, it / 1000)) }
                                 }
                                 if (tags.isNotEmpty()) {
                                     Text(
@@ -463,12 +476,12 @@ private fun ProviderEditDialog(
                                 }
                             }) {
                                 if (testing == m) CircularProgressIndicator(Modifier.padding(4.dp))
-                                else Icon(Icons.Filled.Speed, "测试")
+                                else Icon(Icons.Filled.Speed, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_test))
                             }
                             IconButton(onClick = {
                                 models = models - m
                                 enabledModels = enabledModels - m
-                            }) { Icon(Icons.Filled.Close, "移除", Modifier.size(16.dp)) }
+                            }) { Icon(Icons.Filled.Close, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.prov_remove), Modifier.size(16.dp)) }
                         }
                     }
                 }
@@ -478,9 +491,9 @@ private fun ProviderEditDialog(
                             Text(m, style = MaterialTheme.typography.labelMedium, maxLines = 1)
                             Text(
                                 buildString {
-                                    append(if (r.latencyMs >= 0) "延迟 ${r.latencyMs}ms " else "未连通 ")
-                                    append(if (r.streamOk) "· 流式✓ " else "· 流式✗ ")
-                                    append(if (r.toolsOk) "· 工具✓" else "· 工具✗")
+                                    append(if (r.latencyMs >= 0) connCtx.getString(ai.devcodex.agent.R.string.prov_latency_fmt, r.latencyMs) else resUnreachable)
+                                    append(if (r.streamOk) resStreamOk else resStreamFail)
+                                    append(if (r.toolsOk) resToolsOk else resToolsFail)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                             )
@@ -495,12 +508,12 @@ private fun ProviderEditDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = onDismiss) { Text("取消") }
+                    TextButton(onClick = onDismiss) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_cancel)) }
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = {
                         val cleaned = normalizeBaseUrl(baseUrl)
                         onSave(initial.copy(
-                            name = name.ifBlank { hostOf(cleaned) }, type = type, baseUrl = cleaned,
+                            name = name.ifBlank { hostOf(cleaned, hostFallback) }, type = type, baseUrl = cleaned,
                             apiKey = apiKey, models = models, enabledModels = enabledModels,
                             imageModel = imageModel.trim(), videoModel = videoModel.trim(),
                             imageEndpoint = imageEndpoint.trim(), videoSubmitUrl = videoSubmitUrl.trim(), videoStatusUrl = videoStatusUrl.trim(),
@@ -511,7 +524,7 @@ private fun ProviderEditDialog(
                             videoFailValues = videoFail.split(',').map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { initial.videoFailValues },
                             enabled = true,
                         ))
-                    }) { Text("保存") }
+                    }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_save)) }
             }
         }
     }
@@ -548,6 +561,6 @@ private fun normalizeBaseUrl(raw: String): String {
 }
 
 /** 从 URL 提取可读的提供商名 */
-private fun hostOf(url: String): String = runCatching {
+private fun hostOf(url: String, fallback: String): String = runCatching {
     java.net.URI(url).host?.removePrefix("www.")?.replaceFirstChar { it.uppercase() } ?: url
-}.getOrDefault(url.ifBlank { "提供商" })
+}.getOrDefault(url.ifBlank { fallback })

@@ -25,6 +25,9 @@ class DevCodexApp : Application() {
         super.onCreate()
         ai.devcodex.agent.util.DebugLog.init(this)
         CrashHandler.install(this)
+        // 语言镜像需同步读取，放在其余初始化之前，保证后续取串与通知使用正确语言
+        ai.devcodex.agent.i18n.AppLocale.attach(this)
+        ai.devcodex.agent.i18n.AppLocale.init(this)
         instance = this
         settingsRepo = SettingsRepo(this)
         sessionRepo = SessionRepo(this)

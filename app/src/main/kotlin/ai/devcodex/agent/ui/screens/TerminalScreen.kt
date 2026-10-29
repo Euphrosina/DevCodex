@@ -33,11 +33,15 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
         val green = "\u001B[32m"; val yellow = "\u001B[33m"; val reset = "\u001B[0m"; val grey = "\u001B[90m"
         val nativeTermux = runCatching { ai.devcodex.agent.shell.TermuxRuntime.ensure(ctx) }.getOrDefault(false)
         val status = if (nativeTermux) {
-            green + "Termux 原生引擎就绪（bash / apt 可用）" + reset
+            green + ctx.getString(ai.devcodex.agent.R.string.term_banner_ready) + reset
         } else {
-            yellow + "Termux 引擎: " + ai.devcodex.agent.shell.TermuxRuntime.lastError.ifBlank { "初始化中…" } + reset
+            val initText = ctx.getString(ai.devcodex.agent.R.string.term_banner_init)
+            yellow + ctx.getString(ai.devcodex.agent.R.string.term_banner_error_fmt, ai.devcodex.agent.shell.TermuxRuntime.lastError.ifBlank { initText }) + reset
         }
-        emulator.feed(("DevCodex VT 终端（OpenMinis 内核）\r\n" + status + "\r\n通道: Termux 原生 / Shizuku / Root\r\n" + grey + "↑↓ 历史 · 回车执行" + reset + "\r\n$ ").toByteArray())
+        val bannerTitle = ctx.getString(ai.devcodex.agent.R.string.term_banner_title)
+        val bannerChannel = ctx.getString(ai.devcodex.agent.R.string.term_banner_channel)
+        val bannerHint = ctx.getString(ai.devcodex.agent.R.string.term_banner_hint)
+        emulator.feed((bannerTitle + "\r\n" + status + "\r\n" + bannerChannel + "\r\n" + grey + bannerHint + reset + "\r\n$ ").toByteArray())
         rev++
     }
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -61,10 +65,10 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("终端") },
+                title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_title)) },
                 navigationIcon = {
                     IconButton(onClick = { vm.navRequest.value = "back" }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_back))
                     }
                 },
                 actions = {
@@ -73,7 +77,7 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
                         emulator.feed("\u001b[2J\u001b[H".toByteArray())
                         emulator.feed("$ ".toByteArray())
                         rev++
-                    }) { Text("清屏", style = MaterialTheme.typography.labelMedium) }
+                    }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_clear), style = MaterialTheme.typography.labelMedium) }
                 },
             )
         },
@@ -82,14 +86,14 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
             // 通道指示
             val mode = ai.devcodex.agent.shell.ShellAccess.availableMode()
             val modeLabel = when (mode) {
-                ai.devcodex.agent.shell.ShellAccess.Mode.SHIZUKU -> "Shizuku（特权）"
-                ai.devcodex.agent.shell.ShellAccess.Mode.ROOT -> "Root（特权）"
-                ai.devcodex.agent.shell.ShellAccess.Mode.AXS -> "AXS/Termux 服务（ADB 级）"
-                ai.devcodex.agent.shell.ShellAccess.Mode.LINUX -> "Linux 沙盒（Ubuntu·PRoot，/workspace 挂载）"
-                ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX -> "备用 toybox 沙盒"
+                ai.devcodex.agent.shell.ShellAccess.Mode.SHIZUKU -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_mode_shizuku)
+                ai.devcodex.agent.shell.ShellAccess.Mode.ROOT -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_mode_root)
+                ai.devcodex.agent.shell.ShellAccess.Mode.AXS -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_mode_axs)
+                ai.devcodex.agent.shell.ShellAccess.Mode.LINUX -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_mode_linux)
+                ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX -> androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_mode_sandbox)
             }
             Text(
-                "通道: $modeLabel",
+                androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_channel_fmt, modeLabel),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (mode == ai.devcodex.agent.shell.ShellAccess.Mode.SANDBOX) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
@@ -154,7 +158,7 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
                     singleLine = true,
                     enabled = !busy,
                     textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp),
-                    placeholder = { Text(if (busy) "执行中…" else "命令", fontSize = 13.sp) },
+                    placeholder = { Text(androidx.compose.ui.res.stringResource(if (busy) ai.devcodex.agent.R.string.term_running else ai.devcodex.agent.R.string.term_command), fontSize = 13.sp) },
                     keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Send),
                 )
                 IconButton(onClick = {
@@ -164,7 +168,7 @@ fun TerminalScreen(vm: ai.devcodex.agent.AppViewModel) {
                         cmd = ""
                         runCommand(c)
                     }
-                }) { Icon(Icons.Filled.PlayArrow, "执行") }
+                }) { Icon(Icons.Filled.PlayArrow, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.term_execute)) }
             }
         }
     }

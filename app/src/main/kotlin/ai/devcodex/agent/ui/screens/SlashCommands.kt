@@ -12,18 +12,18 @@ object SlashCommands {
 
     data class Def(val name: String, val desc: String)
 
-    val definitions = listOf(
-        Def("/new", "新建会话"),
-        Def("/clear", "清空当前会话消息"),
-        Def("/compact", "压缩上下文（保留摘要）"),
-        Def("/model", "打开模型选择器"),
-        Def("/stats", "查看使用统计"),
-        Def("/export", "导出会话为 Markdown 到工作区"),
-        Def("/copy", "复制 AI 最后一条回复"),
-        Def("/think", "设置推理等级：/think high"),
-        Def("/ctx", "设置上下文档位：/ctx 1m"),
-        Def("/skills", "列出已安装技能"),
-        Def("/help", "显示命令帮助"),
+    fun definitions(context: Context): List<Def> = listOf(
+        Def("/new", context.getString(ai.devcodex.agent.R.string.slash_new)),
+        Def("/clear", context.getString(ai.devcodex.agent.R.string.slash_clear)),
+        Def("/compact", context.getString(ai.devcodex.agent.R.string.slash_compact)),
+        Def("/model", context.getString(ai.devcodex.agent.R.string.slash_model)),
+        Def("/stats", context.getString(ai.devcodex.agent.R.string.slash_stats)),
+        Def("/export", context.getString(ai.devcodex.agent.R.string.slash_export)),
+        Def("/copy", context.getString(ai.devcodex.agent.R.string.slash_copy)),
+        Def("/think", context.getString(ai.devcodex.agent.R.string.slash_think)),
+        Def("/ctx", context.getString(ai.devcodex.agent.R.string.slash_ctx)),
+        Def("/skills", context.getString(ai.devcodex.agent.R.string.slash_skills)),
+        Def("/help", context.getString(ai.devcodex.agent.R.string.slash_help)),
     )
 
     /** 执行命令；返回 true=已处理（不发送 LLM） */
@@ -70,16 +70,21 @@ object SlashCommands {
                 true
             }
             "skills" -> {
-                val repo = ai.devcodex.agent.data.SkillRepo(context())
+                val ctx = context()
+                val repo = ai.devcodex.agent.data.SkillRepo(ctx)
                 val list = repo.list()
-                vm.appendLocalNotice("已安装技能（${list.size}）：\n" + list.joinToString("\n") { "· /${it.name} — ${it.description}" })
+                vm.appendLocalNotice(ctx.getString(ai.devcodex.agent.R.string.slash_skills_header_fmt, list.size) + "\n" + list.joinToString("\n") { "· /${it.name} — ${it.description}" })
                 true
             }
             "help" -> {
+                val ctx = context()
+                val defs = definitions(ctx)
                 vm.appendLocalNotice(buildString {
-                    append("斜杠命令：\n")
-                    definitions.forEach { append("${it.name.padEnd(10)} ${it.desc}\n") }
-                    append("\n技能也可用 /技能名 触发（详见技能页）")
+                    append(ctx.getString(ai.devcodex.agent.R.string.slash_help_header))
+                    append("\n")
+                    defs.forEach { append("${it.name.padEnd(10)} ${it.desc}\n") }
+                    append("\n")
+                    append(ctx.getString(ai.devcodex.agent.R.string.slash_help_footer))
                 })
                 true
             }
@@ -88,7 +93,7 @@ object SlashCommands {
                 val skills = runCatching { ai.devcodex.agent.data.SkillRepo(context()).list() }.getOrDefault(emptyList())
                 val hit = skills.firstOrNull { it.name.equals(cmd, true) }
                 if (hit != null) {
-                    vm.send("（调用技能 ${hit.name}：先 skill_read 了解用法再执行任务）")
+                    vm.send(context().getString(ai.devcodex.agent.R.string.slash_invoke_fmt, hit.name))
                     true
                 } else false
             }

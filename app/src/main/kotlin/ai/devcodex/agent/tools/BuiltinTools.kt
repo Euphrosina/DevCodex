@@ -20,6 +20,9 @@ object BuiltinTools {
     fun init(ctx: Context) { appContext = ctx.applicationContext }
     fun appContext(): Context = appContext
 
+    private fun tr(id: Int, vararg args: Any): String =
+        ai.devcodex.agent.i18n.AppLocale.string(id, *args)
+
     /** 应用内页面导航回调（ChatScreen 注册：AI 可打开终端/设置等页面） */
     @Volatile
     var navigateCallback: ((String) -> Unit)? = null
@@ -29,28 +32,30 @@ object BuiltinTools {
     // ============ 内存文件读写工具 ============
     val fsRead = ToolDef(
         name = "fs_read",
-        description = "读取手机本地文本文件。相对路径（如 \"notes.txt\" 或 \"src/Main.kt\"）= 工作区文件（用户上传的文件都在工作区）；绝对路径 = 系统路径（沙箱外需 Shizuku/Root 授权，如 /sdcard/xxx.txt）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_fs_read_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
-                put("path", obj { put("type", "string"); put("description", "文件绝对路径") })
+                put("path", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_abs_file_path)) })
             })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("path")) })
         },
     ) { args ->
-        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path 参数"
+        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_path_param)
         val resolved = resolvePath(path)
         ShellAccess.readFile(resolved).take(20000)
     }
 
     val fsWrite = ToolDef(
         name = "fs_write",
-        description = "写入文本文件（覆盖）。相对路径 = 工作区（免确认直接写）；绝对路径 = 系统路径（沙箱外需 Shizuku/Root + 用户确认）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_fs_write_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
-                put("path", obj { put("type", "string"); put("description", "目标文件绝对路径") })
-                put("content", obj { put("type", "string"); put("description", "写入的文本内容") })
+                put("path", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_target_abs_path)) })
+                put("content", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_write_content)) })
             })
             put("required", kotlinx.serialization.json.buildJsonArray {
                 add(kotlinx.serialization.json.JsonPrimitive("path")); add(kotlinx.serialization.json.JsonPrimitive("content"))
@@ -58,7 +63,7 @@ object BuiltinTools {
         },
         risk = ToolDef.Risk.MEDIUM,
     ) { args ->
-        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path"
+        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_path)
         val content = ai.devcodex.agent.util.JsonArg.string(args, "content") ?: ""
         val resolved = resolvePath(path)
         // 工作区内或沙箱内 → 免审批直写；其他路径走 ShellAccess（需授权/审批）
@@ -66,42 +71,45 @@ object BuiltinTools {
             runCatching {
                 java.io.File(resolved).parentFile?.mkdirs()
                 java.io.File(resolved).writeText(content)
-            }.fold(onSuccess = { "OK（工作区: ${java.io.File(resolved).relativeTo(java.io.File(appContext.filesDir, "workspace")).path}）" },
-                   onFailure = { "ERROR: ${it.message}" })
+            }.fold(onSuccess = { tr(ai.devcodex.agent.R.string.bt_fs_write_ok_fmt, java.io.File(resolved).relativeTo(java.io.File(appContext.filesDir, "workspace")).path) },
+                   onFailure = { tr(ai.devcodex.agent.R.string.bt_err_fmt, it.message ?: "") })
         } else ShellAccess.writeFile(resolved, content)
     }
 
     val fsList = ToolDef(
         name = "fs_list",
-        description = "列目录。相对路径或空 = 工作区；绝对路径 = 系统目录（沙箱外需授权）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_fs_list_desc,
         parameters = obj {
             put("type", "object")
-            put("properties", obj { put("path", obj { put("type", "string"); put("description", "目录绝对路径") }) })
+            put("properties", obj { put("path", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_dir_abs_path)) }) })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("path")) })
         },
     ) { args ->
-        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path"
+        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_path)
         ShellAccess.listDir(resolvePath(path)).take(8000)
     }
 
     val fsDelete = ToolDef(
         name = "fs_delete",
-        description = "删除文件或目录（递归）。危险操作，每次需用户确认",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_fs_delete_desc,
         parameters = obj {
             put("type", "object")
-            put("properties", obj { put("path", obj { put("type", "string"); put("description", "要删除的绝对路径") }) })
+            put("properties", obj { put("path", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_delete_abs_path)) }) })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("path")) })
         },
         risk = ToolDef.Risk.HIGH,
     ) { args ->
-        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef "ERROR: 缺少 path"
+        val path = ai.devcodex.agent.util.JsonArg.string(args, "path") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_path)
         ShellAccess.delete(path)
     }
 
     // ============ Shell ============
     val appOpen = ToolDef(
         name = "app_open",
-        description = "打开应用内页面。当用户要求打开终端/设置/统计/插件时用这个（不要用 shell 启动 Termux 等外部应用）。page 可选: terminal(应用内终端), settings(设置), stats(使用统计), plugins(插件), providers(提供商)",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_app_open_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -117,32 +125,34 @@ object BuiltinTools {
         },
         risk = ToolDef.Risk.LOW,
     ) { args ->
-        val page = ai.devcodex.agent.util.JsonArg.string(args, "page") ?: return@ToolDef "ERROR: 缺少 page"
+        val page = ai.devcodex.agent.util.JsonArg.string(args, "page") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_page)
         val valid = listOf("terminal", "settings", "stats", "plugins", "providers")
-        if (page !in valid) return@ToolDef "ERROR: page 须为 ${valid.joinToString("/")}"
-        navigateCallback?.invoke(page) ?: return@ToolDef "ERROR: 界面未就绪"
-        "OK: 已打开 $page"
+        if (page !in valid) return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_bad_page_fmt, valid.joinToString("/"))
+        navigateCallback?.invoke(page) ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_ui_not_ready)
+        tr(ai.devcodex.agent.R.string.bt_app_open_ok_fmt, page)
     }
 
     val sshExec = ToolDef(
         name = "ssh_exec",
-        description = "通过 SSH 在远程服务器上执行命令（需在设置→SSH 隧道配置）。适合运维、远程文件、跑服务端脚本",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_ssh_exec_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
-                put("command", obj { put("type", "string"); put("description", "远程 shell 命令") })
+                put("command", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_remote_cmd)) })
             })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("command")) })
         },
         risk = ToolDef.Risk.HIGH,
     ) { args ->
-        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef "ERROR: 缺少 command"
+        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_command)
         SshClient.exec(cmd)
     }
 
     val sshForward = ToolDef(
         name = "ssh_forward",
-        description = "建立 SSH 本地端口转发隧道（把远程内网服务映射到 127.0.0.1）。local_port=本地端口, remote_host/remote_port=远端目标（如内网 LLM API）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_ssh_forward_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -154,40 +164,42 @@ object BuiltinTools {
         },
         risk = ToolDef.Risk.LOW,
     ) { args ->
-        val lp = ai.devcodex.agent.util.JsonArg.int(args, "local_port") ?: return@ToolDef "ERROR: 缺少 local_port"
-        val rh = ai.devcodex.agent.util.JsonArg.string(args, "remote_host") ?: return@ToolDef "ERROR: 缺少 remote_host"
-        val rp = ai.devcodex.agent.util.JsonArg.int(args, "remote_port") ?: return@ToolDef "ERROR: 缺少 remote_port"
+        val lp = ai.devcodex.agent.util.JsonArg.int(args, "local_port") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_local_port)
+        val rh = ai.devcodex.agent.util.JsonArg.string(args, "remote_host") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_remote_host)
+        val rp = ai.devcodex.agent.util.JsonArg.int(args, "remote_port") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_remote_port)
         SshClient.forward(lp, rh, rp)
     }
 
     val linuxExec = ToolDef(
         name = "linux_exec", risk = ToolDef.Risk.HIGH,
-        description = "Termux 原生沙盒执行（busybox sh 完整工具链）。默认工作目录=应用工作区（相对路径直接读写），支持 cwd 指定工作目录",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_linux_exec_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
-                put("command", obj { put("type", "string"); put("description", "要执行的 shell 命令") })
+                put("command", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_shell_cmd)) })
             })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("command")) })
         },
     ) { args ->
-        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef "ERROR: 缺少 command"
+        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_command)
         ShellAccess.linuxExec(cmd).take(30000)
     }
 
     val shellExec = ToolDef(
         name = "shell_exec",
-        description = "执行 shell 命令（Shizuku 提供ADB权限，或Root）。可执行 pm/am/ls/cat 等任意命令。危险操作，每次需用户确认（可选择本会话内记住）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_shell_exec_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
-                put("command", obj { put("type", "string"); put("description", "要执行的命令") })
+                put("command", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_cmd)) })
             })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("command")) })
         },
         risk = ToolDef.Risk.HIGH,
     ) { args ->
-        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef "ERROR: 缺少 command"
+        val cmd = ai.devcodex.agent.util.JsonArg.string(args, "command") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_command)
         ShellAccess.exec(cmd).take(20000)
     }
 
@@ -195,7 +207,8 @@ object BuiltinTools {
     val httpRequest = ToolDef(
         name = "http_request",
         risk = ToolDef.Risk.MEDIUM,
-        description = "发起 HTTP 请求（GET/POST/PUT/DELETE），可请求任意 URL，用于查资料、调用 web API",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_http_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -203,8 +216,8 @@ object BuiltinTools {
                     add(kotlinx.serialization.json.JsonPrimitive("GET")); add(kotlinx.serialization.json.JsonPrimitive("POST")); add(kotlinx.serialization.json.JsonPrimitive("PUT")); add(kotlinx.serialization.json.JsonPrimitive("DELETE"))
                 }) })
                 put("url", obj { put("type", "string") })
-                put("headers", obj { put("type", "object"); put("description", "可选请求头") })
-                put("body", obj { put("type", "string"); put("description", "可选请求体") })
+                put("headers", obj { put("type", "object"); put("description", tr(ai.devcodex.agent.R.string.bt_param_headers)) })
+                put("body", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_body)) })
             })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("url")) })
         },
@@ -218,7 +231,8 @@ object BuiltinTools {
 
     val memorySave = ToolDef(
         name = "memory_save",
-        description = "把重要信息保存到长期记忆（跨会话保留），键值对形式",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_mem_save_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -231,42 +245,44 @@ object BuiltinTools {
         val key = ai.devcodex.agent.util.JsonArg.string(args, "key") ?: "general"
         val value = ai.devcodex.agent.util.JsonArg.string(args, "value") ?: ""
         // 路径穿越防护：键只允许安全文件名字符
-        if (!isSafeMemoryKey(key)) return@ToolDef "ERROR: 记忆键只能包含字母、数字、中文、点、下划线和连字符，长度不超过 64"
-        if (value.length > 200_000) return@ToolDef "ERROR: 记忆内容过长"
+        if (!isSafeMemoryKey(key)) return@ToolDef tr(ai.devcodex.agent.R.string.bt_mem_err_bad_key)
+        if (value.length > 200_000) return@ToolDef tr(ai.devcodex.agent.R.string.bt_mem_err_too_long)
         val dir = File(appContext.filesDir, "memory").apply { mkdirs() }
         File(dir, "$key.md").writeText(value)
-        "已保存到记忆: $key"
+        tr(ai.devcodex.agent.R.string.bt_mem_saved_fmt, key)
     }
 
     val memoryRead = ToolDef(
         name = "memory_read",
-        description = "读取长期记忆（列出全部或读指定键）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_mem_read_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
-                put("key", obj { put("type", "string"); put("description", "要读的键，留空则列出全部键") })
+                put("key", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_key_read)) })
             })
         },
     ) { args ->
         val dir = File(appContext.filesDir, "memory")
         val key = ai.devcodex.agent.util.JsonArg.string(args, "key")
         if (key.isNullOrBlank()) {
-            dir.listFiles()?.joinToString("\n") { it.nameWithoutExtension } ?: "(记忆为空)"
+            dir.listFiles()?.joinToString("\n") { it.nameWithoutExtension } ?: tr(ai.devcodex.agent.R.string.bt_mem_empty)
         } else if (!isSafeMemoryKey(key)) {
-            "ERROR: 记忆键只能包含字母、数字、中文、点、下划线和连字符，长度不超过 64"
+            tr(ai.devcodex.agent.R.string.bt_mem_err_bad_key)
         } else {
-            File(dir, "$key.md").takeIf { it.exists() }?.readText()?.take(8000) ?: "(无此记忆: $key)"
+            File(dir, "$key.md").takeIf { it.exists() }?.readText()?.take(8000) ?: tr(ai.devcodex.agent.R.string.bt_mem_missing_fmt, key)
         }
     }
 
     // ============ 设备 ============
     val appList = ToolDef(
         name = "app_list",
-        description = "列出手机上已安装的应用（包名+名称）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_app_list_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
-                put("keyword", obj { put("type", "string"); put("description", "可选过滤关键字") })
+                put("keyword", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_keyword)) })
             })
         },
     ) { args ->
@@ -281,14 +297,15 @@ object BuiltinTools {
 
     val deviceInfo = ToolDef(
         name = "device_info",
-        description = "获取设备信息（型号/系统/屏幕/权限状态等）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_device_info_desc,
         parameters = obj { put("type", "object"); put("properties", obj {}) },
     ) { _ ->
         buildString {
-            appendLine("型号: ${Build.MANUFACTURER} ${Build.MODEL}")
+            appendLine(tr(ai.devcodex.agent.R.string.bt_dev_model_fmt, Build.MANUFACTURER, Build.MODEL))
             appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-            appendLine("Shell通道: ${ShellAccess.availableMode()}")
-            appendLine("无障碍: ${if (DcAccessibilityService.isEnabled()) "已启用" else "未启用"}")
+            appendLine(tr(ai.devcodex.agent.R.string.bt_dev_shell_fmt, ShellAccess.availableMode()))
+            appendLine(tr(ai.devcodex.agent.R.string.bt_dev_a11y_fmt, if (DcAccessibilityService.isEnabled()) tr(ai.devcodex.agent.R.string.bt_a11y_enabled) else tr(ai.devcodex.agent.R.string.bt_a11y_disabled)))
             appendLine("ABI: ${Build.SUPPORTED_ABIS.joinToString()}")
         }
     }
@@ -296,13 +313,15 @@ object BuiltinTools {
     // ============ UI 自动化（无障碍） ============
     val uiSnapshot = ToolDef(
         name = "ui_snapshot",
-        description = "读取当前屏幕的文本内容快照（需要无障碍服务），返回界面元素及其坐标",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_ui_snapshot_desc,
         parameters = obj { put("type", "object"); put("properties", obj {}) },
     ) { _ -> DcAccessibilityService.snapshot() }
 
     val uiTap = ToolDef(
         name = "ui_tap",
-        description = "点击屏幕指定坐标（需要无障碍服务）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_ui_tap_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -313,35 +332,36 @@ object BuiltinTools {
         },
         risk = ToolDef.Risk.MEDIUM,
     ) { args ->
-        val x = ai.devcodex.agent.util.JsonArg.int(args, "x") ?: return@ToolDef "ERROR: 缺少 x"
-        val y = ai.devcodex.agent.util.JsonArg.int(args, "y") ?: return@ToolDef "ERROR: 缺少 y"
-        if (DcAccessibilityService.tap(x.toFloat(), y.toFloat())) "已点击 ($x,$y)" else "ERROR: 无障碍服务未启用"
+        val x = ai.devcodex.agent.util.JsonArg.int(args, "x") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_x)
+        val y = ai.devcodex.agent.util.JsonArg.int(args, "y") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_y)
+        if (DcAccessibilityService.tap(x.toFloat(), y.toFloat())) tr(ai.devcodex.agent.R.string.bt_ui_tapped_fmt, x, y) else tr(ai.devcodex.agent.R.string.bt_err_a11y_disabled)
     }
 
     val uiBack = ToolDef(
-        name = "ui_back", description = "按返回键",
+        name = "ui_back", description = "", descriptionRes = ai.devcodex.agent.R.string.bt_ui_back_desc,
         parameters = obj { put("type", "object"); put("properties", obj {}) },
-    ) { _ -> if (DcAccessibilityService.back()) "OK" else "ERROR: 未启用" }
+    ) { _ -> if (DcAccessibilityService.back()) "OK" else tr(ai.devcodex.agent.R.string.bt_err_not_enabled) }
 
     val uiHome = ToolDef(
-        name = "ui_home", description = "回到桌面",
+        name = "ui_home", description = "", descriptionRes = ai.devcodex.agent.R.string.bt_ui_home_desc,
         parameters = obj { put("type", "object"); put("properties", obj {}) },
-    ) { _ -> if (DcAccessibilityService.home()) "OK" else "ERROR: 未启用" }
+    ) { _ -> if (DcAccessibilityService.home()) "OK" else tr(ai.devcodex.agent.R.string.bt_err_not_enabled) }
 
     val uiScroll = ToolDef(
-        name = "ui_scroll", description = "滑动屏幕",
+        name = "ui_scroll", description = "", descriptionRes = ai.devcodex.agent.R.string.bt_ui_scroll_desc,
         parameters = obj {
             put("type", "object")
-            put("properties", obj { put("down", obj { put("type", "boolean"); put("description", "true=下滑 false=上滑") }) })
+            put("properties", obj { put("down", obj { put("type", "boolean"); put("description", tr(ai.devcodex.agent.R.string.bt_param_scroll_dir)) }) })
         },
     ) { args ->
         val down = ai.devcodex.agent.util.JsonArg.bool(args, "down") ?: true
-        if (DcAccessibilityService.scroll(down)) "OK" else "ERROR: 未启用"
+        if (DcAccessibilityService.scroll(down)) "OK" else tr(ai.devcodex.agent.R.string.bt_err_not_enabled)
     }
 
     val notify = ToolDef(
         name = "notify",
-        description = "发送系统通知（用于任务完成提醒等）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_notify_desc,
         parameters = obj {
             put("type", "object")
             put("properties", obj {
@@ -354,7 +374,7 @@ object BuiltinTools {
         val title = ai.devcodex.agent.util.JsonArg.string(args, "title") ?: "DevCodex"
         val text = ai.devcodex.agent.util.JsonArg.string(args, "text") ?: ""
         ai.devcodex.agent.util.Notify.post(appContext, title, text)
-        "已发送通知"
+        tr(ai.devcodex.agent.R.string.bt_notify_ok)
     }
 
     /** 相对路径 → 工作区绝对路径（尊重自定义工作区）；绝对路径原样返回 */
@@ -375,28 +395,30 @@ object BuiltinTools {
     // ============ 技能读取 ============
     val skillRead = ToolDef(
         name = "skill_read",
-        description = "读取已安装技能（Skill）的完整说明文档。先用 skill_list 看有哪些技能，需要某技能的详细用法时调用此工具",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_skill_read_desc,
         parameters = obj {
             put("type", "object")
-            put("properties", obj { put("name", obj { put("type", "string"); put("description", "技能名") }) })
+            put("properties", obj { put("name", obj { put("type", "string"); put("description", tr(ai.devcodex.agent.R.string.bt_param_skill_name)) }) })
             put("required", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("name")) })
         },
     ) { args ->
-        val name = ai.devcodex.agent.util.JsonArg.string(args, "name") ?: return@ToolDef "ERROR: 缺少 name"
+        val name = ai.devcodex.agent.util.JsonArg.string(args, "name") ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_err_missing_name)
         val repo = ai.devcodex.agent.data.SkillRepo(appContext)
         val sk = repo.list().find { it.name.equals(name, true) && it.enabled }
-            ?: return@ToolDef "ERROR: 未安装或未启用的技能: $name（用 skill_list 查看）"
-        "技能 ${sk.name}：\n${sk.content.take(20000)}"
+            ?: return@ToolDef tr(ai.devcodex.agent.R.string.bt_skill_not_found_fmt, name)
+        tr(ai.devcodex.agent.R.string.bt_skill_body_fmt, sk.name, sk.content.take(20000))
     }
 
     val skillList = ToolDef(
         name = "skill_list",
-        description = "列出已安装的技能（名称+简介）",
+        description = "",
+        descriptionRes = ai.devcodex.agent.R.string.bt_skill_list_desc,
         parameters = obj { put("type", "object"); put("properties", obj {}) },
     ) { _ ->
         val repo = ai.devcodex.agent.data.SkillRepo(appContext)
         val all = repo.list().filter { it.enabled }
-        if (all.isEmpty()) "(无已安装技能)" else all.joinToString("\n") { "${it.name}: ${it.description.take(100)}" }
+        if (all.isEmpty()) tr(ai.devcodex.agent.R.string.bt_skill_none) else all.joinToString("\n") { "${it.name}: ${it.description.take(100)}" }
     }
 
     val all: List<ToolDef> = listOf(

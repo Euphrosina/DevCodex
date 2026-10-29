@@ -30,6 +30,15 @@ fun ExtensionsScreen(vm: AppViewModel) {
     var message by remember { mutableStateOf<String?>(null) }
     var sourceUrl by remember { mutableStateOf("https://raw.githubusercontent.com/Moirania/DevCodex/main/extensions/index.json") }
     val scope = rememberCoroutineScope()
+    val extErrEmptyResponse = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_error_empty_response)
+    val extErrEmptyContent = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_error_empty_content)
+    val extErrBadName = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_error_bad_name)
+    val extErrTooLarge = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_error_too_large)
+    val extListFailedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_error_list_failed_fmt)
+    val extInstallFailedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_error_install_failed_fmt)
+    val extInstalledFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_installed_fmt)
+    val pluginsPageLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_title)
+    val skillsPageLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.settings_skills_title)
     fun scopeLaunch(block: suspend () -> Unit) { scope.launch { block() } }
 
     suspend fun load(src: String) {
@@ -40,7 +49,7 @@ fun ExtensionsScreen(vm: AppViewModel) {
                 okhttp3.OkHttpClient.Builder().callTimeout(15, java.util.concurrent.TimeUnit.SECONDS).build()
                     .newCall(req).execute().use { resp ->
                         if (!resp.isSuccessful) error("HTTP ${resp.code}")
-                        val body = resp.body?.string() ?: error("空响应")
+                        val body = resp.body?.string() ?: error(extErrEmptyResponse)
                         val arr = kotlinx.serialization.json.Json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonArray
                             ?: return@use
                         entries = arr.mapNotNull { e ->
@@ -54,7 +63,7 @@ fun ExtensionsScreen(vm: AppViewModel) {
                             )
                         }
                     }
-            }.getOrElse { message = "清单加载失败：${it.message?.take(120)}" }
+            }.getOrElse { message = extListFailedFmt.replace("%1\$s", it.message?.take(120) ?: "") }
         }
         loading = false
     }
@@ -67,10 +76,10 @@ fun ExtensionsScreen(vm: AppViewModel) {
                 okhttp3.OkHttpClient.Builder().callTimeout(60, java.util.concurrent.TimeUnit.SECONDS).build()
                     .newCall(req).execute().use { resp ->
                         if (!resp.isSuccessful) error("HTTP ${resp.code}")
-                        val bytes = resp.body?.bytes() ?: error("空内容")
+                        val bytes = resp.body?.bytes() ?: error(extErrEmptyContent)
                         // 路径穿越防护：远程清单的 name 只允许安全文件名字符，并限制内容大小
-                        if (!entry.name.matches(Regex("[A-Za-z0-9._一-龥-]+")) || entry.name == "." || entry.name == "..") error("扩展名称含非法字符")
-                        if (bytes.size > 2 * 1024 * 1024) error("扩展文件过大")
+                        if (!entry.name.matches(Regex("[A-Za-z0-9._一-龥-]+")) || entry.name == "." || entry.name == "..") error(extErrBadName)
+                        if (bytes.size > 2 * 1024 * 1024) error(extErrTooLarge)
                         val ctx = BuiltinTools.appContext()
                         when (entry.type) {
                             "plugin" -> {
@@ -82,9 +91,9 @@ fun ExtensionsScreen(vm: AppViewModel) {
                                 ai.devcodex.agent.data.SkillRepo(ctx).install(text).getOrThrow()
                             }
                         }
-                        message = "✓ 已安装「${entry.name}」（可在${if (entry.type == "plugin") "插件" else "技能"}页管理）"
+                        message = extInstalledFmt.replace("%1\$s", entry.name).replace("%2\$s", if (entry.type == "plugin") pluginsPageLabel else skillsPageLabel)
                     }
-            }.getOrElse { message = "安装失败：${it.message?.take(120)}" }
+            }.getOrElse { message = extInstallFailedFmt.replace("%1\$s", it.message?.take(120) ?: "") }
         }
         loading = false
     }
@@ -93,9 +102,9 @@ fun ExtensionsScreen(vm: AppViewModel) {
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text("扩展") },
+            title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_title)) },
             actions = {
-                IconButton(onClick = { scopeLaunch { load(sourceUrl) } }) { Icon(Icons.Filled.Refresh, "刷新") }
+                IconButton(onClick = { scopeLaunch { load(sourceUrl) } }) { Icon(Icons.Filled.Refresh, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_refresh)) }
             },
         )
     }) { pad ->
@@ -103,13 +112,13 @@ fun ExtensionsScreen(vm: AppViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = sourceUrl, onValueChange = { sourceUrl = it },
-                    label = { Text("扩展源 URL") },
+                    label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_source_url)) },
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(6.dp))
-                FilledTonalButton(onClick = { scopeLaunch { load(sourceUrl) } }) { Text("加载") }
+                FilledTonalButton(onClick = { scopeLaunch { load(sourceUrl) } }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_load)) }
             }
             Spacer(Modifier.height(8.dp))
             message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
@@ -118,14 +127,12 @@ fun ExtensionsScreen(vm: AppViewModel) {
             if (loading) Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(6.dp))
-                Text("加载中…", style = MaterialTheme.typography.bodySmall)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_loading), style = MaterialTheme.typography.bodySmall)
             }
 
             if (entries.isEmpty() && !loading) {
                 Text(
-                    "暂无扩展。规范：扩展源部署 index.json（[{name,type,desc,url,size}]），" +
-                        "type=skill 装技能 Markdown（AI 技能），type=plugin 装插件 JSON（http 工具）。" +
-                        "装好后 AI 对话即可调用，也可在「插件 / 技能」页管理。",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.ext_empty_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -157,7 +164,7 @@ fun ExtensionsScreen(vm: AppViewModel) {
                                 )
                             }
                             FilledTonalButton(onClick = { scopeLaunch { install(e) } }, enabled = !loading) {
-                                Text("安装")
+                                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_install))
                             }
                         }
                     }

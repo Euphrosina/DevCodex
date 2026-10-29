@@ -59,12 +59,13 @@ fun PluginsScreen(vm: AppViewModel) {
     var showInstall by remember { mutableStateOf(false) }
     var showGuide by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<ai.devcodex.agent.data.PluginManifest?>(null) }
+    val unknownAuthor = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_unknown_author)
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("插件") }) },
+        topBar = { TopAppBar(title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_title)) }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showInstall = true }) {
-                Icon(Icons.Filled.Extension, "安装插件")
+                Icon(Icons.Filled.Extension, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_install))
             }
         },
     ) { padding ->
@@ -86,9 +87,9 @@ fun PluginsScreen(vm: AppViewModel) {
                 )
                 Spacer(Modifier.padding(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("插件开发文档", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_guide_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     Text(
-                        "是什么 · JSON 字段说明 · 参数写法 · 模板语法 · 五条铁律 · 最小示例 · 调试流程",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_guide_desc),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
                     )
@@ -98,12 +99,10 @@ fun PluginsScreen(vm: AppViewModel) {
         }
         if (plugins.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-                Text("暂无插件", style = MaterialTheme.typography.titleMedium)
+                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_empty), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.padding(8.dp))
                 Text(
-                    "插件 = JSON 工具包：声明工具名、参数 Schema 和 HTTP 端点模板，" +
-                        "智能体即可调用你自己的服务（Home Assistant、n8n、自建 API 等）。\n" +
-                        "支持从本地文件 / URL / 粘贴 JSON 三种方式安装。",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_empty_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -124,9 +123,9 @@ fun PluginsScreen(vm: AppViewModel) {
                         onClick = { detail = p },
                     ) {
                         ListItem(
-                            overlineContent = { Text("v${p.version} · ${p.author.ifBlank { "未知作者" }}") },
+                            overlineContent = { Text("v${p.version} · ${p.author.ifBlank { unknownAuthor }}") },
                             headlineContent = { Text(p.name) },
-                            supportingContent = { Text("工具 ×${p.tools.size} · ${p.description}", maxLines = 2) },
+                            supportingContent = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_tools_fmt, p.tools.size, p.description), maxLines = 2) },
                             leadingContent = {
                                 Icon(Icons.Filled.Extension, null, Modifier.size(36.dp))
                             },
@@ -152,7 +151,7 @@ fun PluginsScreen(vm: AppViewModel) {
         InstallPluginDialog(vm) { showInstall = false }
     }
     if (showGuide) {
-        ai.devcodex.agent.ui.components.DocViewerDialog(title = "插件开发指南", markdown = PLUGIN_DOC_MD) { showGuide = false }
+        ai.devcodex.agent.ui.components.DocViewerDialog(title = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_guide_dialog), markdown = pluginDocMarkdown()) { showGuide = false }
     }
 
     detail?.let { p ->
@@ -177,9 +176,9 @@ fun PluginsScreen(vm: AppViewModel) {
                     vm.pluginRepo.delete(p.id)
                     vm.reloadPlugins()
                     detail = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { detail = null }) { Text("关闭") } },
+            dismissButton = { TextButton(onClick = { detail = null }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_close)) } },
         )
     }
 }
@@ -192,6 +191,8 @@ private fun InstallPluginDialog(vm: AppViewModel, onDone: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val readFailedMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_read_failed)
+    val installFailedFmt = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_install_failed_fmt)
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -200,8 +201,8 @@ private fun InstallPluginDialog(vm: AppViewModel, onDone: () -> Unit) {
                 val content = runCatching {
                     context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
                 }.getOrNull()
-                if (content == null) error = "读取文件失败"
-                else install(vm, content) { error = it }
+                if (content == null) error = readFailedMsg
+                else install(vm, content, installFailedFmt) { error = it }
                 busy = false
                 if (error == null) onDone()
             }
@@ -210,15 +211,15 @@ private fun InstallPluginDialog(vm: AppViewModel, onDone: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text("安装插件") },
+        title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_install)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { filePicker.launch("*/*") }, enabled = !busy) {
-                    Icon(Icons.Filled.FileOpen, null, Modifier.padding(end = 6.dp)); Text("从文件安装")
+                    Icon(Icons.Filled.FileOpen, null, Modifier.padding(end = 6.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_from_file))
                 }
                 OutlinedTextField(
                     value = url, onValueChange = { url = it },
-                    label = { Text("从 URL 安装") }, singleLine = true,
+                    label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_from_url)) }, singleLine = true,
                 )
                 TextButton(
                     onClick = {
@@ -229,7 +230,7 @@ private fun InstallPluginDialog(vm: AppViewModel, onDone: () -> Unit) {
                                 if (body.startsWith("ERROR") || body.startsWith("HTTP 4") || body.startsWith("HTTP 5")) {
                                     error = body.take(150)
                                 } else {
-                                    install(vm, body) { error = it }
+                                    install(vm, body, installFailedFmt) { error = it }
                                     if (error == null) onDone()
                                 }
                             } catch (e: Exception) { error = e.message }
@@ -237,32 +238,32 @@ private fun InstallPluginDialog(vm: AppViewModel, onDone: () -> Unit) {
                         }
                     },
                     enabled = !busy && url.isNotBlank(),
-                ) { Icon(Icons.Filled.Link, null, Modifier.padding(end = 6.dp)); Text("下载") }
+                ) { Icon(Icons.Filled.Link, null, Modifier.padding(end = 6.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_download)) }
 
                 OutlinedTextField(
                     value = text, onValueChange = { text = it },
-                    label = { Text("或粘贴插件 JSON") },
+                    label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_paste_json)) },
                     minLines = 3, maxLines = 6,
                 )
                 TextButton(
                     onClick = {
-                        install(vm, text) { error = it }
+                        install(vm, text, installFailedFmt) { error = it }
                         if (error == null) onDone()
                     },
                     enabled = text.isNotBlank(),
-                ) { Icon(Icons.Filled.EditNote, null, Modifier.padding(end = 6.dp)); Text("安装") }
+                ) { Icon(Icons.Filled.EditNote, null, Modifier.padding(end = 6.dp)); Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.plugins_install)) }
 
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 if (busy) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton(onClick = onDone) { Text("关闭") } },
+        confirmButton = { TextButton(onClick = onDone) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_close)) } },
     )
 }
 
-private fun install(vm: AppViewModel, content: String, onError: (String) -> Unit) {
+private fun install(vm: AppViewModel, content: String, failFmt: String, onError: (String) -> Unit) {
     vm.pluginRepo.installFromText(content)
         .onSuccess { vm.reloadPlugins() }
-        .onFailure { onError("安装失败: ${it.message}") }
+        .onFailure { onError(failFmt.replace("%1\$s", it.message ?: "")) }
 }
 

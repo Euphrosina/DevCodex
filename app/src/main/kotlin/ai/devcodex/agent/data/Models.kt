@@ -88,7 +88,7 @@ data class PendingApproval(
 @Serializable
 data class ChatSession(
     val id: String,
-    val title: String = "新会话",
+    val title: String = "",
     val messages: List<Message> = emptyList(),
     val providerId: String? = null,
     val modelId: String? = null,
@@ -123,6 +123,8 @@ data class AppSettings(
     val reasoningEffort: String = "",
     // 自定义系统提示词：空=不启用；非空时追加在默认系统提示词之后
     val customSystemPrompt: String = "",
+    // 界面语言：SYSTEM=跟随系统，其余为 AppLanguage 枚举名（ZH_CN/ZH_TW/ZH_HK/EN/JA/KO）
+    val language: String = "SYSTEM",
     // 自定义工作区：空=应用私有目录；否则为绝对路径
     val workspaceDir: String = "",
     // AXS/Termux HTTP shell 服务（如 http://127.0.0.1:8912）

@@ -211,11 +211,11 @@ fun ChatScreen(vm: AppViewModel) {
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("会话", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_drawer_sessions), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     IconButton(onClick = {
                         vm.openSession(null)
                         scope.launch { drawerState.close() }
-                    }) { Icon(Icons.Filled.Add, "新建") }
+                    }) { Icon(Icons.Filled.Add, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_drawer_new)) }
                 }
                 HorizontalDivider()
                 // 角色卡（Operit 式）：列表 + JSON 导入 + 点击开聊
@@ -225,18 +225,24 @@ fun ChatScreen(vm: AppViewModel) {
                 ) {
                     Icon(Icons.Filled.Psychology, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(6.dp))
-                    Text("角色卡", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { showCharacters = true }) { Text("查看/导入") }
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_drawer_characters), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { showCharacters = true }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_drawer_characters_manage)) }
                 }
                 HorizontalDivider()
                 // 会话列表（重设计）：日期分组 + 最后消息预览 + 相对时间 + 选中卡
+                val timeJustNow = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_time_just_now)
+                val groupToday = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_group_today)
+                val groupYesterday = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_group_yesterday)
+                val groupWeek = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_group_week)
+                val groupEarlier = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_group_earlier)
+                val resCtx = androidx.compose.ui.platform.LocalContext.current
                 fun relTime(ts: Long): String {
                     val diff = (System.currentTimeMillis() - ts) / 1000
                     return when {
-                        diff < 60 -> "刚刚"
-                        diff < 3600 -> "${diff / 60} 分钟前"
-                        diff < 86400 -> "${diff / 3600} 小时前"
-                        diff < 86400 * 7 -> "${diff / 86400} 天前"
+                        diff < 60 -> timeJustNow
+                        diff < 3600 -> resCtx.getString(ai.devcodex.agent.R.string.chat_time_minutes_ago, (diff / 60).toInt())
+                        diff < 86400 -> resCtx.getString(ai.devcodex.agent.R.string.chat_time_hours_ago, (diff / 3600).toInt())
+                        diff < 86400 * 7 -> resCtx.getString(ai.devcodex.agent.R.string.chat_time_days_ago, (diff / 86400).toInt())
                         else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(Date(ts))
                     }
                 }
@@ -245,10 +251,10 @@ fun ChatScreen(vm: AppViewModel) {
                     cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0); cal.set(java.util.Calendar.SECOND, 0)
                     val today = cal.timeInMillis
                     return when {
-                        ts >= today -> "今天"
-                        ts >= today - 86400000L -> "昨天"
-                        ts >= today - 86400000L * 7 -> "7 天内"
-                        else -> "更早"
+                        ts >= today -> groupToday
+                        ts >= today - 86400000L -> groupYesterday
+                        ts >= today - 86400000L * 7 -> groupWeek
+                        else -> groupEarlier
                     }
                 }
                 val grouped = sessions.sortedByDescending { it.updatedAt }.groupBy { groupOf(it.updatedAt) }
@@ -286,7 +292,7 @@ fun ChatScreen(vm: AppViewModel) {
                                     Column(Modifier.weight(1f).padding(start = 12.dp, top = 6.dp, bottom = 6.dp)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                s.title.ifBlank { "新会话" },
+                                                s.title.ifBlank { androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_session_untitled) },
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f),
@@ -307,7 +313,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         }
                                     }
                                     IconButton(onClick = { vm.deleteSession(s.id) }) {
-                                        Icon(Icons.Filled.Delete, "删除", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                        Icon(Icons.Filled.Delete, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_delete), Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                     }
                                 }
                             }
@@ -324,9 +330,9 @@ fun ChatScreen(vm: AppViewModel) {
                     title = {
                         Column(Modifier.clickable { showModelPicker = true }) {
                             // MChat 式：会话标题 + 当前模型行（Logo+名称+下拉箭头）
-                            Text(session?.title ?: "DevCodex", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(session?.title?.ifBlank { androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_session_untitled) } ?: "DevCodex", maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val displayModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull { ai.devcodex.agent.provider.ModelRegistry.isChatModel(it) } ?: "选择模型"
+                                val displayModel = session?.modelId ?: settings.providers.firstOrNull { it.enabled }?.enabledModels?.firstOrNull { ai.devcodex.agent.provider.ModelRegistry.isChatModel(it) } ?: androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_model_pick)
                                 ai.devcodex.agent.ui.components.ModelLogo(displayModel, 16.dp)
                                 Spacer(Modifier.width(4.dp))
                                 Text(
@@ -336,7 +342,7 @@ fun ChatScreen(vm: AppViewModel) {
                                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.widthIn(max = 140.dp),
                                 )
-                                Icon(Icons.Filled.ArrowDropDown, "切换", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(Icons.Filled.ArrowDropDown, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_switch), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 if (isRunning) {
                                     Spacer(Modifier.width(4.dp))
                                     Text("●", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
@@ -346,37 +352,37 @@ fun ChatScreen(vm: AppViewModel) {
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, "会话列表")
+                            Icon(Icons.Filled.Menu, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_sessions_list))
                         }
                     },
                     actions = {
                         // 工作区直达（沉浸模式可达）
                         IconButton(onClick = { vm.navRequest.value = "workspace" }) {
-                            Icon(Icons.Filled.Folder, "工作区")
+                            Icon(Icons.Filled.Folder, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_workspace))
                         }
                         // 沉浸模式下的设置出口（任何时候都可进）
                         IconButton(onClick = { vm.navRequest.value = "settings" }) {
-                            Icon(Icons.Filled.Settings, "设置")
+                            Icon(Icons.Filled.Settings, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_settings))
                         }
                         // 次要入口收进溢出菜单：提供商、压缩会话、终端
                         var showMore by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { showMore = true }) {
-                                Icon(Icons.Filled.MoreVert, "更多")
+                                Icon(Icons.Filled.MoreVert, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_more))
                             }
                             DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
                                 DropdownMenuItem(
-                                    text = { Text("API 提供商") },
+                                    text = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_menu_providers)) },
                                     leadingIcon = { Icon(Icons.Filled.AutoAwesome, null) },
                                     onClick = { showMore = false; vm.navRequest.value = "providers" },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("压缩会话") },
+                                    text = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_menu_compact)) },
                                     leadingIcon = { Icon(Icons.Filled.Schedule, null) },
                                     onClick = { showMore = false; vm.compactSessionNow() },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("终端") },
+                                    text = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_menu_terminal)) },
                                     leadingIcon = { Icon(Icons.Filled.Dvr, null) },
                                     onClick = { showMore = false; vm.navRequest.value = "terminal" },
                                 )
@@ -409,6 +415,10 @@ fun ChatScreen(vm: AppViewModel) {
                 ) {
                     items(messages.size, key = { messages[it].id }) { idx ->
                         val msg = messages[idx]
+                        val busyResendMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_busy_resend)
+                        val busyRewindMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_busy_rewind)
+                        val busyDeleteMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_busy_delete)
+                        val toastCtx = androidx.compose.ui.platform.LocalContext.current
                         when {
                             msg.role == "user" -> Row(
                                 Modifier.fillMaxWidth(),
@@ -427,9 +437,9 @@ fun ChatScreen(vm: AppViewModel) {
                                     ) { UserBubble(msg) }
                                     MsgActionBar(
                                         msg,
-                                        onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制 · " + c.length + " 字" },
-                                        onResend = { if (msg.content.isNotBlank()) { if (isRunning) vm.toast.value = "回复进行中，稍后重发" else { vm.rewindTo(msg.id); vm.send(msg.content) } } },
-                                        onRewind = { if (isRunning) vm.toast.value = "回复进行中，稍后回退" else vm.rewindTo(msg.id) },
+                                        onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = toastCtx.getString(ai.devcodex.agent.R.string.chat_copied_fmt, c.length) },
+                                        onResend = { if (msg.content.isNotBlank()) { if (isRunning) vm.toast.value = busyResendMsg else { vm.rewindTo(msg.id); vm.send(msg.content) } } },
+                                        onRewind = { if (isRunning) vm.toast.value = busyRewindMsg else vm.rewindTo(msg.id) },
                                         onDelete = { if (isRunning) vm.stop(); vm.deleteMessage(msg.id) },
                                     )
                                 }
@@ -441,7 +451,7 @@ fun ChatScreen(vm: AppViewModel) {
                                         defaultColor = androidx.compose.ui.graphics.Color(0xFF059669),
                                         size = 24.dp,
                                     )
-                                    Text(settings.theme.userNick.ifBlank { "我" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(settings.theme.userNick.ifBlank { androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_user_nick_default) }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 } else if (settings.theme.showAvatar) ai.devcodex.agent.ui.components.Avatar(
                                     name = settings.theme.userNick,
                                     avatarFile = settings.theme.userAvatar,
@@ -479,12 +489,12 @@ fun ChatScreen(vm: AppViewModel) {
                                                 val paras = msg.content.split("\n\n").size
                                                 val chars = msg.content.length
                                                 if (chars > 0) Text(
-                                                    " · 第 $paras 段 · $chars 字",
+                                                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_streaming_pos_fmt, paras, chars),
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                                 if (!msg.thinking.isNullOrBlank()) Text(
-                                                    " · 思考 " + (msg.thinking!!.length) + " 字",
+                                                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_streaming_thinking_fmt, msg.thinking!!.length),
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.tertiary,
                                                 )
@@ -541,7 +551,7 @@ fun ChatScreen(vm: AppViewModel) {
                                                                 )
                                                                 TextButton(onClick = {
                                                                     clipboard.setText(AnnotatedString(block.code))
-                                                                }) { Text("复制", style = MaterialTheme.typography.labelSmall) }
+                                                                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_copy), style = MaterialTheme.typography.labelSmall) }
                                                             }
                                                         },
                                                     ) {
@@ -583,10 +593,10 @@ fun ChatScreen(vm: AppViewModel) {
                                         // cccodroid：AI 消息底部操作栏（复制/回退/删除）
                                         MsgActionBar(
                                             msg,
-                                            onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = "已复制 · " + c.length + " 字" },
+                                            onCopy = { c -> clipboard.setText(AnnotatedString(c)); vm.toast.value = toastCtx.getString(ai.devcodex.agent.R.string.chat_copied_fmt, c.length) },
                                             onResend = {},
-                                            onRewind = { if (isRunning) vm.toast.value = "回复进行中，稍后回退" else vm.rewindTo(msg.id) },
-                                            onDelete = { if (isRunning) { vm.toast.value = "回复进行中，删除将在完成后生效" } else vm.deleteMessage(msg.id) },
+                                            onRewind = { if (isRunning) vm.toast.value = busyRewindMsg else vm.rewindTo(msg.id) },
+                                            onDelete = { if (isRunning) { vm.toast.value = busyDeleteMsg } else vm.deleteMessage(msg.id) },
                                         )
                                     }
                                 }
@@ -600,7 +610,7 @@ fun ChatScreen(vm: AppViewModel) {
                 // 斜杠命令建议浮层（输入以 / 开头）
                 if (input.startsWith("/") && input.length <= 24 && !input.contains(" ")) {
                     val skills = remember { runCatching { ai.devcodex.agent.data.SkillRepo(cmdCtx).list() }.getOrDefault(emptyList()) }
-                    val cmds = SlashCommands.definitions.map { it.name to it.desc } +
+                    val cmds = SlashCommands.definitions(cmdCtx).map { it.name to it.desc } +
                         skills.map { "/${it.name}" to it.description }
                     val matches = cmds.filter { it.first.startsWith(input.removePrefix("/").take(2).ifBlank { "" }.let { p -> "/" + p }) || it.first.startsWith(input) }.take(8)
                     Surface(
@@ -662,6 +672,11 @@ fun ChatScreen(vm: AppViewModel) {
     // 角色卡 BottomSheet
     if (showCharacters) {
         val chars = androidx.compose.runtime.remember { ai.devcodex.agent.data.CharacterRepo.list() }
+        val charImportOkMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_import_ok)
+        val charImportFailMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_import_fail)
+        val charUpdatedMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_updated)
+        val charUpdateFailedMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_update_failed)
+        val charDeletedMsg = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_deleted)
         val charPicker = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.GetContent()
         ) { uri: android.net.Uri? ->
@@ -669,8 +684,8 @@ fun ChatScreen(vm: AppViewModel) {
                 runCatching {
                     val text = ai.devcodex.agent.tools.BuiltinTools.appContext().contentResolver.openInputStream(uri)?.bufferedReader()?.readText() ?: ""
                     if (text.isNotBlank()) {
-                        if (vm.importCharacter(text)) vm.toast.value = "角色卡已导入"
-                        else vm.toast.value = "导入失败：格式不支持"
+                        if (vm.importCharacter(text)) vm.toast.value = charImportOkMsg
+                        else vm.toast.value = charImportFailMsg
                     }
                 }
             }
@@ -678,16 +693,16 @@ fun ChatScreen(vm: AppViewModel) {
         ModalBottomSheet(onDismissRequest = { showCharacters = false }) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("角色卡", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_drawer_characters), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     androidx.compose.material3.OutlinedButton(onClick = { charPicker.launch("application/json") }) {
                         Icon(Icons.Filled.Add, null, Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("导入 JSON", style = MaterialTheme.typography.labelSmall)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_import_json), style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 if (chars.isEmpty()) {
-                    Text("暂无角色卡。导入 SillyTavern/Operit 格式 JSON（V2 data 包装或 V1 平铺均支持）。",
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_empty),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 chars.forEach { c ->
@@ -713,32 +728,32 @@ fun ChatScreen(vm: AppViewModel) {
                         }
                         AlertDialog(
                             onDismissRequest = { editThis = false },
-                            title = { Text("编辑角色卡") },
+                            title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_edit_title)) },
                             text = {
                                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                                    OutlinedTextField(value = eName, onValueChange = { eName = it }, label = { Text("名字") }, singleLine = true)
+                                    OutlinedTextField(value = eName, onValueChange = { eName = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_name)) }, singleLine = true)
                                     Spacer(Modifier.height(6.dp))
-                                    OutlinedTextField(value = eDesc, onValueChange = { eDesc = it }, label = { Text("角色设定") }, minLines = 2)
+                                    OutlinedTextField(value = eDesc, onValueChange = { eDesc = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_desc)) }, minLines = 2)
                                     Spacer(Modifier.height(6.dp))
-                                    OutlinedTextField(value = ePers, onValueChange = { ePers = it }, label = { Text("性格") })
+                                    OutlinedTextField(value = ePers, onValueChange = { ePers = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_personality)) })
                                     Spacer(Modifier.height(6.dp))
-                                    OutlinedTextField(value = eFirst, onValueChange = { eFirst = it }, label = { Text("开场白") }, minLines = 2)
+                                    OutlinedTextField(value = eFirst, onValueChange = { eFirst = it }, label = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_first_mes)) }, minLines = 2)
                                     Spacer(Modifier.height(8.dp))
                                     OutlinedButton(onClick = { avatarPicker.launch("image/*") }) {
                                         Icon(Icons.Filled.Add, null, Modifier.size(14.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text(if (eAvatar.isBlank()) "选择头像图片" else "已选头像：" + eAvatar.take(16), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                        Text(if (eAvatar.isBlank()) androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_avatar_pick) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_avatar_picked_fmt, eAvatar.take(16)), style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                     }
                                 }
                             },
                             confirmButton = {
                                 TextButton(onClick = {
                                     val updated = c.copy(name = eName.trim(), description = eDesc, personality = ePers, firstMes = eFirst, avatar = eAvatar)
-                                    if (vm.updateCharacter(c, updated)) { showCharacters = false; vm.toast.value = "角色已更新" }
-                                    else vm.toast.value = "更新失败"
-                                }) { Text("保存") }
+                                    if (vm.updateCharacter(c, updated)) { showCharacters = false; vm.toast.value = charUpdatedMsg }
+                                    else vm.toast.value = charUpdateFailedMsg
+                                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_save)) }
                             },
-                            dismissButton = { TextButton(onClick = { editThis = false }) { Text("取消") } },
+                            dismissButton = { TextButton(onClick = { editThis = false }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_cancel)) } },
                         )
                     }
                     Row(
@@ -764,18 +779,18 @@ fun ChatScreen(vm: AppViewModel) {
                         Column(Modifier.weight(1f)) {
                             Text(c.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
-                                c.description.ifBlank { "（无设定）" },
+                                c.description.ifBlank { androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_no_desc) },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        IconButton(onClick = { editThis = true }) { Icon(Icons.Filled.Schedule, "编辑", Modifier.size(16.dp)) }
+                        IconButton(onClick = { editThis = true }) { Icon(Icons.Filled.Schedule, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_edit), Modifier.size(16.dp)) }
                         IconButton(onClick = {
                             ai.devcodex.agent.data.CharacterRepo.delete(c.name)
                             showCharacters = false
-                            vm.toast.value = "已删除角色"
-                        }) { Icon(Icons.Filled.Delete, "删除", Modifier.size(16.dp)) }
+                            vm.toast.value = charDeletedMsg
+                        }) { Icon(Icons.Filled.Delete, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_delete), Modifier.size(16.dp)) }
                     }
                     androidx.compose.material3.HorizontalDivider()
                 }
@@ -797,13 +812,13 @@ fun ChatScreen(vm: AppViewModel) {
         ) {
             Column(Modifier.fillMaxWidth()) {
                 Text(
-                    "选择模型",
+                    androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_model_pick),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                 )
                 OutlinedTextField(
                     value = query, onValueChange = { query = it },
-                    placeholder = { Text("搜索模型…") },
+                    placeholder = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_model_search)) },
                     singleLine = true,
                     shape = MaterialTheme.shapes.medium,
                     leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.size(18.dp)) },
@@ -814,7 +829,7 @@ fun ChatScreen(vm: AppViewModel) {
                 }
                 if (activeProviders.isEmpty()) {
                     Text(
-                        "没有可用模型，请到「提供商」页配置",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_model_none),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(20.dp),
@@ -862,12 +877,16 @@ fun ChatScreen(vm: AppViewModel) {
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                     val meta = ai.devcodex.agent.provider.ModelRegistry.lookup(m)
+                                    val badgeTools = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_badge_tools)
+                                    val badgeVision = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_badge_vision)
+                                    val badgeReasoning = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_badge_reasoning)
+                                    val badgeCustom = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_badge_custom)
                                     val badges = buildList {
-                                        meta.tools?.let { if (it) add("工具调用" to 0xFF1A73E8) }
-                                        if (meta.vision) add("视觉" to 0xFF8E24AA)
-                                        if (meta.reasoning) add("深度思考" to 0xFFE8710A)
+                                        meta.tools?.let { if (it) add(badgeTools to 0xFF1A73E8) }
+                                        if (meta.vision) add(badgeVision to 0xFF8E24AA)
+                                        if (meta.reasoning) add(badgeReasoning to 0xFFE8710A)
                                         meta.contextLength?.let { add("ctx " + (it / 1000) + "k" to 0xFF5F6368) }
-                                        if (meta === ai.devcodex.agent.provider.ModelMeta.Companion.UNKNOWN) add("自定义" to 0xFF5F6368)
+                                        if (meta === ai.devcodex.agent.provider.ModelMeta.Companion.UNKNOWN) add(badgeCustom to 0xFF5F6368)
                                     }
                                     // 徽章单行限宽（防重叠/溢出）
                                     Row(
@@ -885,7 +904,7 @@ fun ChatScreen(vm: AppViewModel) {
                                     }
                                 }
                                 if (selected) {
-                                    Icon(Icons.Filled.CheckCircle, "已选", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Filled.CheckCircle, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_selected), Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                                 // 选中模型：上下文窗口档位（检测模型支持上限），位于模型行下方
@@ -893,12 +912,12 @@ fun ChatScreen(vm: AppViewModel) {
                                     val modelMax = ai.devcodex.agent.provider.ModelRegistry.lookup(m).contextLength ?: Int.MAX_VALUE
                                     val curCtx = session?.contextOverride ?: 0
                                     val options = listOf(0, 131072, 262144, 524288, 1048576, 2097152)
-                                    val labels = mapOf(0 to "默认(${modelMax / 1024}k)", 131072 to "128k", 262144 to "256k", 524288 to "512k", 1048576 to "1M", 2097152 to "2M")
+                                    val labels = mapOf(0 to androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_ctx_default_fmt, modelMax / 1024), 131072 to "128k", 262144 to "256k", 524288 to "512k", 1048576 to "1M", 2097152 to "2M")
                                     androidx.compose.foundation.layout.FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         modifier = Modifier.fillMaxWidth().padding(start = 38.dp, top = 2.dp, bottom = 6.dp),
                                     ) {
-                                        Text("上下文 ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
+                                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_ctx_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
                                         options.forEach { opt ->
                                             val support = opt == 0 || opt <= modelMax
                                             FilterChip(
@@ -923,11 +942,11 @@ fun ChatScreen(vm: AppViewModel) {
     selectedMsg?.let { sm ->
         AlertDialog(
             onDismissRequest = { selectedMsg = null },
-            title = { Text(if (sm.role == "user") "你的消息" else "AI 消息", style = MaterialTheme.typography.titleSmall) },
+            title = { Text(if (sm.role == "user") androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_msg_yours) else androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_msg_ai), style = MaterialTheme.typography.titleSmall) },
             text = {
                 Column {
                     Text(
-                        sm.content.take(120).ifBlank { "（无文本内容）" },
+                        sm.content.take(120).ifBlank { androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_msg_no_text) },
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
@@ -938,14 +957,14 @@ fun ChatScreen(vm: AppViewModel) {
                 TextButton(onClick = {
                     clipboard.setText(AnnotatedString(sm.content))
                     selectedMsg = null
-                }) { Text("复制全文") }
+                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_msg_copy_all)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     if (isRunning) vm.stop()
                     vm.deleteMessage(sm.id)
                     selectedMsg = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_delete), color = MaterialTheme.colorScheme.error) }
             },
         )
     }
@@ -954,11 +973,11 @@ fun ChatScreen(vm: AppViewModel) {
     crashReport?.let { report ->
         AlertDialog(
             onDismissRequest = { crashReport = null },
-            title = { Text("检测到上次异常退出") },
+            title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_crash_title)) },
             text = {
                 Column {
                     Text(
-                        "为了定位 bug，请把下面的堆栈发给我（已自动保存）：",
+                        androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_crash_hint),
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -975,13 +994,13 @@ fun ChatScreen(vm: AppViewModel) {
                 TextButton(onClick = {
                     clipboard.setText(AnnotatedString(report))
                     crashReport = null
-                }) { Text("复制堆栈") }
+                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_crash_copy)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     CrashHandler.clear(context)
                     crashReport = null
-                }) { Text("清除并忽略") }
+                }) { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_crash_clear)) }
             },
         )
     }
@@ -992,7 +1011,7 @@ private fun EmptyHint(onExample: (String) -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(top = 56.dp, start = 24.dp, end = 24.dp),
     ) {
-        Text("有什么可以帮你的？", style = MaterialTheme.typography.headlineSmall)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_empty_title), style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(6.dp))
         Text(
             "DevCodex v${ai.devcodex.agent.BuildConfig.VERSION_NAME} · Android AI Agent",
@@ -1001,13 +1020,13 @@ private fun EmptyHint(onExample: (String) -> Unit) {
             color = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.height(20.dp))
-        Text("试试这些指令：", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_empty_try), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         listOf(
-            "列出 /sdcard/Download 下的文件",
-            "读取当前屏幕内容并总结",
-            "写一段文字到工作区 notes.txt",
-            "当前手机装了哪些 app？",
+            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_example_1),
+            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_example_2),
+            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_example_3),
+            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_example_4),
         ).forEach { line ->
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -1039,7 +1058,7 @@ private fun TypingDots() {
         Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)))
         Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), RoundedCornerShape(4.dp)))
         Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), RoundedCornerShape(4.dp)))
-        Text("思考中…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_typing), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1073,6 +1092,10 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thin
         start = androidx.compose.ui.geometry.Offset(offset - 600f, 0f),
         end = androidx.compose.ui.geometry.Offset(offset, 0f),
     )
+    val thinkingActiveLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_thinking_active)
+    val thinkingProcessLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_thinking_process)
+    val thinkingDoneLabel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_thinking_done)
+    val thinkingCtx = androidx.compose.ui.platform.LocalContext.current
     Box(
         modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 6.dp).clickable { expanded = !expanded },
     ) {
@@ -1081,11 +1104,11 @@ private fun ThinkingBlockInline(text: String, autoCollapse: Boolean = true, thin
                 Text("✻", style = MaterialTheme.typography.labelLarge, color = c1.copy(alpha = alpha))
                 Text(
                     buildString {
-                        if (streaming) append("思考中") else if (expanded) append("思考过程") else append("已深度思考")
+                        if (streaming) append(thinkingActiveLabel) else if (expanded) append(thinkingProcessLabel) else append(thinkingDoneLabel)
                         if (!streaming && thinkingMs > 0) {
                             val sec = thinkingMs / 1000.0
-                            append(if (sec >= 60) String.format("（%dm%ds）", sec.toInt() / 60, sec.toInt() % 60)
-                                   else String.format("（%.1fs）", sec))
+                            append(if (sec >= 60) thinkingCtx.getString(ai.devcodex.agent.R.string.chat_thinking_dur_min_fmt, sec.toInt() / 60, sec.toInt() % 60)
+                                   else thinkingCtx.getString(ai.devcodex.agent.R.string.chat_thinking_dur_sec_fmt, sec))
                         }
                         if (streaming) append(" ▍")
                     },
@@ -1208,12 +1231,12 @@ private fun MsgActionBar(
                 Text(label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = onSurfVar.copy(alpha = 0.7f))
             }
         }
-        actBtn("复制", Icons.Filled.ContentCopy, onClick = { onCopy(msg.content) })
+        actBtn(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_copy), Icons.Filled.ContentCopy, onClick = { onCopy(msg.content) })
         if (msg.role == "user") {
-            actBtn("重发", Icons.Filled.Replay, onClick = onResend)
-            actBtn("回退", Icons.AutoMirrored.Filled.Undo, onClick = onRewind)
+            actBtn(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_action_resend), Icons.Filled.Replay, onClick = onResend)
+            actBtn(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_action_rewind), Icons.AutoMirrored.Filled.Undo, onClick = onRewind)
         }
-        actBtn("删除", Icons.Filled.Delete, onClick = onDelete)
+        actBtn(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_delete), Icons.Filled.Delete, onClick = onDelete)
     }
 }
 
@@ -1228,6 +1251,6 @@ private fun CharAvatarFallback(c: ai.devcodex.agent.data.CharacterCard) {
         ),
         contentAlignment = androidx.compose.ui.Alignment.Center,
     ) {
-        Text(c.name.takeOrNull(1) ?: "角", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(c.name.takeOrNull(1) ?: androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.chat_char_avatar_fallback), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
     }
 }

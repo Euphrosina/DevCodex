@@ -83,6 +83,7 @@ private fun modelPrice(model: String): Pair<Double, Double>? = when {
 fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
     var stats by remember { mutableStateOf<FullStats?>(null) }
     var period by remember { mutableStateOf(4) }  // 0日 1周 2月 3年 4累计
+    val unknownModel = androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_unknown_model)
 
     LaunchedEffect(vm.sessions.value.size, vm.activeSession.value?.messages?.size) {
         stats = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -106,8 +107,8 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                         requests = day.requests + if (m.outputTokens > 0) 1 else 0,
                     )
                     if (m.inputTokens + m.outputTokens == 0L) return@forEach
-                    val mu = byModel.getOrPut(m.model ?: "未知") { ModelUsage() }
-                    byModel[m.model ?: "未知"] = mu.copy(
+                    val mu = byModel.getOrPut(m.model ?: unknownModel) { ModelUsage() }
+                    byModel[m.model ?: unknownModel] = mu.copy(
                         input = mu.input + m.inputTokens,
                         output = mu.output + m.outputTokens,
                         requests = mu.requests + if (m.outputTokens > 0) 1 else 0,
@@ -144,10 +145,10 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("使用统计") },
+                title = { Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.common_back))
                     }
                 },
             )
@@ -194,26 +195,32 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
         ) {
             // 周期选择
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("每日", "每周", "每月", "每年", "累计").forEachIndexed { i, label ->
-                    FilterChip(selected = period == i, onClick = { period = i }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+                listOf(
+                    ai.devcodex.agent.R.string.stats_period_day,
+                    ai.devcodex.agent.R.string.stats_period_week,
+                    ai.devcodex.agent.R.string.stats_period_month,
+                    ai.devcodex.agent.R.string.stats_period_year,
+                    ai.devcodex.agent.R.string.stats_period_all,
+                ).forEachIndexed { i, label ->
+                    FilterChip(selected = period == i, onClick = { period = i }, label = { Text(androidx.compose.ui.res.stringResource(label), style = MaterialTheme.typography.labelSmall) })
                 }
             }
             // 总览卡
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("Token 使用", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_token_usage), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(fmtTok(fIn + fOut), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         Text("  tokens", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        StatSmall("请求", "$fReq")
-                        StatSmall("工具调用", "${st.toolCalls}")
-                        StatSmall("缓存命中", if (fIn > 0) "${fCached * 100 / fIn}%" else "-")
+                        StatSmall(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_requests), "$fReq")
+                        StatSmall(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_tool_calls), "${st.toolCalls}")
+                        StatSmall(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_cache_hit), if (fIn > 0) "${fCached * 100 / fIn}%" else "-")
                     }
                     if (fCost > 0) {
                         Text(
-                            "周期费用 ≈ ${"%.2f".format(fCost)}（按公开价目估算）",
+                            androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_cost_fmt, "%.2f".format(fCost)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                         )
@@ -223,33 +230,33 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
             // 缓存节省 + 输出
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
-                    Text("缓存节省", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_cache_saved), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(fmtTok(st.cachedTokens), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color(0xFF9E9E24))
                 } }
                 Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
-                    Text("累计输出", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_total_output), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(fmtTok(st.outputTokens), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color(0xFFEA8600))
                 } }
             }
             // 连续/峰值
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
-                    Text("当前连续", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${st.curStreak} 天", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_cur_streak), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_days_fmt, st.curStreak), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 } }
                 Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
-                    Text("最长连续", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${st.maxStreak} 天", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_max_streak), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_days_fmt, st.maxStreak), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 } }
                 Card(Modifier.weight(1f)) { Column(Modifier.padding(12.dp)) {
-                    Text("单日峰值", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_peak_day), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(fmtTok(st.peakDayTokens), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
                 } }
             }
             // Token 构成（堆叠条）
             Card {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("Token 构成", style = MaterialTheme.typography.titleSmall)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_token_mix), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.padding(6.dp))
                     val totalF = (fIn + fOut).coerceAtLeast(1)
                     val pFresh = (st.freshInputOf(fIn, fCached) * 100 / totalF).toInt().coerceIn(0, 100)
@@ -261,9 +268,9 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                         Box(Modifier.weight(pOut.coerceAtLeast(1).toFloat()).fillMaxHeight().background(Color(0xFFEA8600)))
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        LegendDot(Color(0xFF4285F4), "未缓存输入 ${fmtTok(fIn - fCached)}")
-                        LegendDot(Color(0xFF9E9E24), "缓存读取 ${fmtTok(fCached)}")
-                        LegendDot(Color(0xFFEA8600), "输出 ${fmtTok(fOut)}")
+                        LegendDot(Color(0xFF4285F4), androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_legend_fresh_fmt, fmtTok(fIn - fCached)))
+                        LegendDot(Color(0xFF9E9E24), androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_legend_cache_fmt, fmtTok(fCached)))
+                        LegendDot(Color(0xFFEA8600), androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_legend_out_fmt, fmtTok(fOut)))
                     }
                 }
             }
@@ -294,7 +301,17 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
-                                    listOf("一", "二", "三", "四", "五", "六", "日")[(cal.get(Calendar.DAY_OF_WEEK) + 5 + i) % 7],
+                                    androidx.compose.ui.res.stringResource(
+                                        listOf(
+                                            ai.devcodex.agent.R.string.stats_wd_mon,
+                                            ai.devcodex.agent.R.string.stats_wd_tue,
+                                            ai.devcodex.agent.R.string.stats_wd_wed,
+                                            ai.devcodex.agent.R.string.stats_wd_thu,
+                                            ai.devcodex.agent.R.string.stats_wd_fri,
+                                            ai.devcodex.agent.R.string.stats_wd_sat,
+                                            ai.devcodex.agent.R.string.stats_wd_sun,
+                                        )[(cal.get(Calendar.DAY_OF_WEEK) + 5 + i) % 7]
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -302,16 +319,16 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("最近 7 天 ${(last7.sum() / 1000)}k tokens · 活跃 ${last7.count { it > 0 }} 天", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_last7_fmt, (last7.sum() / 1000), last7.count { it > 0 }), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             // 活跃日历（近 14 周）
             Card {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("消息热力图", style = MaterialTheme.typography.titleSmall)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_heatmap), style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.weight(1f))
-                        Text("近 1 年", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_last_year), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.padding(6.dp))
                     // ===== rikkahub ChatHeatmap 照搬：LocalDate key + 53 周 + 分位数 + 月/周标签 + 图例 =====
@@ -342,7 +359,15 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Column(Modifier.width(12.dp), verticalArrangement = Arrangement.spacedBy(cellSpacing)) {
                             Spacer(Modifier.height(14.dp))
-                            listOf("", "一", "", "三", "", "五", "").forEach { label ->
+                            listOf(
+                                "",
+                                androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_wd_mon),
+                                "",
+                                androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_wd_wed),
+                                "",
+                                androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_wd_fri),
+                                "",
+                            ).forEach { label ->
                                 Box(Modifier.size(cellSize), contentAlignment = Alignment.Center) {
                                     if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.labelSmall, fontSize = MaterialTheme.typography.labelSmall.fontSize * 0.7f, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
@@ -389,16 +414,16 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                         }
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-                        Text("少", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_less), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         listOf(0f, 0.25f, 0.5f, 0.75f, 1f).forEach { a -> Box(Modifier.size(10.dp).clip(MaterialTheme.shapes.extraSmall).background(if (a == 0f) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary.copy(alpha = a))) }
-                        Text("多", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_more), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
             // 模型累计排行
             Card {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("模型累计", style = MaterialTheme.typography.titleSmall)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_model_total), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.padding(6.dp))
                     val models = st.byModel.entries.sortedByDescending { it.value.input + it.value.output }.take(10)
                     val maxTok = (models.firstOrNull()?.let { it.value.input + it.value.output } ?: 1L).coerceAtLeast(1)
@@ -407,7 +432,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Row(Modifier.fillMaxWidth()) {
                                 Text(model.substringAfterLast('/'), style = MaterialTheme.typography.labelSmall, fontFamily = Mono, maxLines = 1, modifier = Modifier.weight(1f))
-                                Text("${fmtTok(tok)} · ${u.requests}次", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_model_line_fmt, fmtTok(tok), u.requests), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Box(
                                 Modifier
@@ -422,17 +447,17 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
             // 设备与应用信息
             Card {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("设备信息", style = MaterialTheme.typography.titleSmall)
+                    Text(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_device_info), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.padding(4.dp))
                     val sp = vm.getPreferences()
                     val launches = sp.getInt("launch_count", 0) + 1
                     sp.edit().putInt("launch_count", launches).apply()
-                    InfoRow("应用版本", "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} (${ai.devcodex.agent.BuildConfig.VERSION_CODE})")
-                    InfoRow("启动次数", "$launches 次")
-                    InfoRow("会话总数", "${st.totalSessions} 个")
-                    InfoRow("设备", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-                    InfoRow("系统", "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
-                    InfoRow("架构", android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "-")
+                    InfoRow(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_app_version), "v${ai.devcodex.agent.BuildConfig.VERSION_NAME} (${ai.devcodex.agent.BuildConfig.VERSION_CODE})")
+                    InfoRow(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_launch_count), androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_launch_fmt, launches))
+                    InfoRow(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_session_total), androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_sessions_fmt, st.totalSessions))
+                    InfoRow(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_device), "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                    InfoRow(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_system), "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+                    InfoRow(androidx.compose.ui.res.stringResource(ai.devcodex.agent.R.string.stats_arch), android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "-")
                 }
             }
             Spacer(Modifier.padding(20.dp))
