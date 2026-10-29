@@ -38,7 +38,10 @@ fun LocalizedContent(content: @Composable () -> Unit) {
     val wrapped = remember(localized, base) { ActivityPreservingContext(localized, base) }
     // 双保险：即便 Context 链某天再次断开，也直接提供 ActivityResultRegistryOwner，
     // 使 rememberLauncherForActivityResult 不再抛 "No ActivityResultRegistryOwner was provided"。
-    val registryOwner = remember(base) { base.activityOrNull() as? ActivityResultRegistryOwner }
+    // 取值顺序：Context 链上的 Activity → 进程内登记的宿主 Activity（MainActivity.onCreate 里登记）。
+    val registryOwner = remember(base) {
+        (base.activityOrNull() ?: HostActivity.instance) as? ActivityResultRegistryOwner
+    }
     if (registryOwner != null) {
         CompositionLocalProvider(
             LocalContext provides wrapped,

@@ -65,6 +65,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 先登记宿主 Activity：任何 Compose 界面拿 ActivityResultRegistry 都不再依赖 Context 链
+        ai.devcodex.agent.i18n.HostActivity.attach(this)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // SDK 29+ 关闭导航栏对比度强制（edge-to-edge skill 规范）
@@ -102,5 +104,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        ai.devcodex.agent.i18n.HostActivity.detach(this)
+        super.onDestroy()
     }
 }
