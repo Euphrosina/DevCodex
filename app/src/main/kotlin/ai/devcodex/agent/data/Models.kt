@@ -114,7 +114,6 @@ data class AppSettings(
     val permissionsMigrated: Boolean = false,
     // 媒体工具迁移：旧用户已持久化的 enabledTools 不含 image_generate / video_generate / video_status
     val mediaToolsMigrated: Boolean = false,
-    val maxAgentSteps: Int = 24,
     val autoCompact: Boolean = true,      // 自动压缩上下文（超阈值摘要旧对话）
     // MCP 服务器（Streamable HTTP / SSE）
     val mcpServers: List<ai.devcodex.agent.provider.McpClient.McpServerConfig> = emptyList(),

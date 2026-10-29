@@ -185,10 +185,8 @@ class AgentEngine(
 
         var current = session
         try {
-            var steps = 0
-            // maxAgentSteps <= 0 表示不限步数
-            while (s.maxAgentSteps <= 0 || steps < s.maxAgentSteps) {
-                steps++
+            // 不限步数：循环只在最终回答、请求出错或用户中断时退出
+            while (true) {
 
                 // ---- 1. 流式调 LLM ----
                 var turns = buildList {
@@ -434,7 +432,6 @@ class AgentEngine(
                 }
                 // ---- 3. 循环：工具结果已在消息里，下一轮带给 LLM ----
             }
-            events.emit(UiEvent.Error("已达到最大步数 ${s.maxAgentSteps}，执行已停止，可在设置中调整"))
         } catch (e: CancellationException) {
             // 中断收尾：运行中/待审批的工具消息标记已中断，并给没有结果的工具调用补写结果，保证下一轮请求结构合法
             val answered = current.messages.filter { it.role == "tool" }.mapNotNull { it.toolCallId }.toSet()

@@ -25,23 +25,38 @@ object PRootUbuntu {
                 ctx.assets.open("proot/proot").use { input -> prootBin.outputStream().use { input.copyTo(it) } }
                 prootBin.setExecutable(true)
             }
+            // proot 依赖库：Termux bootstrap 不含 talloc/shmem，从 assets 补到 termux/usr/lib
+            val libDir = File(ai.devcodex.agent.shell.TermuxRuntime.prefix(ctx), "lib").apply { mkdirs() }
+            for (libName in listOf("libtalloc.so.2", "libandroid-shmem.so")) {
+                val dst = File(libDir, libName)
+                if (!dst.exists() || dst.length() == 0L) {
+                    ctx.assets.open("proot/$libName").use { input -> dst.outputStream().use { input.copyTo(it) } }
+                    dst.setReadable(true, false)
+                    dst.setExecutable(true, false)
+                }
+            }
             // rootfs（大文件解压一次）
             val root = rootfsDir(ctx)
             val readyMark = File(root, ".devcodex_ready")
             if (!readyMark.exists() || !root.resolve("bin").exists()) {
-                root.mkdirs()
                 onProgress(5)
-                val tmp = File(ctx.cacheDir, "ubuntu-rootfs.tar.gz")
-                ctx.assets.open("ubuntu-rootfs.tar.gz").use { input -> tmp.outputStream().use { input.copyTo(it) } }
-                onProgress(40)
-                // tar 解压（用系统 toybox tar，Android 8+ 自带）
-                val p = ProcessBuilder("tar", "-xzf", tmp.absolutePath, "-C", root.absolutePath)
-                    .redirectErrorStream(true).start()
-                val code = p.waitFor()
+                // 应用内 Java 层解压到临时目录，成功后原子改名，避免半成品 rootfs
+                val staging = File(ctx.filesDir, "ubuntu.tmp")
+                if (staging.exists()) staging.deleteRecursively()
+                if (root.exists()) root.deleteRecursively()
+                val result = try {
+                    ctx.assets.open("ubuntu-rootfs.tar.gz").use { input ->
+                        TarExtractor.extractTarGz(input, staging) { n -> onProgress(5 + minOf(85, n / 40)) }
+                    }
+                } catch (e: Exception) {
+                    ai.devcodex.agent.util.DebugLog.e("PRoot", "rootfs 解压失败: ${e.message}", e)
+                    staging.deleteRecursively()
+                    throw e
+                }
+                ai.devcodex.agent.util.DebugLog.i("PRoot", "rootfs 解压完成 files=${result.files} dirs=${result.dirs} links=${result.links} skipped=${result.skipped}")
+                if (!staging.renameTo(root)) error("rootfs 改名失败 ${staging.path} -> ${root.path}")
                 onProgress(95)
-                tmp.delete()
-                if (code != 0) error("rootfs 解压失败 exit=$code")
-                readyMark.writeText("ok")
+                File(root, ".devcodex_ready").writeText("ok")
             }
             // resolv.conf（联网）
             runCatching {
@@ -51,7 +66,10 @@ object PRootUbuntu {
             initialized = true
             onProgress(100)
             root.resolve("bin").exists()
-        }.getOrDefault(false)
+        }.getOrElse { e ->
+            ai.devcodex.agent.util.DebugLog.e("PRoot", "ensure 失败: ${e.message}", e)
+            false
+        }
     }
 
     /** 在 Ubuntu 内执行命令（PRoot 用户空间） */
