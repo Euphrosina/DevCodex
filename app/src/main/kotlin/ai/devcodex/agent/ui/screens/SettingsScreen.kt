@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
@@ -113,6 +114,7 @@ fun SettingsScreen(vm: AppViewModel) {
             Text(when (page) {
                 "theme" -> "主题与字体"
                 "tools" -> "工具与权限"
+                "prompt" -> "自定义系统提示词"
                 "stats" -> "使用统计"
                 "skills" -> "技能"
                 "about" -> "关于"
@@ -136,12 +138,19 @@ fun SettingsScreen(vm: AppViewModel) {
         when (page) {
             "theme" -> ThemePage(vm, settings, Modifier.padding(padding))
             "tools" -> ToolsPermPage(vm, settings, Modifier.padding(padding))
+            "prompt" -> CustomPromptPage(vm, settings, Modifier.padding(padding))
             "stats" -> ai.devcodex.agent.ui.screens.StatsScreen(vm) { page = "root" }
             "skills" -> SkillsPage(vm) { page = "root" }
             "about" -> AboutPage(Modifier.padding(padding)) { page = "root" }
             else -> Column(
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             ) {
+                ListItem(
+                    headlineContent = { Text("自定义系统提示词") },
+                    supportingContent = { Text("手动编辑 · 导入 md / txt / json 文件") },
+                    leadingContent = { Icon(Icons.Filled.Edit, null) },
+                    modifier = Modifier.clickable { page = "prompt" },
+                )
                 ListItem(
                     headlineContent = { Text("技能 Skills") },
                     supportingContent = { Text("SKILL.md 技能包 · 安装/开关/删除") },

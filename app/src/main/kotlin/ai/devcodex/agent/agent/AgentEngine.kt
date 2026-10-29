@@ -174,7 +174,8 @@ class AgentEngine(
                     list.joinToString("\n") { "- ${it.name}: ${it.description.take(120)}" }
             }.getOrDefault("")
         }
-        var systemPrompt = basePrompt + skillSection
+        val customSection = if (s.customSystemPrompt.isBlank()) "" else "\n\n【用户自定义系统提示词】\n" + s.customSystemPrompt.trim()
+        var systemPrompt = basePrompt + customSection + skillSection
         // 角色卡/会话内 system 消息（如角色设定）拼进系统提示（修复角色卡提示词无法注入）
         val extraSys = session.messages.filter { it.role == "system" && it.content.isNotBlank() }.joinToString("\n\n") { it.content }
         if (extraSys.isNotBlank()) systemPrompt += "\n\n" + extraSys

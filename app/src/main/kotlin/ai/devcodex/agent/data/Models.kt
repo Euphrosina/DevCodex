@@ -121,6 +121,8 @@ data class AppSettings(
     val customTools: List<CustomToolDef> = emptyList(),
     // 思考推理等级：空=默认, low/medium/high
     val reasoningEffort: String = "",
+    // 自定义系统提示词：空=不启用；非空时追加在默认系统提示词之后
+    val customSystemPrompt: String = "",
     // 自定义工作区：空=应用私有目录；否则为绝对路径
     val workspaceDir: String = "",
     // AXS/Termux HTTP shell 服务（如 http://127.0.0.1:8912）
