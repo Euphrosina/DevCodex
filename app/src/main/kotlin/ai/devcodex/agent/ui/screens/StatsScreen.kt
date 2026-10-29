@@ -105,6 +105,7 @@ fun StatsScreen(vm: ai.devcodex.agent.AppViewModel, onBack: () -> Unit) {
                         cached = day.cached + m.cachedTokens,
                         requests = day.requests + if (m.outputTokens > 0) 1 else 0,
                     )
+                    if (m.inputTokens + m.outputTokens == 0L) return@forEach
                     val mu = byModel.getOrPut(m.model ?: "未知") { ModelUsage() }
                     byModel[m.model ?: "未知"] = mu.copy(
                         input = mu.input + m.inputTokens,
